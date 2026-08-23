@@ -10,6 +10,13 @@ window.SwapDB = SwapDB;
 
 // Application State
 import BriskScheduler from './scheduler.js';
+window.BriskScheduler = BriskScheduler;
+
+// Static Module Imports (Guarantees synchronous availability of all 87 handlers)
+import './modules/role-customization.js';
+import './modules/compliance.js';
+import './modules/payroll-engine.js';
+import './modules/ai-ops.js';
 // Toast Notification System
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
