@@ -65,6 +65,7 @@ const BriskDB = (function() {
   // Helper to load session
   function getSession() {
     try {
+      if (typeof window === 'undefined' || !window.localStorage) return null;
       const val = localStorage.getItem(STORAGE_KEYS.SESSION);
       return val ? JSON.parse(val) : null;
     } catch (e) {
