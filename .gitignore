@@ -1,0 +1,10 @@
+node_modules
+.vercel
+.env*
+.env.local
+scratch
+*.sql
+*.pdf
+android
+ios
+package-lock.json

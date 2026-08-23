@@ -1,0 +1,11 @@
+{
+  "appId": "io.mcjp.briskschedules",
+  "appName": "BriskSchedules",
+  "webDir": ".",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

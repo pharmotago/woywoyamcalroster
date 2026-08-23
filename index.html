@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amcal Pharmacy Woywoy Rosters — Staff Scheduler & Time Clock</title>
+  <meta name="description" content="Local-first employee scheduling, auto scheduling algorithm, time tracking, and leave management system.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css?v=8.9.9">
+  
+  <!-- Open Graph / Social Sharing Cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://woywoyamcalroster.vercel.app">
+  <meta property="og:title" content="Amcal Pharmacy Woy Woy Roster System">
+  <meta property="og:description" content="Official employee scheduling, time tracking, and staff management system for Amcal Pharmacy Woy Woy.">
+  <meta property="og:site_name" content="Amcal Woy Woy Roster">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Amcal Roster">
+  <link rel="canonical" href="https://woywoyamcalroster.vercel.app">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <!-- Vercel Web Analytics & Speed Insights -->
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
+</head>
+<body>
+
+  <!-- Background Glowing Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Global Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay hide">
+    <div class="spinner"></div>
+    <p>Loading data...</p>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- LOGIN & REGISTRATION SCREEN -->
+  <!-- ===================================== -->
+  <div id="login-screen" class="login-overlay active">
+    <!-- Login Card -->
+    <div id="login-card" class="glass-card login-card">
+      <div class="login-header text-center" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <svg width="180" height="42" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
+          <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+          <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+          <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+        </svg>
+        <span style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Woywoy Rosters</span>
+      </div>
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" style="margin-top: 1.5rem;">
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" class="form-control" placeholder="name@company.com" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
+          <a href="javascript:void(0)" id="btn-forgot-password" onclick="if(window.openResetPasswordModal){window.openResetPasswordModal(event)}else{var m=document.getElementById('modal-reset-password');if(m)m.classList.add('active');}" style="color:var(--accent-gold); font-size:12px; display:block; margin-top:0.5rem; text-align:right; text-decoration:none; cursor:pointer;">Forgot Password?</a>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">Log In</button>
+        
+        <div class="login-footer text-center" style="margin-top: 1.5rem; font-size: 0.85rem;">
+          <span class="text-muted">New staff member?</span>
+          <a href="#" onclick="showRegisterCard()" style="color: var(--accent-gold); text-decoration: none; font-weight: bold; margin-left: 4px;">Register via Invite Code</a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Register Card -->
+    <div id="register-card" class="glass-card login-card hide">
+      <div class="login-header text-center">
+        <div class="brand-icon" style="margin: 0 auto 12px;"><i class="fa-solid fa-user-plus"></i></div>
+        <h2>AMCAL</h2>
+        <span>Pharmacy Staff Registration</span>
+      </div>
+      <form id="register-form" onsubmit="handleRegisterSubmit(event)" style="margin-top: 1.5rem;">
+        <div class="form-group" id="invite-code-group">
+          <label for="reg-invite-code">Invitation Code</label>
+          <input type="text" id="reg-invite-code" class="form-control" placeholder="6-digit uppercase code" required minlength="6" maxlength="6" pattern="[A-Z0-9]{6}" title="6-character uppercase alphanumeric code" style="text-transform:uppercase; letter-spacing:3px; font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label for="reg-name">Full Name</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="John Doe" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" class="form-control" placeholder="name@company.com" required>
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" class="form-control" placeholder="••••••••" autocomplete="new-password" required minlength="8" title="Password must be at least 8 characters">
+        </div>
+        <button type="submit" class="btn btn-neon btn-block" style="margin-top: 1rem;">Register Account</button>
+        
+        <div class="login-footer text-center" style="margin-top: 1.5rem; font-size: 0.85rem;">
+          <span class="text-muted">Already registered?</span>
+          <a href="#" onclick="showLoginCard()" style="color: var(--accent-cyan); text-decoration: none; font-weight: bold; margin-left: 4px;">Back to Login</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===================================== -->
+  <!-- MAIN APPLICATION LAYOUT -->
+  <!-- ===================================== -->
+  <div class="app-container" id="app-root" style="display: none;">
+    <!-- Mobile Overlay -->
+    <div id="mobile-overlay" class="mobile-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+    <div class="brand" style="display: flex; align-items: center; gap: 8px;">
+      <svg width="65" height="18" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+        <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+        <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+      </svg>
+      <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 2px;">Rosters</span>
+    </div>
+    <div class="live-clock mobile-clock" id="mobile-live-clock">--:--:--</div>
+    <button class="mobile-menu-btn" aria-label="Toggle Menu" onclick="toggleSidebar()">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-brand" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 2rem;">
+        <svg width="150" height="35" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+          <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+          <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+        </svg>
+        <span style="font-size: 0.75rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; font-weight: 600; padding-left: 30px; margin-top: -6px;">Woywoy Rosters</span>
+      </div>
+
+      <nav class="sidebar-menu" role="tablist">
+        <button class="menu-item active" data-tab="dashboard" role="tab" aria-selected="true">
+          <i class="fa-solid fa-chart-simple"></i> <span>Dashboard</span>
+        </button>
+        <button class="menu-item" data-tab="scheduler" role="tab" aria-selected="false">
+          <i class="fa-solid fa-calendar-days"></i> <span>Scheduler</span>
+          <span class="nav-badge" id="badge-cover-requests" style="display:none; background:#f97316;">0</span>
+        </button>
+        <button class="menu-item" data-tab="daily" role="tab" aria-selected="false">
+          <i class="fa-solid fa-calendar-day"></i> <span>Daily View</span>
+        </button>
+        <button class="menu-item" data-tab="employees" id="menu-employees" role="tab" aria-selected="false">
+          <i class="fa-solid fa-users"></i> <span>Employees</span>
+        </button>
+        <button class="menu-item" data-tab="timeclock" role="tab" aria-selected="false">
+          <i class="fa-solid fa-business-time"></i> <span>Time Clock</span>
+          <span class="nav-badge" id="badge-timeclock" style="display:none">0</span>
+        </button>
+        <button class="menu-item" data-tab="timeoff" role="tab" aria-selected="false">
+          <i class="fa-solid fa-umbrella-beach"></i> <span>Time Off</span>
+          <span class="nav-badge" id="badge-timeoff" style="display:none">0</span>
+        </button>
+        <button class="menu-item" data-tab="reports" id="menu-reports" role="tab" aria-selected="false">
+          <i class="fa-solid fa-file-invoice-dollar"></i> <span>Reports & Payroll</span>
+        </button>
+        <button class="menu-item" data-tab="settings" id="menu-settings" role="tab" aria-selected="false">
+          <i class="fa-solid fa-database"></i> <span>Data & Backup</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="menu-item" onclick="handleLogout()" style="margin-bottom: 12px; color: var(--text-danger); background: rgba(231,76,60,0.05); width: 100%;">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> <span>Log Out</span>
+        </button>
+        
+        <div class="company-badge" style="display: flex; align-items: center; width: 100%; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user-circle"></i>
+            <span id="sidebar-user-name">Loading...</span>
+          </div>
+          <button class="btn btn-icon" title="Change Password" onclick="openChangePasswordModal()" style="font-size: 11px; padding: 4px; color: var(--text-muted); opacity: 0.7; transition: opacity var(--transition-fast);" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+            <i class="fa-solid fa-key"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Bar -->
+      <header class="topbar">
+        <div class="page-title">
+          <h1 id="current-panel-title">Dashboard</h1>
+        </div>
+        <div class="topbar-actions">
+          <div id="sync-pending-badge" style="display: none; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-right: 8px;">
+            <i class="fa-solid fa-cloud-arrow-up fa-bounce"></i> Syncing <span id="sync-pending-count">0</span>...
+          </div>
+          <a href="./Amcal_Woy_Woy_Staff_User_Guide.pdf" download="Amcal_Woy_Woy_Staff_User_Guide.pdf" target="_blank" class="btn btn-outline" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="Download Staff Operating Manual (PDF)">
+            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
+          </a>
+          <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v8.9.9)</span>
+          </button>
+          <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
+            <i class="fa-solid fa-arrows-rotate"></i>
+          </button>
+          <button id="theme-toggle" class="btn btn-icon" onclick="toggleTheme()" aria-label="Toggle Theme">
+            <i class="fa-solid fa-moon"></i>
+          </button>
+          <div class="live-clock">
+            <span id="clock-date"></span>
+            <span id="clock-time" class="text-neon"></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ===================================== -->
+      <!-- PANEL: DASHBOARD -->
+      <!-- ===================================== -->
+      <section id="panel-dashboard" class="tab-panel active">
+        <!-- Welcome Banner -->
+        <div class="glass-card welcome-banner">
+          <div class="welcome-text">
+            <h2>Welcome back, <span id="dash-user-name">User</span>! 👋</h2>
+            <p id="welcome-role-tip">Empowering smart team operations with automated local-first scheduling.</p>
+          </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon bg-orange"><i class="fa-solid fa-users"></i></div>
+            <div class="metric-content">
+              <span class="metric-label">Active Staff</span>
+              <h3 class="metric-value" id="dash-emp-count">5</h3>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-neon"><i class="fa-solid fa-calendar-check"></i></div>
+            <div class="metric-content">
+              <span class="metric-label">Shifts This Week</span>
+              <h3 class="metric-value" id="dash-shifts-count">9</h3>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-cyan"><i class="fa-solid fa-user-clock"></i></div>
+            <div class="metric-content">
+              <span class="metric-label">Currently Working</span>
+              <h3 class="metric-value" id="dash-active-clockins">0</h3>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon bg-purple"><i class="fa-solid fa-plane-departure"></i></div>
+            <div class="metric-content">
+              <span class="metric-label">Pending Time Off</span>
+              <h3 class="metric-value" id="dash-pending-leaves">1</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard Layout Split -->
+        <div class="dashboard-split">
+          <!-- Today's Schedule -->
+          <div class="glass-card flex-2">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-calendar-day text-orange"></i> Today's Schedule</h3>
+              <span class="badge" id="dash-today-date">Loading...</span>
+            </div>
+
+            <!-- Personal Weekly Summary Card (Visible only to employees) -->
+            <div class="glass-card hide" id="dash-personal-summary-card" style="margin: 0 1.25rem 1.25rem 1.25rem; background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%); border: 1px solid rgba(0, 229, 255, 0.25);">
+              <div class="card-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                <h3><i class="fa-solid fa-wallet text-neon"></i> My Weekly Summary</h3>
+                <span class="text-muted" style="font-size: 11px;" id="personal-summary-week-range">This Week</span>
+              </div>
+              <div class="flex-row" style="justify-content: space-around; gap: 1rem; padding: 0.5rem 0;">
+                <div class="text-center" style="flex: 1;">
+                  <div class="text-muted" style="font-size: 0.78rem; margin-bottom: 4px;">Scheduled Hours</div>
+                  <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-cyan);" id="personal-summary-hours">0.0h</div>
+                </div>
+                <div style="width: 1px; background: rgba(255, 255, 255, 0.1); height: 40px; align-self: center;"></div>
+                <div class="text-center" style="flex: 1;">
+                  <div class="text-muted" style="font-size: 0.78rem; margin-bottom: 4px;">Estimated Earnings</div>
+                  <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;" id="personal-summary-pay" class="text-neon">$0.00</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Personal Timeclock Status (Visible only to employees) -->
+            <div class="glass-card hide" id="dash-personal-timeclock-card" style="margin: 0 1.25rem 1.25rem 1.25rem; border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.01);">
+              <div class="card-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                <h3><i class="fa-solid fa-user-clock text-neon"></i> My Timeclock Status</h3>
+                <span id="personal-timeclock-pulse" class="pulse-indicator hide" style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block;"></span>
+              </div>
+              <div style="padding: 0.25rem 0.5rem;" id="personal-timeclock-details">
+                <span class="text-muted" style="font-size: 0.85rem;">Checking status...</span>
+              </div>
+            </div>
+
+            <!-- Next Shift Indicator (Visible only to employees) -->
+            <div class="glass-card hide" id="dash-next-shift-card" style="margin: 0 1.25rem 1.25rem 1.25rem; border: 1px solid rgba(168, 85, 247, 0.2); background: rgba(168, 85, 247, 0.02);">
+              <div class="card-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                <h3><i class="fa-solid fa-clock-rotate-left text-neon"></i> My Next Shift</h3>
+              </div>
+              <div style="padding: 0.25rem 0.5rem;" id="next-shift-details">
+                <span class="text-muted" style="font-size: 0.85rem;">No upcoming shifts scheduled.</span>
+              </div>
+            </div>
+
+            <!-- Personal Time Off Requests (Visible only to employees) -->
+            <div class="glass-card hide" id="dash-personal-leaves-card" style="margin: 0 1.25rem 1.25rem 1.25rem; border: 1px solid rgba(0, 229, 255, 0.2); background: rgba(0, 229, 255, 0.01);">
+              <div class="card-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                <h3><i class="fa-solid fa-plane-departure text-neon"></i> My Time Off Requests</h3>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding: 0 4px;" id="personal-leaves-list">
+                <span class="text-muted" style="font-size: 0.85rem;">No recent time off requests.</span>
+              </div>
+            </div>
+
+            <div class="shift-list-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Employee Name</th>
+                    <th>Role Assigned</th>
+                    <th>Time Window</th>
+                    <th>Live Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dash-today-shifts">
+                  <!-- JS dynamically populates -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Quick Actions & Links (Manager) -->
+          <div class="glass-card dash-quick-actions-card flex-1" id="dash-quick-actions-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-bolt text-yellow"></i> Manager Actions</h3>
+            </div>
+            <div class="flex gap-2" style="flex-direction: column;">
+              <button class="btn btn-primary btn-block" onclick="switchTab('employees'); openAddEmployeeModal();">
+                <i class="fa-solid fa-user-plus"></i> Add Staff
+              </button>
+              <button class="btn btn-outline btn-block" onclick="switchTab('scheduler'); openAddShiftModal();">
+                <i class="fa-solid fa-calendar-plus"></i> Add Shift
+              </button>
+              <button class="btn btn-outline btn-block" onclick="switchTab('scheduler'); copyCurrentWeekToNextWeek();">
+                <i class="fa-solid fa-copy text-cyan"></i> Copy Roster to Next Week
+              </button>
+              <button class="btn btn-outline btn-block" onclick="switchTab('timeclock')">
+                <i class="fa-solid fa-stopwatch"></i> Terminal
+              </button>
+              <button class="btn btn-outline btn-block" onclick="openSwapBoardModal()">
+                <i class="fa-solid fa-right-left"></i> Shift Swap Board
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Actions & Links (Staff/Employee) -->
+          <div class="glass-card dash-quick-actions-card flex-1 hide" id="dash-staff-actions-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-bolt text-yellow"></i> Staff Actions</h3>
+            </div>
+            <div class="flex gap-2" style="flex-direction: column;">
+              <button class="btn btn-neon btn-block" onclick="switchTab('timeclock')">
+                <i class="fa-solid fa-stopwatch"></i> Clock Terminal
+              </button>
+              <button class="btn btn-outline btn-block" onclick="switchTab('timeoff')">
+                <i class="fa-solid fa-umbrella-beach"></i> Request Time Off
+              </button>
+              <button class="btn btn-outline btn-block" onclick="switchTab('scheduler')">
+                <i class="fa-solid fa-calendar-days"></i> View My Schedule
+              </button>
+              <button class="btn btn-outline btn-block" onclick="openStaffDirectoryModal()">
+                <i class="fa-solid fa-address-book"></i> Team Directory
+              </button>
+              <button class="btn btn-outline btn-block" onclick="openSwapBoardModal()">
+                <i class="fa-solid fa-right-left"></i> Shift Swap Board
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: SCHEDULER -->
+      <!-- ===================================== -->
+      <section id="panel-scheduler" class="tab-panel">
+        <div class="action-bar glass-card">
+          <div class="week-picker">
+            <button class="btn btn-icon" id="btn-prev-week" aria-label="Previous Week" title="Previous Week"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="scheduler-week-range" class="week-range-text"></span>
+            <button class="btn btn-icon" id="btn-next-week" aria-label="Next Week" title="Next Week"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-outline" onclick="window.print()" title="Print weekly roster">
+              <i class="fa-solid fa-print"></i> Print
+            </button>
+            <div id="labor-cost-forecast-badge" style="background: rgba(168, 85, 247, 0.1); border: 1px solid var(--primary-color); border-radius: 20px; font-weight: bold;">
+              <i class="fa-solid fa-chart-line text-primary"></i> <span id="labor-cost-forecast-value">$0.00</span>
+            </div>
+            <div id="wage-ratio-forecast-badge" onclick="openSalesTargetsModal()" style="background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" title="Click to input Daily Sales and analyze Wage % of Sales KPI">
+              <i class="fa-solid fa-chart-pie text-neon"></i> <span id="wage-ratio-forecast-text">Wage KPI: <strong id="wage-ratio-forecast-value">0.0%</strong></span>
+            </div>
+          </div>
+          <div class="scheduler-controls" id="scheduler-manager-controls">
+            <button class="btn btn-neon" id="btn-auto-schedule" title="Run AI Auto-Scheduler">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Auto-Schedule</span>
+            </button>
+            <button class="btn btn-outline" onclick="openAddShiftModal()" title="Add single shift">
+              <i class="fa-solid fa-plus"></i> Add Shift
+            </button>
+            <button class="btn btn-outline" onclick="exportRosterIcs()" title="Export schedule to Apple Calendar / Google Calendar (.ics)">
+              <i class="fa-solid fa-calendar-arrow-down text-cyan"></i> iCal (.ics)
+            </button>
+            <button class="btn btn-outline" onclick="window.print()" title="Print weekly roster to PDF">
+              <i class="fa-solid fa-print text-gold"></i> Print Roster
+            </button>
+            <button class="btn btn-outline" id="btn-copy-week" onclick="copyCurrentWeekToNextWeek()" title="Copy entire current week's roster to next week">
+              <i class="fa-solid fa-copy text-cyan"></i> Copy to Next Week
+            </button>
+            <button class="btn btn-danger" id="btn-clear-week" title="Clear this week's shifts">
+              <i class="fa-solid fa-trash-can"></i> Clear Week
+            </button>
+          </div>
+        </div>
+
+        <!-- Schedule Grid Wrapper -->
+        <div class="glass-card calendar-workspace desktop-only-grid">
+          <div class="scheduler-grid-container">
+            <table class="scheduler-grid-table" aria-label="Weekly Staff Roster Schedule">
+              <thead>
+                <tr>
+                  <th class="col-employee">Employee Profile</th>
+                  <th class="col-day">Mon <span class="day-date" id="head-date-1">06/29</span></th>
+                  <th class="col-day">Tue <span class="day-date" id="head-date-2">06/30</span></th>
+                  <th class="col-day">Wed <span class="day-date" id="head-date-3">07/01</span></th>
+                  <th class="col-day">Thu <span class="day-date" id="head-date-4">07/02</span></th>
+                  <th class="col-day">Fri <span class="day-date" id="head-date-5">07/03</span></th>
+                  <th class="col-day">Sat <span class="day-date" id="head-date-6">07/04</span></th>
+                  <th class="col-day text-sunday">Sun <span class="day-date" id="head-date-0">07/05</span></th>
+                </tr>
+              </thead>
+              <tbody id="scheduler-grid-body">
+                <!-- Dynamically populated row per employee + unassigned row -->
+              </tbody>
+              <tfoot id="scheduler-grid-foot">
+                <!-- Dynamically populated daily summary rows -->
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Mobile Timeline View (Visible only on mobile <= 768px) -->
+        <div class="mobile-only-timeline" id="scheduler-mobile-view">
+          <!-- Dynamically populated vertical day cards -->
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: DAILY VIEW -->
+      <!-- ===================================== -->
+      <section id="panel-daily" class="tab-panel">
+        <div class="action-bar glass-card">
+          <div class="week-picker">
+            <button class="btn btn-icon" onclick="adjustDailyDate(-1)" aria-label="Previous Day" title="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="daily-date-display" class="week-range-text"></span>
+            <button class="btn btn-icon" onclick="adjustDailyDate(1)" aria-label="Next Day" title="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="btn btn-outline" onclick="setDailyDateToday()" style="margin-left: 12px; height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+              Today
+            </button>
+          </div>
+          <div class="scheduler-controls">
+            <button class="btn btn-outline" onclick="exportRosterIcs(null, true)" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;" title="Export day schedule to iCal">
+              <i class="fa-solid fa-calendar-arrow-down text-cyan"></i> Day iCal
+            </button>
+            <button class="btn btn-outline" onclick="window.print()" style="height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-print"></i> Print Daily Roster
+            </button>
+          </div>
+        </div>
+
+        <!-- Daily Roster Workspace -->
+        <div class="glass-card" style="padding: 24px;">
+          <!-- Daily Hourly Staffing Heatmap & Timeline -->
+          <div class="glass-card" style="margin-bottom: 20px; padding: 16px; background: rgba(0, 229, 255, 0.02); border: 1px solid rgba(0, 229, 255, 0.15);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; flex-wrap:wrap; gap:8px;">
+              <h4 style="margin:0; font-size:0.9rem; color:var(--accent-cyan); display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-chart-gantt"></i> Hourly Staffing Density & Timeline Heatmap
+              </h4>
+              <div style="display:flex; gap:10px; font-size:0.75rem; color:var(--text-muted); align-items:center;">
+                <span><i class="fa-solid fa-square" style="color:rgba(239,68,68,0.7);"></i> 0 Staff</span>
+                <span><i class="fa-solid fa-square" style="color:#f59e0b;"></i> 1 Staff</span>
+                <span><i class="fa-solid fa-square" style="color:#10b981;"></i> 2-3 Staff</span>
+                <span><i class="fa-solid fa-square" style="color:var(--accent-cyan);"></i> 4+ Peak</span>
+              </div>
+            </div>
+            
+            <!-- Hourly Density Matrix -->
+            <div id="daily-hourly-heatmap" style="display:grid; grid-template-columns: repeat(13, 1fr); gap:4px; margin-bottom:14px; overflow-x:auto; min-width:680px;">
+              <!-- Dynamically populated 8am to 8pm hourly density blocks -->
+            </div>
+
+            <!-- Dispensing Safety Ratio & Clinical Workload KPI Bar -->
+            <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 8px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: #10b981; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-prescription-bottle-medical"></i> Dispensing Safety Ratio:
+                </span>
+                <span id="daily-dispensing-safety-badge" class="badge" style="font-size: 0.76rem;">Calculating...</span>
+                <span id="daily-pharm-hours-text" style="font-size: 0.76rem; color: var(--text-muted);">Pharmacist Hours: 0.0h</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="daily-scripts-input" style="font-size: 0.76rem; color: var(--text-muted); margin: 0;">Expected Scripts Today:</label>
+                <input type="number" id="daily-scripts-input" value="250" min="0" step="10" style="width: 70px; height: 26px; padding: 0 6px; font-size: 0.8rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); border-radius: 4px; color: #fff; text-align: center;" onchange="renderDailyPanel()">
+              </div>
+            </div>
+
+            <!-- Visual Bar Timeline -->
+            <div class="daily-timeline-container" style="overflow-x: auto;">
+              <div id="daily-timeline-visual" class="daily-timeline-visual" style="min-width: 680px; position: relative; height: 60px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-top: 6px;">
+                <!-- Dynamically rendered timeline bars -->
+              </div>
+              <div id="daily-timeline-labels" class="daily-timeline-labels" style="min-width: 680px; display: flex; justify-content: space-between; padding: 6px 12px; font-size: 0.75rem; color: var(--text-muted);">
+                <!-- Rendered via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Daily Shifts List/Cards Table -->
+          <div style="overflow-x: auto;">
+            <table class="scheduler-grid-table" style="min-width: 600px;" aria-label="Daily Staff Roster Schedule">
+              <thead>
+                <tr>
+                  <th style="width: 180px; text-align: left; padding-left: 16px;">Employee</th>
+                  <th style="width: 130px;">Time</th>
+                  <th style="width: 130px;">Role / Task</th>
+                  <th style="width: 160px; text-align: center;">Breaks (Award)</th>
+                  <th style="text-align: left; padding-left: 16px;">Notes / Instructions</th>
+                </tr>
+              </thead>
+              <tbody id="daily-shifts-tbody">
+                <!-- Dynamically populated daily list -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: EMPLOYEES -->
+      <!-- ===================================== -->
+      <section id="panel-employees" class="tab-panel">
+        <div class="action-bar glass-card">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="employee-search-input" placeholder="Search by name or role..." aria-label="Search employees" oninput="renderEmployeesList()">
+          </div>
+          <button class="btn btn-primary" onclick="openAddEmployeeModal()">
+            <i class="fa-solid fa-user-plus"></i> Add Employee
+          </button>
+        </div>
+
+        <div class="employees-grid" id="employees-cards-container">
+          <!-- Dynamically populated employee cards -->
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: TIME CLOCK -->
+      <!-- ===================================== -->
+      <section id="panel-timeclock" class="tab-panel">
+        <div class="timeclock-layout">
+          <!-- Public Terminal Card -->
+          <div class="glass-card timeclock-terminal">
+            <div class="card-header text-center">
+              <h3><i class="fa-solid fa-desktop text-neon"></i> Clock Terminal</h3>
+              <p id="clock-terminal-description">Select your name to log clock stamps.</p>
+            </div>
+            
+            <div class="terminal-body">
+              <div class="form-group">
+                <label for="clock-emp-select">Select Employee</label>
+                <select id="clock-emp-select" class="form-control" onchange="updateTerminalStatus()">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+
+              <div class="terminal-status-box" id="terminal-status-container">
+                <span class="status-indicator status-offline" id="terminal-status-dot"></span>
+                <span class="status-text" id="terminal-status-text">Not Clocked In</span>
+                <div class="sub-status" id="terminal-sub-status">No active stamps.</div>
+              </div>
+
+              <div class="terminal-actions-grid">
+                <button class="btn btn-success btn-lg" id="btn-clock-in" onclick="handleClockAction('in')">
+                  <i class="fa-solid fa-arrow-right-to-bracket"></i> Clock In
+                </button>
+                <button class="btn btn-danger btn-lg" id="btn-clock-out" onclick="handleClockAction('out')">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i> Clock Out
+                </button>
+                <button class="btn btn-warning" id="btn-start-lunch" onclick="handleClockAction('break-start-lunch')">
+                  <i class="fa-solid fa-utensils"></i> 30m Lunch (Unpaid)
+                </button>
+                <button class="btn btn-primary" id="btn-start-paid-break" onclick="handleClockAction('break-start-paid')">
+                  <i class="fa-solid fa-mug-hot"></i> 10m Rest (Paid)
+                </button>
+                <button class="btn btn-outline" id="btn-end-break" onclick="handleClockAction('break-end')" style="grid-column: 1 / -1; height: 38px;">
+                  <i class="fa-solid fa-circle-play"></i> End Break
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manager Timesheet Review Panel -->
+          <div class="glass-card timeclock-admin flex-1" id="timeclock-admin-panel">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-user-shield text-orange"></i> Timesheet Review (Manager)</h3>
+            </div>
+            <div class="timesheet-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Total Hours</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="timesheet-table-body">
+                  <!-- Dynamically populated timecard rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: TIME OFF -->
+      <!-- ===================================== -->
+      <section id="panel-timeoff" class="tab-panel">
+        <div class="timeoff-layout">
+          <!-- Request Leave Form -->
+          <div class="glass-card leave-form-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-paper-plane text-cyan"></i> Submit Leave Request</h3>
+            </div>
+            <form id="leave-request-form" onsubmit="handleLeaveSubmit(event)">
+              <div class="form-group" id="leave-employee-selector-group">
+                <label for="leave-emp-select">Employee Name</label>
+                <select id="leave-emp-select" class="form-control" required>
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="leave-start-date">Start Date</label>
+                  <input type="date" id="leave-start-date" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="leave-end-date">End Date</label>
+                  <input type="date" id="leave-end-date" class="form-control" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="leave-reason">Reason</label>
+                <textarea id="leave-reason" class="form-control" rows="2" placeholder="Dentist, holiday, personal administration..." required></textarea>
+              </div>
+              <div class="form-group" style="display:flex; align-items:center; gap:8px; margin-top:6px; margin-bottom:12px; padding:6px 10px; background:rgba(255,255,255,0.02); border:1px solid var(--border-glass); border-radius:var(--radius-sm);">
+                <input type="checkbox" id="leave-med-cert" style="width:16px; height:16px; cursor:pointer;">
+                <label for="leave-med-cert" style="margin:0; font-size:0.82rem; cursor:pointer; color:var(--text-secondary);">
+                  <i class="fa-solid fa-file-medical text-neon" style="margin-right:4px;"></i> Medical Certificate / Stat Dec Sighted
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Submit Request</button>
+            </form>
+          </div>
+
+          <!-- Leave Approvals List -->
+          <div class="glass-card leave-list-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-clipboard-question text-purple"></i> Leave Requests Review</h3>
+            </div>
+            <div class="leave-list-scroll">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Date Period</th>
+                    <th>Reason & Certificate</th>
+                    <th>Status</th>
+                    <th class="manager-action-th">Decisions</th>
+                  </tr>
+                </thead>
+                <tbody id="leave-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: REPORTS -->
+      <!-- ===================================== -->
+      <section id="panel-reports" class="tab-panel">
+        <div class="action-bar glass-card print-hide">
+          <div class="week-picker">
+            <button class="btn btn-icon" id="btn-report-prev-week"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="report-week-range" class="week-range-text"></span>
+            <button class="btn btn-icon" id="btn-report-next-week"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div class="report-controls">
+            <button class="btn btn-outline" onclick="publishSchedule()">
+              <i class="fa-solid fa-paper-plane"></i> Publish Schedule
+            </button>
+            <button class="btn btn-outline" onclick="openSalesTargetsModal()" style="color: var(--accent-cyan); border-color: rgba(0, 229, 255, 0.4);">
+              <i class="fa-solid fa-chart-pie"></i> Sales & Wage KPI
+            </button>
+            <button class="btn btn-outline" onclick="exportToXeroCsv()" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+              <i class="fa-solid fa-file-csv"></i> Export Xero / MYOB (STP2)
+            </button>
+            <button class="btn btn-primary" onclick="window.print()">
+              <i class="fa-solid fa-print"></i> PDF Print / Download
+            </button>
+          </div>
+        </div>
+
+        <!-- Pharmacy Wage vs Sales KPI Summary Card (Managers Only) -->
+        <div class="glass-card flex-row" id="rep-wage-kpi-card" style="margin-bottom: 1.25rem; padding: 16px 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.2);">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:42px; height:42px; border-radius:10px; background:rgba(0,229,255,0.12); display:flex; align-items:center; justify-content:center; color:var(--accent-cyan); font-size:1.2rem;">
+              <i class="fa-solid fa-chart-pie"></i>
+            </div>
+            <div>
+              <h4 style="margin:0 0 2px 0; font-size:0.95rem;">Pharmacy Wage-to-Sales KPI Target</h4>
+              <span class="text-muted" style="font-size:0.75rem;">Community Pharmacy Benchmark: 10.5% – 13.5% (Dispensary + Front + Webster + Locum)</span>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+            <div class="text-center">
+              <span class="text-muted" style="font-size:0.72rem;">Weekly Projected Sales</span>
+              <div id="rep-kpi-total-sales" style="font-weight:700; color:#f8fafc; font-size:1.1rem;">$0.00</div>
+            </div>
+            <div class="text-center">
+              <span class="text-muted" style="font-size:0.72rem;">Total Labor + Super/Locum</span>
+              <div id="rep-kpi-total-labor" style="font-weight:700; color:var(--accent-cyan); font-size:1.1rem;">$0.00</div>
+            </div>
+            <div class="text-center">
+              <span class="text-muted" style="font-size:0.72rem;">Wage % of Sales</span>
+              <div id="rep-kpi-wage-percent" style="font-weight:800; color:#10b981; font-size:1.3rem;">0.0%</div>
+            </div>
+            <button class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem;" onclick="openSalesTargetsModal()">
+              <i class="fa-solid fa-sliders"></i> Edit Sales Figures
+            </button>
+          </div>
+        </div>
+
+        <!-- Weekly Reconciliation Card: Actual POS Sales vs Forecast Wage % -->
+        <div class="glass-card" id="rep-actual-sales-reconciliation-card" style="margin-bottom: 1.25rem; padding: 18px 22px; background: rgba(16, 185, 129, 0.03); border: 1px solid rgba(16, 185, 129, 0.25);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom: 14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:42px; height:42px; border-radius:10px; background:rgba(16,185,129,0.12); display:flex; align-items:center; justify-content:center; color:#10b981; font-size:1.2rem;">
+                <i class="fa-solid fa-cash-register"></i>
+              </div>
+              <div>
+                <h4 style="margin:0 0 2px 0; font-size:0.98rem; color:#f8fafc;">Weekly POS Sales & Wage % Reconciliation</h4>
+                <span class="text-muted" style="font-size:0.75rem;">Reconcile scheduled labor costs against actual POS weekly revenue</span>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <label for="rep-actual-pos-input" style="font-size:0.82rem; font-weight:600; color:#e2e8f0; margin:0;">Actual POS Weekly Sales ($):</label>
+              <div style="position:relative; width: 150px;">
+                <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-weight:600;">$</span>
+                <input type="number" id="rep-actual-pos-input" class="form-control" style="padding-left:24px; font-weight:700; color:#10b981; border-color: rgba(16, 185, 129, 0.5);" placeholder="e.g. 78500" oninput="recalculateActualSalesReconciliation()">
+              </div>
+              <button class="btn btn-outline" style="padding:6px 12px; font-size:0.8rem; border-color: rgba(16, 185, 129, 0.4); color:#10b981;" onclick="saveActualPosSales()">
+                <i class="fa-solid fa-check"></i> Save
+              </button>
+            </div>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px 16px;">
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Target Budgeted Sales</span>
+              <div id="rep-recon-target-sales" style="font-weight:700; color:#94a3b8; font-size:1.05rem;">$0.00</div>
+            </div>
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Actual POS Sales</span>
+              <div id="rep-recon-actual-sales" style="font-weight:700; color:#f8fafc; font-size:1.05rem;">$0.00</div>
+            </div>
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Total Scheduled Labor</span>
+              <div id="rep-recon-scheduled-labor" style="font-weight:700; color:var(--accent-cyan); font-size:1.05rem;">$0.00</div>
+            </div>
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Budgeted Wage %</span>
+              <div id="rep-recon-budget-pct" style="font-weight:700; color:#94a3b8; font-size:1.05rem;">0.0%</div>
+            </div>
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Actual Reconciled Wage %</span>
+              <div id="rep-recon-actual-pct" style="font-weight:800; color:#10b981; font-size:1.2rem;">0.0%</div>
+            </div>
+            <div>
+              <span class="text-muted" style="font-size:0.72rem; display:block;">Performance Health</span>
+              <div id="rep-recon-health-badge" style="margin-top:2px;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Payroll & Hours Summary -->
+        <div class="glass-card report-workspace">
+          <div class="report-header-print text-center">
+            <h2>Amcal Pharmacy Woywoy Rosters Weekly Payroll & Roster Report</h2>
+            <p id="report-print-dates"></p>
+          </div>
+          
+          <table class="data-table text-left" style="margin-top: 1rem;">
+            <thead>
+              <tr>
+                <th>Employee Name (Role)</th>
+                <th class="text-right">Hourly Rate</th>
+                <th class="text-right">Scheduled Hours</th>
+                <th class="text-right">Approved Hours</th>
+                <th class="text-right text-neon">Gross Base Pay</th>
+                <th class="text-right" style="color: #10b981;">Super (12%)</th>
+                <th class="text-right" style="color: #a855f7;">Fully Loaded Cost (+20.5%)</th>
+                <th class="text-center print-hide">Staff Notifications</th>
+              </tr>
+            </thead>
+            <tbody id="report-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+            <tfoot>
+              <tr class="row-total">
+                <td>Total Sums</td>
+                <td class="text-right">-</td>
+                <td class="text-right" id="rep-total-sched-hours">0.0h</td>
+                <td class="text-right" id="rep-total-actual-hours">0.0h</td>
+                <td class="text-right text-neon" id="rep-total-actual-cost">$0.00</td>
+                <td class="text-right" id="rep-total-super-cost" style="color: #10b981; font-weight: 600;">$0.00</td>
+                <td class="text-right" id="rep-total-loaded-cost" style="color: #a855f7; font-weight: 700;">$0.00</td>
+                <td class="print-hide">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: SETTINGS / BACKUP -->
+      <!-- ===================================== -->
+      <section id="panel-settings" class="tab-panel">
+        <div class="settings-grid">
+          <!-- Invite Staff Card -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-envelope-open-text text-neon"></i> Invite Staff (Manager Portal)</h3>
+            </div>
+            <div class="settings-body">
+              <p>Generate registration invitation links for new team members. Only invited email addresses will be authorized to register.</p>
+              
+              <form id="invite-form" onsubmit="handleInviteSubmit(event)" style="display:flex; flex-direction:column; gap:10px;">
+                <div class="form-group">
+                  <label for="invite-email">Staff Email Address</label>
+                  <input type="email" id="invite-email" class="form-control" placeholder="staff@company.com" required>
+                </div>
+                <div class="form-group">
+                  <label for="invite-role">Permissions Role</label>
+                  <select id="invite-role" class="form-control" required>
+                    <option value="employee">Employee (View own shifts & Time Clock only)</option>
+                    <option value="manager">Manager (Full schedule access & permissions)</option>
+                    <option value="owner">Owner (Full administrative access & system owner)</option>
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-neon">Generate Invitation Link</button>
+              </form>
+
+              <div id="invite-result-box" class="hide" style="margin-top: 1rem; padding: 12px; background: rgba(0,229,255,0.08); border: 1px solid var(--accent-cyan); border-radius: var(--radius-sm);">
+                <span style="font-size:0.8rem; display:block; margin-bottom:6px;">Invitation Code Created: <strong id="invite-code-val" style="color:var(--accent-cyan);"></strong></span>
+                <input type="text" id="invite-url-val" class="form-control" readonly style="font-size:0.8rem; margin-bottom:6px;">
+                <button type="button" class="btn btn-outline btn-block" style="padding: 6px 12px; font-size:0.8rem;" onclick="copyInviteUrl()">Copy Invite Link</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Database Sync / Backup Card -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-cloud-arrow-down text-orange"></i> Cloud Database Operations</h3>
+            </div>
+            <div class="settings-body">
+              <p>Your database is synchronized in real-time to your central Supabase cloud workspace. You can also save a localized JSON backup of your current cloud snapshot.</p>
+              
+              <div class="settings-actions">
+                <button class="btn btn-primary btn-block" onclick="exportDatabaseFile()">
+                  <i class="fa-solid fa-file-arrow-down"></i> Download JSON Database Backup
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Roster Positions & Color Customization -->
+          <div class="glass-card flex-2">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-tags text-purple"></i> Custom Roster Roles & Colors</h3>
+            </div>
+            <div class="settings-body">
+              <p style="margin-bottom:1rem;">Manage the roles/positions available for scheduling and choose custom colors to distinguish them on the roster grid.</p>
+              <div id="roles-settings-list" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Dynamically populated -->
+              </div>
+              <form id="add-role-form" onsubmit="handleAddRoleSubmit(event)" style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="new-role-name" class="form-control" placeholder="e.g. Dispense Technician" required style="flex: 1; height: 38px;">
+                <input type="color" id="new-role-color" value="#3b82f6" style="width: 45px; padding: 0 4px; height: 38px; cursor: pointer; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-card);">
+                <button type="submit" class="btn btn-primary" style="height: 38px; padding: 0 16px;"><i class="fa-solid fa-plus"></i> Add Role</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Employee Positions Customization -->
+          <div class="glass-card flex-2">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-user-gear text-cyan"></i> Custom Employee Positions</h3>
+            </div>
+            <div class="settings-body">
+              <p style="margin-bottom:1rem;">Manage the job positions/titles available for employee profiles (e.g. Pharmacist, Tech, Assistant).</p>
+              <div id="positions-settings-list" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Dynamically populated -->
+              </div>
+              <form id="add-position-form" onsubmit="handleAddPositionSubmit(event)" style="display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="new-position-name" class="form-control" placeholder="e.g. Retail Pharmacist" required style="flex: 1; height: 38px;">
+                <button type="submit" class="btn btn-primary" style="height: 38px; padding: 0 16px;"><i class="fa-solid fa-plus"></i> Add Position</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Pharmacy Trading Hours Configuration -->
+          <div class="glass-card flex-2">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-store text-success"></i> Pharmacy Trading Hours</h3>
+            </div>
+            <div class="settings-body">
+              <p style="margin-bottom:1rem;">Configure the pharmacy's weekly trading hours. Rostering outside these hours will trigger warning prompts.</p>
+              
+              <form id="trading-hours-form" onsubmit="saveTradingHours(event)" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- Days grid -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Monday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Monday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                       <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-1" onchange="toggleTradingDayClosed(1)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-1" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-1" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Tuesday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Tuesday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-2" onchange="toggleTradingDayClosed(2)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-2" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-2" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Wednesday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Wednesday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-3" onchange="toggleTradingDayClosed(3)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-3" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-3" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Thursday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Thursday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-4" onchange="toggleTradingDayClosed(4)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-4" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-4" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Friday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Friday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-5" onchange="toggleTradingDayClosed(5)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-5" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-5" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Saturday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px;">Saturday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-6" onchange="toggleTradingDayClosed(6)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-6" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-6" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                  <!-- Sunday -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong style="width: 82px; color: var(--text-danger);">Sunday</strong>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <label style="display: flex; align-items: center; gap: 4px; font-size: 0.85rem; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="trading-closed-0" onchange="toggleTradingDayClosed(0)"> Closed
+                      </label>
+                      <input type="time" id="trading-open-0" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                      <span>to</span>
+                      <input type="time" id="trading-close-0" class="form-control" style="width: 125px; height: 32px; padding: 2px 6px;">
+                    </div>
+                  </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="margin-top: 8px;"><i class="fa-solid fa-floppy-disk"></i> Save Trading Hours</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Security & Audit Trail Card -->
+          <div class="glass-card flex-2">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <h3><i class="fa-solid fa-shield-halved text-neon"></i> Security & Audit Trail Log</h3>
+              <button class="btn btn-outline" style="font-size:0.8rem; padding:4px 10px;" onclick="openAuditTrailModal()">
+                <i class="fa-solid fa-expand"></i> View Full Audit Log
+              </button>
+            </div>
+            <div class="settings-body">
+              <p style="margin-bottom:0.75rem;">Immutable audit log tracking roster changes, shift creations, timecard locks, and leave decisions for Fair Work compliance.</p>
+              <div id="settings-recent-audit-list" style="display:flex; flex-direction:column; gap:6px; max-height:180px; overflow-y:auto; font-size:0.8rem;">
+                <!-- Dynamically populated recent audits -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="glass-card flex-2">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-triangle-exclamation text-danger"></i> System Administration</h3>
+            </div>
+            <div class="settings-body">
+              <div class="form-group">
+                <label for="settings-company-name">Organization Name</label>
+                <div class="flex-row">
+                  <input type="text" id="settings-company-name" class="form-control" style="max-width: 300px;">
+                  <button class="btn btn-primary" onclick="saveCompanySetting()">Save Name</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================== -->
+      <!-- PANEL: AI OPERATIONS & BROADCAST HUB -->
+      <!-- ===================================== -->
+      <section id="panel-ai-ops" class="tab-panel">
+        <!-- Hero Header -->
+        <div class="ai-ops-hero">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span class="badge" style="background:linear-gradient(135deg, #00e5ff 0%, #a855f7 100%); color:#000; font-weight:800; font-size:0.75rem;">GOOGLE AI SUITE</span>
+                <span class="text-muted" style="font-size:0.78rem;">Opal • Pomelli • Mixboard • Stitch</span>
+              </div>
+              <h2 style="font-size:1.5rem; font-weight:800; margin:0;" class="sparkle-glow"><i class="fa-solid fa-wand-magic-sparkles text-cyan"></i> Autonomous Roster Operations Hub</h2>
+              <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:4px;">Automated shift gap filling, Fair Work 2026 compliance audits, multichannel staff broadcast, and design vibe studio.</p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline" style="font-size:0.8rem;" onclick="triggerGlobalRefresh()"><i class="fa-solid fa-arrows-rotate"></i> Refresh State</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Operations Navigation Sub-Tabs -->
+        <div class="ai-suite-nav-tabs">
+          <button class="ai-tab-btn active" id="ai-tab-btn-opal" onclick="switchAiSubTab('opal')">
+            <i class="fa-solid fa-bolt text-cyan"></i> <span>Google Opal Workflows</span>
+          </button>
+          <button class="ai-tab-btn" id="ai-tab-btn-pomelli" onclick="switchAiSubTab('pomelli')">
+            <i class="fa-solid fa-paper-plane text-orange"></i> <span>Google Pomelli Broadcaster</span>
+          </button>
+          <button class="ai-tab-btn" id="ai-tab-btn-mixboard" onclick="switchAiSubTab('mixboard')">
+            <i class="fa-solid fa-palette text-purple"></i> <span>Mixboard & Stitch Studio</span>
+          </button>
+        </div>
+
+        <!-- SUB-TAB 1: OPAL WORKFLOWS -->
+        <div id="ai-subview-opal" class="ai-subview">
+          <div class="ai-workflow-grid">
+            <!-- Mini-App 1: Gap Detector & Smart Auto-Fill -->
+            <div class="ai-workflow-card">
+              <div>
+                <div class="ai-workflow-header">
+                  <div class="ai-workflow-icon bg-cyan"><i class="fa-solid fa-user-plus text-cyan"></i></div>
+                  <div>
+                    <h4 style="margin:0; font-size:1rem;">Shift Gap Auto-Detector</h4>
+                    <span class="text-muted" style="font-size:0.75rem;">Fair Work 2026 Compliant Replacement Matcher</span>
+                  </div>
+                </div>
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Scans active week for open shifts, checks max 38h/wk, 12h rest turnaround, and recommends optimal replacement staff.</p>
+                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">1</span>
+                    <span>Filter unassigned or cover-requested shift slots</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">2</span>
+                    <span>Score active staff (Role match + Rest + Hours cap)</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">3</span>
+                    <span>Synthesize 1-click assignment recommendations</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-primary btn-block" onclick="runOpalGapDetector()"><i class="fa-solid fa-play"></i> Run Gap Detector</button>
+            </div>
+
+            <!-- Mini-App 2: Timesheet & Break Reconciliation Sentinel -->
+            <div class="ai-workflow-card">
+              <div>
+                <div class="ai-workflow-header">
+                  <div class="ai-workflow-icon bg-orange"><i class="fa-solid fa-clock-rotate-left text-orange"></i></div>
+                  <div>
+                    <h4 style="margin:0; font-size:1rem;">Timesheet & Break Sentinel</h4>
+                    <span class="text-muted" style="font-size:0.75rem;">Variance & Overtime Auto-Auditor</span>
+                  </div>
+                </div>
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Compares digital timecard punch records against scheduled shifts to detect overtime, early departures, and missed meal breaks.</p>
+                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">1</span>
+                    <span>Correlate timecard punch timestamps vs shift schedule</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">2</span>
+                    <span>Audit >5h shifts for 30-min unpaid meal break compliance</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">3</span>
+                    <span>Flag overtime variance (+15m) for manager approval</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-outline btn-block" onclick="runOpalTimesheetReconciler()"><i class="fa-solid fa-play"></i> Audit Timesheet Variances</button>
+            </div>
+
+            <!-- Mini-App 3: Weekly Pre-Publish Roster Audit -->
+            <div class="ai-workflow-card">
+              <div>
+                <div class="ai-workflow-header">
+                  <div class="ai-workflow-icon bg-neon"><i class="fa-solid fa-shield-halved text-neon"></i></div>
+                  <div>
+                    <h4 style="margin:0; font-size:1rem;">Pre-Publish Safety Gate</h4>
+                    <span class="text-muted" style="font-size:0.75rem;">Mandatory Pharmacist & Hours Validator</span>
+                  </div>
+                </div>
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">Ensures all trading days have licensed Pharmacist coverage, verifies zero unassigned gaps, and checks fatigue caps before publishing.</p>
+                <div style="background:rgba(0,0,0,0.2); padding:10px; border-radius:var(--radius-sm); margin-bottom:12px;">
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">1</span>
+                    <span>Validate Pharmacist presence across all active days</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">2</span>
+                    <span>Verify 0 unassigned shifts and 0 overlap conflicts</span>
+                  </div>
+                  <div class="ai-node-step">
+                    <span class="ai-step-num">3</span>
+                    <span>Ready 1-click team notification broadcast</span>
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-neon btn-block" onclick="runOpalPrePublishAudit()"><i class="fa-solid fa-check-double"></i> Run Safety Gate Audit</button>
+            </div>
+          </div>
+
+          <!-- Opal Dynamic Results Container -->
+          <div id="opal-results-container" class="glass-card hide" style="margin-top:1.5rem; padding:1.25rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border-glass); padding-bottom:8px;">
+              <h3 id="opal-results-title" style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-square-poll-vertical text-cyan"></i> Workflow Execution Report</h3>
+              <button class="btn btn-icon" onclick="document.getElementById('opal-results-container').classList.add('hide')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="opal-results-body">
+              <!-- Dynamically populated execution steps & actionable items -->
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 2: POMELLI BROADCASTER -->
+        <div id="ai-subview-pomelli" class="ai-subview hide">
+          <div class="glass-card" style="padding:1.25rem; margin-bottom:1.5rem;">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h3><i class="fa-solid fa-bullhorn text-orange"></i> Multichannel Staff Communication Generator</h3>
+              <span class="text-muted" style="font-size:0.8rem;">Synthesize on-brand messages for Telegram, WhatsApp, SMS & Email</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-bottom:16px;">
+              <button class="btn btn-outline" style="text-align:left; padding:10px;" onclick="generatePomelliUrgentCover()">
+                <strong style="color:var(--accent-cyan); display:block; font-size:0.85rem;"><i class="fa-solid fa-triangle-exclamation"></i> Urgent Cover Request</strong>
+                <span class="text-muted" style="font-size:0.75rem;">Generate shift claim alert</span>
+              </button>
+              <button class="btn btn-outline" style="text-align:left; padding:10px;" onclick="generatePomelliRosterRelease()">
+                <strong style="color:#10b981; display:block; font-size:0.85rem;"><i class="fa-solid fa-calendar-check"></i> Weekly Roster Release</strong>
+                <span class="text-muted" style="font-size:0.75rem;">Announce new timetable</span>
+              </button>
+              <button class="btn btn-outline" style="text-align:left; padding:10px;" onclick="generatePomelliOnboardingKit()">
+                <strong style="color:var(--accent-gold); display:block; font-size:0.85rem;"><i class="fa-solid fa-user-plus"></i> Staff Onboarding Pack</strong>
+                <span class="text-muted" style="font-size:0.75rem;">App guide & credentials</span>
+              </button>
+              <button class="btn btn-outline" style="text-align:left; padding:10px;" onclick="generatePomelliComplianceMemo()">
+                <strong style="color:#c084fc; display:block; font-size:0.85rem;"><i class="fa-solid fa-scale-balanced"></i> Fair Work Award Memo</strong>
+                <span class="text-muted" style="font-size:0.75rem;">Public holiday penalty rates</span>
+              </button>
+            </div>
+
+            <!-- Pomelli Live Preview & One-Click Distribution Card -->
+            <div id="pomelli-output-card" class="glass-card hide" style="background:rgba(15,23,42,0.8); border:1px solid rgba(0,229,255,0.3); padding:1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                <h4 id="pomelli-output-title" style="margin:0; font-size:0.95rem; color:var(--accent-cyan);">Generated Broadcast Pack</h4>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 8px;" onclick="copyPomelliActiveText()"><i class="fa-solid fa-copy"></i> Copy Active Text</button>
+                  <button class="btn btn-neon" id="pomelli-btn-telegram" style="font-size:0.75rem; padding:4px 8px;" onclick="openPomelliTelegram()"><i class="fa-brands fa-telegram"></i> Share Telegram</button>
+                  <button class="btn btn-primary" id="pomelli-btn-whatsapp" style="font-size:0.75rem; padding:4px 8px; background:#25d366; border-color:#25d366;" onclick="openPomelliWhatsApp()"><i class="fa-brands fa-whatsapp"></i> Share WhatsApp</button>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <button class="btn btn-outline flex-1 active" id="pomelli-tab-tg" onclick="switchPomelliFormatTab('telegram')" style="padding:4px; font-size:0.75rem;"><i class="fa-brands fa-telegram"></i> Telegram / Chat</button>
+                <button class="btn btn-outline flex-1" id="pomelli-tab-sms" onclick="switchPomelliFormatTab('sms')" style="padding:4px; font-size:0.75rem;"><i class="fa-solid fa-comment-sms"></i> SMS Blast</button>
+                <button class="btn btn-outline flex-1" id="pomelli-tab-wa" onclick="switchPomelliFormatTab('whatsapp')" style="padding:4px; font-size:0.75rem;"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+                <button class="btn btn-outline flex-1" id="pomelli-tab-email" onclick="switchPomelliFormatTab('email')" style="padding:4px; font-size:0.75rem;"><i class="fa-solid fa-envelope"></i> Email Memo</button>
+              </div>
+              <div id="pomelli-broadcast-preview" class="broadcast-output-box">
+                Select a broadcast template above to generate on-brand staff communications.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-TAB 3: MIXBOARD & STITCH STUDIO -->
+        <div id="ai-subview-mixboard" class="ai-subview hide">
+          <div class="glass-card" style="padding:1.25rem;">
+            <div class="card-header" style="margin-bottom:12px;">
+              <h3><i class="fa-solid fa-palette text-purple"></i> Mixboard Pharmacy Role & Vibe Studio</h3>
+              <span class="text-muted" style="font-size:0.8rem;">Standardized High-Contrast Visual Badges & Design Tokens</span>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Visual role tokens engineered for maximum clarity across mobile PWA screens and A4 Landscape prints.</p>
+            <div id="mixboard-palette-container">
+              <!-- Dynamically populated by MixboardStudio -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Navigation (Visible only on mobile <= 768px) -->
+  <nav class="mobile-bottom-nav">
+    <button class="mobile-nav-item active" data-mobile-tab="dashboard" onclick="switchTab('dashboard')">
+      <i class="fa-solid fa-chart-simple"></i>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-item" data-mobile-tab="scheduler" onclick="switchTab('scheduler')" style="position: relative;">
+      <i class="fa-solid fa-calendar-days"></i>
+      <span>Schedule</span>
+      <span class="nav-badge" id="badge-cover-requests-mobile" style="display:none; background:#f97316; position: absolute; top: 4px; right: 18px; padding: 2px 5px; font-size: 8px; min-width: 14px; height: 14px; line-height: 10px; border-radius: 50%; border: 1px solid var(--bg-dark);">0</span>
+    </button>
+    <button class="mobile-nav-item" data-mobile-tab="daily" onclick="switchTab('daily')">
+      <i class="fa-solid fa-calendar-day"></i>
+      <span>Daily</span>
+    </button>
+    <button class="mobile-nav-item" data-mobile-tab="timeclock" onclick="switchTab('timeclock')" style="position: relative;">
+      <i class="fa-solid fa-business-time"></i>
+      <span>Clock</span>
+      <!-- BUG 5 FIX: Mobile badge for pending timecards (managers only) -->
+      <span class="nav-badge" id="badge-timeclock-mobile" style="display:none; position: absolute; top: 4px; right: 18px; padding: 2px 5px; font-size: 8px; min-width: 14px; height: 14px; line-height: 10px; border-radius: 50%; border: 1px solid var(--bg-dark);">0</span>
+    </button>
+    <button class="mobile-nav-item" data-mobile-tab="timeoff" onclick="switchTab('timeoff')" style="position: relative;">
+      <i class="fa-solid fa-umbrella-beach"></i>
+      <span>Leave</span>
+      <!-- BUG 5 FIX: Mobile badge for pending leave requests (managers only) -->
+      <span class="nav-badge" id="badge-timeoff-mobile" style="display:none; position: absolute; top: 4px; right: 18px; padding: 2px 5px; font-size: 8px; min-width: 14px; height: 14px; line-height: 10px; border-radius: 50%; border: 1px solid var(--bg-dark);">0</span>
+    </button>
+  </nav>
+
+
+  <!-- ===================================== -->
+  <!-- MODAL: ADD/EDIT SHIFT -->
+  <!-- ===================================== -->
+  <div id="modal-shift" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="shift-modal-title">Add Shift</h3>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeShiftModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="shift-form" onsubmit="handleShiftSubmit(event)">
+        <input type="hidden" id="shift-id">
+        <div class="form-group">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+            <label for="shift-employee" style="margin:0;">Select Employee</label>
+            <button type="button" id="btn-find-replacements" class="btn btn-outline" style="font-size:0.75rem; padding:2px 8px; color:var(--accent-cyan); border-color:rgba(0,229,255,0.4);" onclick="openShiftReplacementMatcher()">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Match Staff
+            </button>
+          </div>
+          <select id="shift-employee" class="form-control">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div id="shift-replacement-matcher-box" class="glass-card" style="display:none; padding:10px; margin-bottom:12px; background:rgba(0,229,255,0.04); border:1px solid rgba(0,229,255,0.2); border-radius:var(--radius-sm);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:0.8rem; color:var(--accent-cyan);"><i class="fa-solid fa-bolt"></i> Best Available Staff Matches</strong>
+            <button type="button" class="btn btn-icon" style="padding:0; font-size:0.8rem;" onclick="closeShiftReplacementMatcher()"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="shift-replacement-candidates-list" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto;">
+            <!-- Dynamically populated candidates -->
+          </div>
+        </div>
+        <div class="form-group animate-slide-in" id="shift-paste-container" style="display:none; margin-bottom:12px;">
+          <!-- Dynamically populated paste button if copy exists -->
+        </div>
+        <div class="form-group">
+          <label for="shift-role">Roster Position / Role</label>
+          <select id="shift-role" class="form-control" required>
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shift-date">Shift Date</label>
+            <input type="date" id="shift-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="shift-start">Start Time</label>
+            <input type="time" id="shift-start" class="form-control" required onchange="updateShiftBreakSummary()">
+          </div>
+          <div class="form-group">
+            <label for="shift-end">End Time</label>
+            <input type="time" id="shift-end" class="form-control" required onchange="updateShiftBreakSummary()">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top: 4px; padding: 12px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); box-sizing: border-box; width: 100%;">
+          <div style="display:flex; flex-direction:column; gap:4px; margin-bottom: 8px;">
+            <label style="font-weight:700; font-size:0.85rem; color:#10b981; margin:0; display:flex; align-items:center; gap:6px;">
+              <i class="fa-solid fa-scale-balanced"></i> Pharmacy Award 2026 Break Compliance
+            </label>
+            <span id="shift-award-summary" style="font-size:0.78rem; font-weight:600; color:var(--text-secondary); background:rgba(0,0,0,0.2); padding: 4px 8px; border-radius: 4px; display:inline-block; max-width:100%; word-break:break-word;">
+              Select times to calculate
+            </span>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 110px; gap: 10px; align-items:center; width: 100%; box-sizing: border-box;">
+            <div style="min-width: 0;">
+              <label for="shift-unpaid-break" style="font-size:0.78rem; color:var(--text-muted); margin-bottom:4px; display:block;">Unpaid Lunch Break</label>
+              <select id="shift-unpaid-break" class="form-control" style="height:34px; font-size:0.8rem; width:100%; box-sizing:border-box; text-overflow:ellipsis; overflow:hidden;" onchange="updateShiftBreakSummary()">
+                <option value="auto">Auto (Pharmacy Award 2026 Standard)</option>
+                <option value="crib_paid">☕ Paid Crib Break (Single Pharmacist - Clause 20.2)</option>
+                <option value="30">30 Mins (Standard Lunch)</option>
+                <option value="45">45 Mins</option>
+                <option value="60">60 Mins (1 Hour Lunch)</option>
+                <option value="0">0 Mins (No Lunch Break)</option>
+              </select>
+            </div>
+            <div style="min-width: 0;">
+              <label for="shift-net-hours" style="font-size:0.78rem; color:var(--text-muted); margin-bottom:4px; display:block;">Net Paid Hours</label>
+              <input type="text" id="shift-net-hours" class="form-control" readonly style="height:34px; font-size:0.85rem; font-weight:700; color:var(--accent-cyan); text-align:center; width:100%; box-sizing:border-box;" value="0.0h">
+            </div>
+          </div>
+        </div>
+        <div id="shift-weekly-ot-indicator" style="margin-top: 4px; margin-bottom: 10px; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); font-size: 0.8rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+          <span id="shift-weekly-ot-text" style="color: var(--text-secondary);"><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-cyan);"></i> Weekly Hours Progress: Select employee & times</span>
+          <span id="shift-weekly-ot-badge" class="badge" style="display:none; font-size: 10px;">--</span>
+        </div>
+        <div class="form-group">
+          <label for="shift-notes">Manager Notes</label>
+          <textarea id="shift-notes" class="form-control" rows="2" placeholder="Specific duties or briefings..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-left hide" id="btn-delete-shift" onclick="handleShiftDelete()">Delete Shift</button>
+          <button type="button" class="btn btn-outline" onclick="closeShiftModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Shift</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- MODAL: ADD/EDIT EMPLOYEE -->
+  <!-- ===================================== -->
+  <div id="modal-employee" class="modal">
+    <div class="modal-content glass-card max-w-lg" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="employee-modal-title">Employee Profile</h3>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeEmployeeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="employee-form" onsubmit="handleEmployeeSubmit(event)">
+        <input type="hidden" id="employee-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="emp-name">Full Name</label>
+            <input type="text" id="emp-name" class="form-control" placeholder="Staff Name" required>
+          </div>
+          <div class="form-group">
+            <label for="emp-role">Default Position</label>
+            <select id="emp-role" class="form-control" required>
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="emp-email">Email Address</label>
+            <input type="email" id="emp-email" class="form-control" placeholder="staff@company.com" required>
+          </div>
+          <div class="form-group">
+            <label for="emp-phone">Phone Number</label>
+            <input type="tel" id="emp-phone" class="form-control" placeholder="0400 000 000">
+          </div>
+          <div class="form-group">
+            <label for="emp-max-hours">Weekly Target Hours</label>
+            <input type="number" id="emp-max-hours" class="form-control" min="1" max="168" placeholder="38" required>
+          </div>
+          <div class="form-group">
+            <label for="emp-dob">Date of Birth (Optional)</label>
+            <input type="date" id="emp-dob" class="form-control" onchange="onEmployeeDobChange()">
+          </div>
+        </div>
+
+        <div id="junior-rate-upgrade-alert" class="hide" style="margin-bottom: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; font-size: 0.82rem; color: #fbbf24; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <i class="fa-solid fa-cake-candles" style="margin-right: 6px;"></i>
+            <span id="junior-upgrade-text">Birthday Progression: Staff is now older than their current Junior rate tier.</span>
+          </div>
+          <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem; border-color: #fbbf24; color: #fbbf24;" onclick="applyJuniorUpgrade()">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Apply Upgrade
+          </button>
+        </div>
+
+        <!-- Fair Work Pharmacy Industry Award 2026 [MA000084] Rate Selector -->
+        <div style="background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md); padding: 12px; margin-bottom: 15px;">
+          <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-cyan); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-scale-balanced"></i> Fair Work Award & Pharmacist Invoicing Classification</span>
+            <span id="locum-indicator-badge" class="badge" style="display:none; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); font-size: 10px;">Contractor / Locum</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <label for="emp-award-level" style="font-size: 0.78rem;">Award / Role Classification</label>
+              <select id="emp-award-level" class="form-control" onchange="onAwardClassificationChange()">
+                <option value="custom">-- Custom / Above-Award Rate --</option>
+                
+                <optgroup label="Adult Pharmacy Assistants (21+ years)">
+                  <option value="pa1" data-rate="27.81">Pharmacy Assistant Level 1 (Adult) ($27.81/h)</option>
+                  <option value="pa2" data-rate="28.45">Pharmacy Assistant Level 2 (Adult) ($28.45/h)</option>
+                  <option value="pa3" data-rate="29.45">Pharmacy Assistant Level 3 / Webster ($29.45/h)</option>
+                  <option value="pa4" data-rate="30.66">Pharmacy Assistant Level 4 / Dispense Tech ($30.66/h)</option>
+                </optgroup>
+
+                <optgroup label="Junior Rates — Level 1 (Pharmacy Award Clause 17)">
+                  <option value="pa1_j_u16" data-rate="12.51">Junior Level 1: Under 16 yrs (45% - $12.51/h)</option>
+                  <option value="pa1_j_16" data-rate="13.91">Junior Level 1: 16 years (50% - $13.91/h)</option>
+                  <option value="pa1_j_17" data-rate="16.69">Junior Level 1: 17 years (60% - $16.69/h)</option>
+                  <option value="pa1_j_18" data-rate="19.47">Junior Level 1: 18 years (70% - $19.47/h)</option>
+                  <option value="pa1_j_19" data-rate="22.25">Junior Level 1: 19 years (80% - $22.25/h)</option>
+                  <option value="pa1_j_20" data-rate="25.03">Junior Level 1: 20 years (90% - $25.03/h)</option>
+                </optgroup>
+
+                <optgroup label="Junior Rates — Level 2 (Experienced Junior / Webster)">
+                  <option value="pa2_j_16" data-rate="14.23">Junior Level 2: 16 years (50% - $14.23/h)</option>
+                  <option value="pa2_j_17" data-rate="17.07">Junior Level 2: 17 years (60% - $17.07/h)</option>
+                  <option value="pa2_j_18" data-rate="19.92">Junior Level 2: 18 years (70% - $19.92/h)</option>
+                  <option value="pa2_j_19" data-rate="22.76">Junior Level 2: 19 years (80% - $22.76/h)</option>
+                  <option value="pa2_j_20" data-rate="25.61">Junior Level 2: 20 years (90% - $25.61/h)</option>
+                </optgroup>
+
+                <optgroup label="Pharmacists & Interns">
+                  <option value="intern" data-rate="34.50">Pharmacy Graduate / Intern ($34.50/h)</option>
+                  <option value="pharmacist" data-rate="41.74">Staff Pharmacist (Experienced) ($41.74/h)</option>
+                  <option value="pic" data-rate="46.50">Pharmacist in Charge ($46.50/h)</option>
+                  <option value="manager" data-rate="52.15">Pharmacist Manager ($52.15/h)</option>
+                </optgroup>
+
+                <optgroup label="Locum Pharmacists (Contractor Invoicing)">
+                  <option value="locum" data-rate="75.00" data-type="locum_invoice">Locum Pharmacist (Contractor Invoicing) ($75.00/h)</option>
+                  <option value="locum_weekend" data-rate="85.00" data-type="locum_invoice">Locum Pharmacist (Weekend Rate) ($85.00/h)</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1.5;">
+              <label for="emp-employment-type" style="font-size: 0.78rem;">Payment & Tax Structure</label>
+              <select id="emp-employment-type" class="form-control" onchange="onAwardClassificationChange()">
+                <option value="permanent">PAYG Permanent (FT / PT + Super 12%)</option>
+                <option value="casual">PAYG Casual (+25% Loading + Super 12%)</option>
+                <option value="locum_invoice">Locum Contractor (Invoice Rate + 10% GST + 12% Super)</option>
+                <option value="locum_invoice_no_gst">Locum Contractor (Invoice Rate + 12% Super, No GST)</option>
+                <option value="locum_all_inclusive">Locum Contractor (All-Inclusive Flat Invoice Rate)</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 1;" id="emp-rate-group">
+              <label for="emp-rate" style="font-size: 0.78rem;">Base Rate ($/h)</label>
+              <input type="number" id="emp-rate" class="form-control" step="0.01" min="0" placeholder="28.45" required>
+            </div>
+          </div>
+          <div id="locum-details-note" class="hide" style="margin-top: 8px; padding: 6px 10px; background: rgba(168, 85, 247, 0.08); border-radius: 4px; font-size: 0.76rem; color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.2);">
+            <i class="fa-solid fa-receipt" style="margin-right: 4px;"></i> <strong>Locum Pharmacist Invoicing:</strong> Labor cost is calculated on an invoice basis (Agreed Hourly Rate + GST 10% + Super 12%). No PAYG leave accrual on-cost (+7%) applied.
+          </div>
+        </div>
+
+        <!-- Compliance Credentials & Certificate Vault -->
+        <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 14px; margin-bottom: 15px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: #10b981; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-certificate"></i> Compliance Credentials & Certificate Vault
+            </span>
+            <span class="text-muted" style="font-size: 0.74rem;">AHPRA, Vaccinations, First Aid, WWCC</span>
+          </div>
+
+          <!-- Existing Certificates List Container -->
+          <div id="emp-certificates-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; max-height: 160px; overflow-y: auto;">
+            <!-- Dynamically populated certificate cards -->
+          </div>
+
+          <!-- Add Certificate Mini Form -->
+          <div style="background: rgba(0, 0, 0, 0.2); border: 1px dashed rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 10px;">
+            <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">
+              <i class="fa-solid fa-plus-circle" style="color: #10b981;"></i> Attach New Certificate / License
+            </div>
+            <div class="form-row" style="margin-bottom: 6px;">
+              <div class="form-group" style="flex: 2; margin-bottom: 0;">
+                <select id="new-cert-type" class="form-control" style="font-size: 0.78rem; height: 34px;">
+                  <option value="AHPRA Pharmacist Registration">📜 AHPRA Pharmacist Registration</option>
+                  <option value="Immunisation / Vaccination Provider">💉 Immunisation / Vaccination Provider</option>
+                  <option value="First Aid & CPR (HLTAID011)">🩹 First Aid & CPR (HLTAID011)</option>
+                  <option value="Working with Children Check (WWCC)">🛡️ Working with Children Check (WWCC)</option>
+                  <option value="Pharmacy Assistant Cert III/IV">🎓 Pharmacy Assistant Cert III / IV</option>
+                  <option value="Webster Packing Competency">🧪 Webster Packing Competency</option>
+                  <option value="Other Certificate">📄 Other Custom Certificate</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                <input type="text" id="new-cert-number" class="form-control" placeholder="Rego / Cert #" style="font-size: 0.78rem; height: 34px;">
+              </div>
+              <div class="form-group" style="flex: 1.5; margin-bottom: 0;">
+                <input type="date" id="new-cert-expiry" class="form-control" style="font-size: 0.78rem; height: 34px;" title="Expiry Date (AHPRA: 30 Nov)">
+              </div>
+              <div class="form-group" style="flex: 0.8; margin-bottom: 0;">
+                <button type="button" class="btn btn-outline btn-block" style="height: 34px; padding: 0 8px; font-size: 0.78rem; border-color: #10b981; color: #10b981;" onclick="addCertificateToEmployeeModal()">
+                  <i class="fa-solid fa-plus"></i> Add
+                </button>
+              </div>
+            </div>
+            <input type="text" id="new-cert-notes" class="form-control" placeholder="Optional notes / Verification link (e.g. Verified on AHPRA Register)" style="font-size: 0.75rem; height: 28px;">
+          </div>
+        </div>
+        
+        <!-- Availability Management Grid -->
+        <div class="form-group">
+          <label style="margin-bottom: 8px; display: block; font-weight: 600;">Day-by-Day Shift Availability</label>
+          <div class="availability-inputs-grid">
+            <!-- Dynamically populated via JS to keep HTML clean -->
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-left hide" id="btn-delete-employee" onclick="handleEmployeeDelete()">Delete Profile</button>
+          <button type="button" class="btn btn-outline" id="btn-manager-reset-link" onclick="handleManagerGenerateStaffLink()"><i class="fa-solid fa-key" style="color:var(--accent-gold);"></i> Reset Staff Password</button>
+          <button type="button" class="btn btn-outline" onclick="closeEmployeeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- MODAL: EMAIL ROSTER MODAL -->
+  <!-- ===================================== -->
+  <div id="modal-email-roster" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-paper-plane text-neon"></i> Email Roster to Staff</h3>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeEmailRosterModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="email-roster-emp-id">
+        <p>Review the roster briefing email text before sending it to <strong id="email-roster-emp-name" style="color:var(--accent-gold);">Loading…</strong> <span id="email-roster-emp-email" style="color:var(--text-secondary); font-size:0.85em;"></span>.</p>
+        <textarea id="email-roster-textarea" class="form-control" rows="10" style="font-family: monospace; font-size: 13px; margin-top: 1rem;"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeEmailRosterModal()">Cancel</button>
+        <button class="btn btn-neon" onclick="sendRosterEmail()">
+          <i class="fa-solid fa-paper-plane"></i> Send Roster Email
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===================================== -->
+  <!-- MODAL: TIMECARD EDIT -->
+  <!-- ===================================== -->
+  <div id="modal-timecard-edit" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-clock-rotate-left text-neon"></i> Edit Timecard</h3>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeTimecardEditModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="timecard-edit-id">
+        <div class="form-group">
+          <label for="timecard-edit-in">Clock In</label>
+          <input type="datetime-local" id="timecard-edit-in" class="form-control">
+        </div>
+        <div class="form-group">
+          <label for="timecard-edit-out">Clock Out</label>
+          <input type="datetime-local" id="timecard-edit-out" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeTimecardEditModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTimecardEdit()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset Password Request Modal -->
+  <div id="modal-reset-password" class="modal" onclick="if(event.target === this) closeResetPasswordModal()">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-key text-neon"></i> Reset Password</h3>
+        <button class="btn btn-icon modal-close" onclick="closeResetPasswordModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-reset-password" onsubmit="handleResetPasswordSubmit(event)">
+        <div class="modal-body">
+          <p class="text-muted" style="font-size: 13px;">Enter your registered staff email address and we'll send you a secure link to reset your password.</p>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="reset-email">Email Address</label>
+            <input type="email" id="reset-email" class="form-control" required placeholder="name@company.com">
+          </div>
+        </div>
+        <div class="modal-footer" id="reset-modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeResetPasswordModal()">Cancel</button>
+          <button type="submit" id="btn-submit-reset" class="btn btn-neon">Send Reset Link</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Change Password Modal (Authenticated Users) -->
+  <div id="modal-change-password" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-key text-neon"></i> Change Password</h3>
+        <button class="btn btn-icon modal-close" onclick="closeChangePasswordModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleChangePasswordSubmit(event)">
+        <div class="modal-body">
+          <p class="text-muted" style="font-size: 13px;">Update your account password. Must be at least 6 characters.</p>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="change-new-password">New Password</label>
+            <input type="password" id="change-new-password" class="form-control" required placeholder="••••••••" minlength="6">
+          </div>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="change-confirm-password">Confirm Password</label>
+            <input type="password" id="change-confirm-password" class="form-control" required placeholder="••••••••" minlength="6">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Staff Contact Directory Modal -->
+  <div id="modal-staff-directory" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 500px; max-height: 80vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-address-book text-neon"></i> Staff Directory</h3>
+        <button class="btn btn-icon modal-close" onclick="closeStaffDirectoryModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding-top: 0.5rem;">
+        <p class="text-muted" style="font-size: 13px; margin-bottom: 1.25rem;">Get in touch with your team members for shift swaps or coverage.</p>
+        <div id="staff-directory-list" style="display: flex; flex-direction: column; gap: 12px; max-height: 50vh; overflow-y: auto; padding-right: 4px;">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-block" onclick="closeStaffDirectoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Swap Board Modal -->
+  <div id="modal-swap-board" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h3 id="swap-board-title"><i class="fa-solid fa-right-left"></i> Shift Swap Board</h3>
+        <button class="btn btn-icon modal-close" onclick="closeSwapBoardModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="padding-top: 0.5rem;">
+        <div id="swap-board-tabs" class="flex gap-2" style="margin-bottom: 1rem;">
+          <button class="btn btn-outline flex-1 active" id="tab-swap-available" onclick="switchSwapTab('available')">Available Swaps</button>
+          <button class="btn btn-outline flex-1" id="tab-swap-my" onclick="switchSwapTab('my')">My Requests</button>
+          <button class="btn btn-outline flex-1 hide" id="tab-swap-manager" onclick="switchSwapTab('manager')">Approvals</button>
+        </div>
+        <div id="swap-board-content" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeSwapBoardModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Password Modal -->
+  <div id="modal-update-password" class="modal">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 420px;">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;"><i class="fa-solid fa-lock text-neon"></i> Set New Password</h3>
+        <button type="button" class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeModal(document.getElementById('modal-update-password'))"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleUpdatePasswordSubmit(event)">
+        <div class="modal-body">
+          <p class="text-muted" style="font-size: 13px;">Your identity has been verified and you are now signed in. You can set a new password below, or skip to enter directly.</p>
+          <div class="form-group" style="margin-top: 1rem;">
+            <label for="update-new-password">New Password</label>
+            <input type="password" id="update-new-password" class="form-control" required minlength="6" placeholder="Enter new password (min 6 chars)">
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; gap:8px;">
+          <button type="button" class="btn btn-outline" onclick="closeModal(document.getElementById('modal-update-password'))">Skip & Enter</button>
+          <button type="submit" class="btn btn-neon">Save Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <!-- ===================================== -->
+  <!-- MODAL: SALES TARGETS & WAGE % KPI CALCULATOR -->
+  <!-- ===================================== -->
+  <div id="modal-sales-kpi" class="modal">
+    <div class="modal-content glass-card max-w-lg" role="dialog" aria-modal="true" style="max-width: 620px; width: 94%;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,229,255,0.12); display:flex; align-items:center; justify-content:center; color:var(--accent-cyan); font-size:1.1rem;">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.05rem;">Sales Forecast & Labor Wage Ratio (%)</h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Australian Community Pharmacy Benchmark: 10.5% – 13.5%</span>
+          </div>
+        </div>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeSalesTargetsModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+        <div style="background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom: 8px;">
+            <strong style="font-size:0.85rem; color:var(--accent-cyan);"><i class="fa-solid fa-bolt"></i> Quick Daily Sales Presets</strong>
+            <span class="text-muted" style="font-size:0.75rem;">Apply across week:</span>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="applySalesPreset(8000)">$8k/day</button>
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="applySalesPreset(10000)">$10k/day</button>
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="applySalesPreset(12000)">$12k/day</button>
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="applySalesPreset(14000)">$14k/day</button>
+            <button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" onclick="resetSalesToDefault()">Store Averages</button>
+          </div>
+        </div>
+
+        <form id="sales-targets-form" onsubmit="handleSaveSalesTargets(event)">
+          <div style="display: flex; flex-direction: column; gap: 8px;" id="sales-kpi-days-list">
+            <!-- Dynamically populated 7 days with live labor cost & wage % -->
+          </div>
+
+          <!-- Weekly Grand Summary Card in Modal -->
+          <div class="glass-card" style="margin-top: 16px; padding: 14px; background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%); border: 1px solid rgba(0, 229, 255, 0.25);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+              <span style="font-size:0.85rem; font-weight:700;">Weekly Labor Cost vs Sales Benchmark</span>
+              <span id="sales-kpi-modal-status-badge" class="badge" style="font-size:0.75rem;">Calculating...</span>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align:center;">
+              <div>
+                <span class="text-muted" style="font-size:0.72rem;">Total Labor Cost</span>
+                <div id="sales-kpi-modal-labor" style="font-weight:700; color:var(--accent-cyan); font-size:1.1rem;">$0.00</div>
+              </div>
+              <div>
+                <span class="text-muted" style="font-size:0.72rem;">Total Projected Sales</span>
+                <div id="sales-kpi-modal-sales" style="font-weight:700; color:#f8fafc; font-size:1.1rem;">$0.00</div>
+              </div>
+              <div>
+                <span class="text-muted" style="font-size:0.72rem;">Wage % of Sales</span>
+                <div id="sales-kpi-modal-ratio" style="font-weight:800; color:#10b981; font-size:1.25rem;">0.0%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 8px;">
+            <button type="button" class="btn btn-outline" onclick="closeSalesTargetsModal()">Close</button>
+            <button type="submit" class="btn btn-primary">Save Sales Targets</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- MODAL: LOCUM CONTRACTOR REMITTANCE ADVICE -->
+  <!-- ===================================== -->
+  <div id="modal-locum-remittance" class="modal">
+    <div class="modal-content glass-card max-w-lg" role="dialog" aria-modal="true" style="max-width: 720px; width: 95%;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:8px; background:rgba(168,85,247,0.12); display:flex; align-items:center; justify-content:center; color:#c084fc; font-size:1.1rem;">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.05rem;">Locum Contractor Remittance & Tax Statement</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Woy Woy Amcal Pharmacy · Contractor Payment Summary</span>
+          </div>
+        </div>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeLocumRemittanceModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" id="locum-remittance-print-area" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-glass);">
+          <div>
+            <h4 style="margin:0 0 4px 0; font-size:1rem; color:var(--text-primary);" id="locum-slip-contractor-name">Locum Pharmacist</h4>
+            <span style="display:block; font-size:0.8rem; color:var(--text-secondary);" id="locum-slip-contractor-email">email@example.com</span>
+            <span style="display:block; font-size:0.8rem; color:var(--text-muted);" id="locum-slip-contractor-type">Locum Contractor</span>
+          </div>
+          <div style="text-align:right;">
+            <span style="display:block; font-size:0.75rem; color:var(--text-muted);">Period / Week Ending</span>
+            <strong style="font-size:0.9rem; color:var(--accent-cyan);" id="locum-slip-period">Week of 17/08/2026</strong>
+            <span style="display:block; font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Issued by Woy Woy Amcal Pharmacy</span>
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="data-table" style="width:100%; font-size:0.85rem; margin-bottom:14px;">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Shift Time</th>
+                <th class="text-right">Net Hours</th>
+                <th class="text-right">Agreed Rate</th>
+                <th class="text-right">Base Amount</th>
+                <th class="text-right" style="color:#c084fc;">GST (10%)</th>
+                <th class="text-right" style="color:#10b981;">Super (12%)</th>
+                <th class="text-right">Total Remittance</th>
+              </tr>
+            </thead>
+            <tbody id="locum-slip-table-body">
+              <!-- Itemized shifts -->
+            </tbody>
+            <tfoot id="locum-slip-table-foot" style="font-weight:700; background:rgba(255,255,255,0.03);">
+              <!-- Grand totals -->
+            </tfoot>
+          </table>
+        </div>
+
+        <div style="padding:12px; background:rgba(168,85,247,0.06); border:1px solid rgba(168,85,247,0.2); border-radius:var(--radius-sm); font-size:0.78rem; color:var(--text-secondary); line-height:1.4;">
+          <i class="fa-solid fa-circle-info" style="color:#c084fc;"></i> <strong>Contractor Note:</strong> This statement verifies billable locum pharmacist services rendered for Woy Woy Amcal Pharmacy. Please reference the total amount on your official Tax Invoice.
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-outline" onclick="printLocumRemittance()"><i class="fa-solid fa-print"></i> Print / Save PDF</button>
+        <button type="button" class="btn btn-primary" onclick="closeLocumRemittanceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Javascript Core -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/app.js?v=8.9.9"></script>
+
+  <!-- PWA Service Worker Registration & Auto-Update Engine -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js?v=8.9.9')
+          .then(registration => {
+            console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
+            registration.update(); // Proactively poll for SW updates on every load
+          })
+          .catch(error => console.error('[PWA] ServiceWorker registration failed:', error));
+      });
+
+      // Auto reload once when the new Service Worker takes over
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

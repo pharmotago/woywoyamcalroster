@@ -1,0 +1,62 @@
+{
+  "name": "brisk-schedules",
+  "version": "1.0.0",
+  "description": "BriskSchedules - Premium Free Employee Scheduling & Time Clock System",
+  "main": "server.js",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test:syntax": "node -c server.js seed.js js/app.js js/database.js js/scheduler.js js/supabase-client.js js/swaps.js js/opal_roster_workflows.js js/pomelli_roster_broadcaster.js js/mixboard_roster_studio.js sw.js",
+    "roster:qa": "node --experimental-vm-modules scripts/roster_qa_engine.js",
+    "roster:check": "npm run test:syntax && npm run roster:qa",
+    "roster:audit": "npm run roster:check",
+    "test:db-users": "node scripts/check_db_users.js",
+    "test:auth-window": "node scripts/check_auth_window.js",
+    "test:window-exports": "node scripts/check_window_exports.js",
+    "test:auth-lines": "node scripts/find_auth_code.js",
+    "test:peter-login": "node scripts/test_peter_login.js",
+    "reset:peter": "node scripts/reset_peter_auth.js",
+    "test:login-diag": "node scripts/test_user_login.js",
+    "test:probe": "node scripts/probe_live_db.js",
+    "audit:inspect": "node scripts/deep_roster_inspector.js",
+    "test:audit": "node C:/Users/Sung/.gemini/antigravity/brain/63d6222e-4163-47b8-b986-c8eecfaf946c/scratch/full_company_e2e_check.js",
+    "audit:deep": "node C:/Users/Sung/.gemini/antigravity/brain/53b49529-3e84-43a0-ad83-9b83f1f3b6c9/scratch/deep_system_audit.js",
+    "audit:extended": "node C:/Users/Sung/.gemini/antigravity/brain/53b49529-3e84-43a0-ad83-9b83f1f3b6c9/scratch/extended_system_audit.js",
+    "audit:ops": "node C:/Users/Sung/.gemini/antigravity/brain/53b49529-3e84-43a0-ad83-9b83f1f3b6c9/scratch/pharmacy_ops_audit.js",
+    "check": "node scripts/check_app.js",
+    "test:mcp": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/mcp', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({jsonrpc:'2.0', id:1, method:'tools/call', params:{name:'list_employees', arguments:{}}})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d, null, 2))).catch(console.error)\"",
+    "vercel:deploy": "vercel --prod --yes --cwd .",
+    "deploy:prod": "powershell -Command \"Move-Item -Path node_modules -Destination ..\\temp_brisk_nm -Force -ErrorAction SilentlyContinue; Move-Item -Path _node_modules_tmp -Destination ..\\temp_brisk_nm -Force -ErrorAction SilentlyContinue; try { vercel --prod --yes } finally { Move-Item -Path ..\\temp_brisk_nm -Destination node_modules -Force -ErrorAction SilentlyContinue }\"",
+    "deploy": "git pull --rebase origin main && git config http.version HTTP/1.1 && git config http.postBuffer 1048576000 && git push origin main",
+    "sync-deploy": "git reset HEAD~1 && git add ../.gitignore ../AGENTS.md . && git commit -m \"fix: resilient login profile recovery, v8.5.1 cache-busting, and mcp api [auto]\" && git push origin main",
+    "cap:sync": "cap sync",
+    "cap:add:ios": "cap add ios",
+    "cap:add:android": "cap add android",
+    "vercel-link": "vercel link --yes --scope mcjp --project woywoyamcalroster && vercel git connect https://github.com/pharmotago/knowledge_hub --yes",
+    "git:status": "git log -n 5 --oneline",
+    "git:diff": "git status -s",
+    "vercel-help": "vercel link --help",
+    "vercel-git-help": "vercel git connect --help"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@supabase/supabase-js": "^2.43.4",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@vercel/node": "^5.9.5",
+    "pdfkit": "^0.19.1",
+    "vercel": "^54.18.5"
+  }
+}

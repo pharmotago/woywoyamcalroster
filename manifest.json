@@ -1,0 +1,21 @@
+{
+  "name": "Amcal+ Woywoy Rosters",
+  "short_name": "Amcal Rosters",
+  "description": "Amcal Pharmacy Woywoy Rosters & Time Clock System",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0B0E14",
+  "theme_color": "#141923",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2965/2965251.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2965/2965251.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
