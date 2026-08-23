@@ -1,11 +1,16 @@
 // Auto-extracted Module: COMPLIANCE
-// Injected Window Globals Access
-const {
-  state, DAY_NAMES, MONTH_NAMES, BriskDB, SwapDB, showToast, BriskScheduler, 
-  hasManagerPermissions, renderActivePanel, formatDateISO,
-  getOrderedActiveEmployees,
-  opalEngine, pomelliBroadcaster, MixboardStudio
-} = window;
+// Dynamic Window Globals Access (Live resolution, zero stale undefined closures)
+const state = new Proxy({}, {
+  get(target, prop) { return window.state ? window.state[prop] : undefined; },
+  set(target, prop, value) { if (!window.state) window.state = {}; window.state[prop] = value; return true; }
+});
+const showToast = (...args) => (window.showToast ? window.showToast(...args) : console.log(...args));
+const formatDateISO = (d) => (window.formatDateISO ? window.formatDateISO(d) : (d instanceof Date ? d.toISOString().split('T')[0] : ''));
+const hasManagerPermissions = (u) => (window.hasManagerPermissions ? window.hasManagerPermissions(u) : false);
+const renderActivePanel = () => (window.renderActivePanel ? window.renderActivePanel() : null);
+const getOrderedActiveEmployees = () => (window.getOrderedActiveEmployees ? window.getOrderedActiveEmployees() : (window.state?.employees || []).filter(e => e.active));
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /* ==========================================================================
    COMPLIANCE CERTIFICATES VAULT, PAY SLIP GENERATOR & ICAL EXPORTS

@@ -611,9 +611,12 @@ let state = {
   positions: [],
   copiedShift: null
 };
+window.state = state;
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+window.DAY_NAMES = DAY_NAMES;
+window.MONTH_NAMES = MONTH_NAMES;
 
 /* ==========================================================================
    WHITELIST LEADERSHIP ACCESS CONTROL & RBAC
@@ -1529,8 +1532,18 @@ function setupWeekPickers() {
     await checkHistoricalDataAndRender(renderReportsPanel);
   });
 
-  document.getElementById('btn-auto-schedule').addEventListener('click', triggerAutoScheduler);
-  document.getElementById('btn-clear-week').addEventListener('click', triggerClearWeek);
+  const btnAuto = document.getElementById('btn-auto-schedule');
+  if (btnAuto) {
+    btnAuto.addEventListener('click', () => {
+      if (typeof window.triggerAutoScheduler === 'function') window.triggerAutoScheduler();
+    });
+  }
+  const btnClear = document.getElementById('btn-clear-week');
+  if (btnClear) {
+    btnClear.addEventListener('click', () => {
+      if (typeof window.triggerClearWeek === 'function') window.triggerClearWeek();
+    });
+  }
 }
 
 
@@ -1585,7 +1598,7 @@ function renderDashboard() {
   document.getElementById('dash-shifts-count').textContent = weekShifts.length;
 
   // Calculate employee personal weekly summary
-  if (!hasManagerPermissions(state.currentUser)) {
+  if (state.currentUser && !hasManagerPermissions(state.currentUser)) {
     const empRecord = state.employees.find(e => e.id === state.currentUser.employeeId);
     const hourlyRate = empRecord ? Number(empRecord.hourlyRate || 0) : 0;
     
@@ -2557,7 +2570,7 @@ function getEffectiveShiftHourlyRate(shift) {
             </button>
           `;
         } else {
-          const isMyShift = shift.employeeId === state.currentUser.employeeId;
+          const isMyShift = state.currentUser && (shift.employeeId === state.currentUser.employeeId);
           if (isMyShift) {
             if (isNeedsCover) {
               actionBtnHtml = `
@@ -3808,14 +3821,14 @@ function renderTimeClockPanel() {
   select.innerHTML = '';
   
   if (!hasManagerPermissions(state.currentUser)) {
-    if (!state.currentUser.employeeId) {
+    if (!state.currentUser || !state.currentUser.employeeId) {
       select.innerHTML = '<option>Profile not found</option>';
       return;
     }
     // Only add self
     const opt = document.createElement('option');
     opt.value = state.currentUser.employeeId;
-    opt.textContent = state.currentUser.name;
+    opt.textContent = state.currentUser.name || 'Current User';
     opt.selected = true;
     select.appendChild(opt);
   } else {
@@ -3824,7 +3837,7 @@ function renderTimeClockPanel() {
       const opt = document.createElement('option');
       opt.value = emp.id;
       opt.textContent = `${emp.name} (${emp.role})`;
-      if (emp.id === state.currentUser.employeeId) opt.selected = true;
+      if (state.currentUser && emp.id === state.currentUser.employeeId) opt.selected = true;
       select.appendChild(opt);
     });
   }
@@ -5137,6 +5150,11 @@ window.clearAuditTrailLogs = clearAuditTrailLogs;
 window.openShiftReplacementMatcher = openShiftReplacementMatcher;
 window.closeShiftReplacementMatcher = closeShiftReplacementMatcher;
 window.assignCandidateToShiftModal = assignCandidateToShiftModal;
+window.loadDataFromState = loadDataFromState;
+window.showLoginScreen = showLoginScreen;
+window.bootApplication = bootApplication;
+if (typeof isNswPublicHoliday !== 'undefined') window.isNswPublicHoliday = isNswPublicHoliday;
+if (typeof getMondayOfCurrentWeek !== 'undefined') window.getMondayOfCurrentWeek = getMondayOfCurrentWeek;
 
 /* ==========================================================================
    LOCUM REMITTANCE ADVICE & REPLACEMENT STAFF MATCHER

@@ -1,11 +1,17 @@
 // Auto-extracted Module: ROLES
-// Injected Window Globals Access
-const {
-  state, DAY_NAMES, MONTH_NAMES, BriskDB, SwapDB, showToast, BriskScheduler, 
-  hasManagerPermissions, renderActivePanel, formatDateISO,
-  getOrderedActiveEmployees,
-  opalEngine, pomelliBroadcaster, MixboardStudio
-} = window;
+// Dynamic Window Globals Access (Live resolution, zero stale undefined closures)
+const state = new Proxy({}, {
+  get(target, prop) { return window.state ? window.state[prop] : undefined; },
+  set(target, prop, value) { if (!window.state) window.state = {}; window.state[prop] = value; return true; }
+});
+const showToast = (...args) => (window.showToast ? window.showToast(...args) : console.log(...args));
+const formatDateISO = (d) => (window.formatDateISO ? window.formatDateISO(d) : (d instanceof Date ? d.toISOString().split('T')[0] : ''));
+const formatTimeAmPm = (t) => (window.formatTimeAmPm ? window.formatTimeAmPm(t) : (t || ''));
+const hasManagerPermissions = (u) => (window.hasManagerPermissions ? window.hasManagerPermissions(u) : false);
+const renderActivePanel = () => (window.renderActivePanel ? window.renderActivePanel() : null);
+const getOrderedActiveEmployees = () => (window.getOrderedActiveEmployees ? window.getOrderedActiveEmployees() : (window.state?.employees || []).filter(e => e.active));
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /* ==========================================================================
    ROLE CUSTOMIZATION HANDLERS
@@ -646,15 +652,20 @@ function setDailyDateToday() {
 window.setDailyDateToday = setDailyDateToday;
 
 function renderDailyPanel() {
+  if (!window.state) window.state = {};
+  if (!window.state.dailyDate || isNaN(new Date(window.state.dailyDate).getTime())) {
+    window.state.dailyDate = new Date();
+  }
   const dateDisplay = document.getElementById('daily-date-display');
   if (dateDisplay) {
     // Australian Date Format: Friday, 10 July 2026
     const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-    dateDisplay.textContent = state.dailyDate.toLocaleDateString('en-AU', options);
+    dateDisplay.textContent = window.state.dailyDate.toLocaleDateString('en-AU', options);
   }
   
-  const dateStr = formatDateISO(state.dailyDate);
-  const dayShifts = state.shifts.filter(s => s.date === dateStr);
+  const dateStr = (typeof formatDateISO === 'function') ? formatDateISO(window.state.dailyDate) : window.state.dailyDate.toISOString().split('T')[0];
+  const shifts = (window.state && window.state.shifts) ? window.state.shifts : [];
+  const dayShifts = shifts.filter(s => s.date === dateStr);
   
   // Sort shifts by start time
   dayShifts.sort((a, b) => {
