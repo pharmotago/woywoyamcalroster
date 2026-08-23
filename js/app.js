@@ -1037,7 +1037,11 @@ function loadDataFromState() {
   
   if (!state.swapsLoaded) {
     state.swapsLoaded = true;
-    SwapDB.getSwaps().then(swaps => state.swaps = swaps);
+    try {
+      if (typeof SwapDB !== 'undefined' && SwapDB && SwapDB.getSwaps) {
+        SwapDB.getSwaps().then(swaps => { state.swaps = swaps || []; }).catch(() => {});
+      }
+    } catch (e) {}
   }
   
   if (typeof renderRolesSettingsList === 'function') {

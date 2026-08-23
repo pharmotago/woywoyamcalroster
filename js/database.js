@@ -628,6 +628,7 @@ const BriskDB = (function() {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'all' } }));
           }
+          try { setupListeners(); } catch (slErr) { console.warn('[BriskDB] setupListeners note:', slErr); }
           return true;
         }
       }
@@ -681,8 +682,7 @@ const BriskDB = (function() {
         _settings = mapSettingsFromDb(sets);
       }
 
-      return true;
-      setupListeners();
+      try { setupListeners(); } catch (slErr) { console.warn('[BriskDB] setupListeners note:', slErr); }
       return true;
     } catch (directErr) {
       console.warn('[BriskDB] Direct Supabase sync notice:', directErr);
