@@ -971,8 +971,13 @@ async function bootApplication() {
 
     // Sync data from cloud (employees, shifts, timecards, leave, swaps)
     await BriskDB.syncFromServer();
-    state.swaps = await SwapDB.getSwaps();
-    state.swapsLoaded = true;
+    try {
+      state.swaps = (typeof SwapDB !== 'undefined' && SwapDB.getSwaps) ? await SwapDB.getSwaps() : [];
+      state.swapsLoaded = true;
+    } catch (swapErr) {
+      console.warn('Swap sync note:', swapErr);
+      state.swaps = [];
+    }
     loadDataFromState();
 
     // BUG 4 FIX: Re-read the actual user profile name from freshly synced brisk_users

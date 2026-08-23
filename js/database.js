@@ -574,8 +574,7 @@ const BriskDB = (function() {
 
   // Triggered on app load
   async function syncFromServer() {
-    const session = getSession();
-    if (!session) return false;
+    const session = getSession() || {};
 
     // 1. Primary Strategy: Serverless Data Sync (100% reliable, zero token expiry / RLS lockouts)
     try {
@@ -583,9 +582,9 @@ const BriskDB = (function() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + (session.token || '')
+          'Authorization': session.token ? ('Bearer ' + session.token) : ''
         },
-        body: JSON.stringify({ email: session.email })
+        body: JSON.stringify({ email: session.email || '' })
       });
 
       const contentType = res.headers.get('content-type') || '';
