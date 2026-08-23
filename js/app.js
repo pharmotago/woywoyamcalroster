@@ -1811,14 +1811,20 @@ function renderDashboard() {
     `;
     // Insert before the table
     const existingBanner = document.getElementById('dash-coverage-summary-banner');
-    if (existingBanner) existingBanner.remove();
+    if (existingBanner) {
+      if (typeof existingBanner.remove === 'function') existingBanner.remove();
+      else if (existingBanner.parentElement) existingBanner.parentElement.removeChild(existingBanner);
+    }
     const shiftListScroll = tbody.closest('.shift-list-scroll');
     if (shiftListScroll && shiftListScroll.parentElement) shiftListScroll.parentElement.insertBefore(summaryBanner, shiftListScroll);
   }
 
   if (todayShifts.length === 0 && todayLeaveRequests.length === 0) {
     const existingBanner = document.getElementById('dash-coverage-summary-banner');
-    if (existingBanner) existingBanner.remove();
+    if (existingBanner) {
+      if (typeof existingBanner.remove === 'function') existingBanner.remove();
+      else if (existingBanner.parentElement) existingBanner.parentElement.removeChild(existingBanner);
+    }
     tbody.innerHTML = `<tr><td colspan="4" style="padding: 0;"><div class="empty-state"><i class="fa-solid fa-mug-hot text-neon" style="animation: activeTerminalPulse 1.8s infinite alternate;"></i><h4>No shifts today</h4><p>Enjoy your day! All staff are scheduled off today.</p></div></td></tr>`;
     return;
   }
