@@ -755,17 +755,20 @@ body.theme-light {
   line-height: 1;
 }
 .grid-emp-name {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #ffffff;
+  letter-spacing: 0.2px;
 }
 .grid-emp-role {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.78rem;
+  color: #cbd5e1;
   margin-top: 2px;
 }
 .grid-emp-hours {
-  font-size: 0.7rem;
-  color: var(--accent-gold);
+  font-size: 0.78rem;
+  color: var(--accent-cyan, #00e5ff);
+  font-weight: 600;
   margin-top: 4px;
 }
 
@@ -2599,6 +2602,16 @@ select.form-control option {
   }
 
   /* Scheduler Table Layout in Print */
+  .scheduler-grid-table,
+  .scheduler-grid-table tbody,
+  .scheduler-grid-table tr,
+  .scheduler-grid-table td,
+  .calendar-grid-cell {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+
   .scheduler-grid-table {
     width: 100% !important;
     border-collapse: collapse !important;
@@ -2622,7 +2635,7 @@ select.form-control option {
   .scheduler-grid-table thead th {
     background: #f1f5f9 !important;
     color: #0f172a !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     text-align: center !important;
     font-size: 11px !important;
     border-bottom: 2px solid #94a3b8 !important;
@@ -2633,31 +2646,50 @@ select.form-control option {
   .scheduler-grid-table thead th.col-employee {
     text-align: left !important;
     width: 160px !important;
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
   }
 
-  .grid-employee-cell {
+  .grid-employee-cell,
+  .scheduler-grid-table tbody td:first-child,
+  .scheduler-grid-table tbody td.col-employee,
+  .scheduler-grid-table tfoot td:first-child {
     background: #f8fafc !important;
-    font-weight: 600 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    border-right: 2px solid #94a3b8 !important;
+    box-shadow: none !important;
+    padding: 6px 8px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .grid-emp-name {
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
-  }
-
-  .grid-emp-role {
-    font-size: 9px !important;
-    color: #475569 !important;
+  .grid-emp-name,
+  .scheduler-grid-table td .grid-emp-name {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #0f172a !important; /* Bold Jet Black */
     display: block !important;
+    line-height: 1.3 !important;
+    text-decoration: none !important;
   }
 
-  .grid-emp-hours {
-    font-size: 9px !important;
-    color: #0369a1 !important;
+  .grid-emp-role,
+  .scheduler-grid-table td .grid-emp-role {
+    font-size: 9.5px !important;
     font-weight: 600 !important;
+    color: #334155 !important; /* Dark Slate Grey */
+    display: block !important;
+    margin-top: 2px !important;
+  }
+
+  .grid-emp-hours,
+  .scheduler-grid-table td .grid-emp-hours {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    color: #0284c7 !important; /* Vibrant Ocean Blue */
+    display: block !important;
+    margin-top: 3px !important;
   }
 
   /* Full Color Shift Cards */
