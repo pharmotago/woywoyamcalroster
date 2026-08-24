@@ -624,6 +624,8 @@ async function saveTradingHours(event) {
     };
     await BriskDB.saveSettings(updatedSettings);
     state.settings = updatedSettings;
+    if (typeof renderScheduler === 'function') renderScheduler();
+    if (typeof renderDailyPanel === 'function') renderDailyPanel();
     showToast('Pharmacy Trading Hours saved successfully!', 'success');
   } catch (err) {
     console.error('Save Trading Hours Error:', err);
@@ -672,6 +674,19 @@ function renderDailyPanel() {
   if (printDailyTimeEl) {
     const now = new Date();
     printDailyTimeEl.textContent = `${formatDateISO(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
+  const printDailyTradingEl = document.getElementById('print-daily-trading-hours');
+  if (printDailyTradingEl) {
+    const summary = (typeof window.formatTradingHoursSummary === 'function') 
+      ? window.formatTradingHoursSummary(state.settings?.tradingHours)
+      : 'Mon–Fri 08:30–17:30 | Sat 09:00–13:00 | Sun Closed';
+    printDailyTradingEl.innerHTML = `<strong>Trading Hours:</strong> ${summary}`;
+  }
+
+  const printDailyTitleEl = document.getElementById('print-daily-title');
+  if (printDailyTitleEl) {
+    printDailyTitleEl.textContent = `${state.settings?.companyName || 'Amcal Pharmacy Woy Woy'} — Daily Staff Roster`;
   }
   
   const dateStr = (typeof formatDateISO === 'function') ? formatDateISO(window.state.dailyDate) : window.state.dailyDate.toISOString().split('T')[0];

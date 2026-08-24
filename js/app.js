@@ -95,6 +95,49 @@ function getAwardBreakEntitlements(grossHours) {
 }
 window.getAwardBreakEntitlements = getAwardBreakEntitlements;
 
+function formatTradingHoursSummary(th) {
+  if (!th || typeof th !== 'object') {
+    return 'Mon–Fri 08:30–17:30 | Sat 09:00–13:00 | Sun Closed';
+  }
+  
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const getDayStr = (d) => {
+    const data = th[String(d)] || th[d];
+    if (!data) return (d === 0 ? 'Closed' : (d === 6 ? '09:00–13:00' : '08:30–17:30'));
+    if (data.closed) return 'Closed';
+    const op = data.open ? String(data.open).substring(0, 5) : '08:30';
+    const cl = data.close ? String(data.close).substring(0, 5) : '17:30';
+    return `${op}–${cl}`;
+  };
+
+  const mon = getDayStr(1);
+  const tue = getDayStr(2);
+  const wed = getDayStr(3);
+  const thu = getDayStr(4);
+  const fri = getDayStr(5);
+  const sat = getDayStr(6);
+  const sun = getDayStr(0);
+
+  const parts = [];
+
+  // Check if Mon-Fri are identical
+  if (mon === tue && tue === wed && wed === thu && thu === fri) {
+    parts.push(mon === 'Closed' ? 'Mon–Fri Closed' : `Mon–Fri ${mon}`);
+  } else {
+    // If weekdays differ
+    for (let i = 1; i <= 5; i++) {
+      parts.push(`${dayNames[i]} ${getDayStr(i)}`);
+    }
+  }
+
+  // Sat & Sun
+  parts.push(`Sat ${sat}`);
+  parts.push(`Sun ${sun}`);
+
+  return parts.join(' | ');
+}
+window.formatTradingHoursSummary = formatTradingHoursSummary;
+
 function getDailySalesTargets() {
   const defaultTargets = { 1: 11000, 2: 10500, 3: 10500, 4: 12000, 5: 13500, 6: 8500, 0: 6000 };
   try {
@@ -1968,6 +2011,17 @@ function renderScheduler() {
   if (printTimestampEl) {
     const now = new Date();
     printTimestampEl.textContent = `${formatDateISO(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
+
+  const printTradingHoursEl = document.getElementById('print-roster-trading-hours');
+  if (printTradingHoursEl) {
+    const summary = formatTradingHoursSummary(state.settings?.tradingHours);
+    printTradingHoursEl.innerHTML = `<strong>Trading Hours:</strong> ${summary}`;
+  }
+
+  const printTitleEl = document.getElementById('print-roster-title');
+  if (printTitleEl) {
+    printTitleEl.textContent = `${state.settings?.companyName || 'Amcal Pharmacy Woy Woy'} — Staff Roster`;
   }
 
   for (let i = 0; i < 7; i++) {

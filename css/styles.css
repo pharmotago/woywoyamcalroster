@@ -2556,13 +2556,30 @@ select.form-control option {
     display: block !important;
   }
 
-  html, body, .app-root, .main-content, .app-container {
+  html, body, .app-root {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
     position: static !important;
     background: #ffffff !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-container {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: 1fr !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
 
   .tab-panel {
@@ -2574,14 +2591,23 @@ select.form-control option {
     visibility: visible !important;
     opacity: 1 !important;
     height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
     overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .main-content {
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    max-width: 100% !important;
     overflow: visible !important;
+    position: static !important;
+    background: #ffffff !important;
   }
 
   /* Remove overflow restrictions on all grid wrappers */
