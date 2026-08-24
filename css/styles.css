@@ -2773,6 +2773,126 @@ select.form-control option {
     border: 1px solid #f87171 !important;
   }
 
+  /* ==========================================================================
+     DAILY VIEW PRINT ENGINE (Clinical Timeline & Hourly Staffing Density)
+     ========================================================================== */
+  #panel-daily .glass-card {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    padding: 8px !important;
+    margin-bottom: 10px !important;
+    color: #0f172a !important;
+  }
+
+  #panel-daily h4 {
+    color: #0284c7 !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+  }
+
+  #daily-hourly-heatmap {
+    min-width: 0 !important;
+    width: 100% !important;
+    gap: 3px !important;
+  }
+
+  #daily-hourly-heatmap > div {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 4px 2px !important;
+    min-height: 48px !important;
+  }
+
+  #daily-hourly-heatmap > div > div:first-child {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    font-size: 10px !important;
+  }
+
+  #panel-daily div[style*="background: rgba(0, 0, 0, 0.25)"] {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  #daily-dispensing-safety-badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #daily-pharm-hours-text {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+  }
+
+  #daily-scripts-input,
+  #panel-daily label[for="daily-scripts-input"] {
+    display: none !important;
+  }
+
+  #panel-daily .daily-timeline-container {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px !important;
+    overflow: visible !important;
+  }
+
+  #daily-timeline-visual {
+    min-width: 0 !important;
+    width: 100% !important;
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  #daily-timeline-visual .timeline-bar {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  }
+
+  #daily-timeline-labels {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #daily-timeline-labels span {
+    color: #334155 !important;
+    font-weight: 700 !important;
+    font-size: 9px !important;
+  }
+
+  #daily-shifts-tbody tr td {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 10px !important;
+  }
+
+  #daily-shifts-tbody tr td:first-child div:first-child {
+    color: #0f172a !important;
+    font-weight: 800 !important;
+    font-size: 11.5px !important;
+  }
+
+  #daily-shifts-tbody tr td:first-child div:last-child {
+    color: #475569 !important;
+    font-weight: 600 !important;
+    font-size: 9.5px !important;
+  }
+
+  #daily-shifts-tbody tr td .badge {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-weight: 700 !important;
+  }
+
   #main-panel {
     display: block !important;
     overflow: visible !important;

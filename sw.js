@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amcal-rosters-v9.0.9';
+const CACHE_NAME = 'amcal-rosters-v9.1.0';
 const ASSETS = [
   './',
   './index.html',

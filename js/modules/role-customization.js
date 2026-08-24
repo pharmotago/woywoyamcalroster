@@ -657,10 +657,21 @@ function renderDailyPanel() {
     window.state.dailyDate = new Date();
   }
   const dateDisplay = document.getElementById('daily-date-display');
+  const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
   if (dateDisplay) {
     // Australian Date Format: Friday, 10 July 2026
-    const options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     dateDisplay.textContent = window.state.dailyDate.toLocaleDateString('en-AU', options);
+  }
+
+  const printDailyDateEl = document.getElementById('print-daily-date-display');
+  if (printDailyDateEl) {
+    printDailyDateEl.textContent = window.state.dailyDate.toLocaleDateString('en-AU', options);
+  }
+
+  const printDailyTimeEl = document.getElementById('print-daily-timestamp');
+  if (printDailyTimeEl) {
+    const now = new Date();
+    printDailyTimeEl.textContent = `${formatDateISO(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   }
   
   const dateStr = (typeof formatDateISO === 'function') ? formatDateISO(window.state.dailyDate) : window.state.dailyDate.toISOString().split('T')[0];
