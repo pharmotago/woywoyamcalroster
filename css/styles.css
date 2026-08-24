@@ -1401,7 +1401,7 @@ select.form-control option {
 }
 
 /* Tablet and Smaller */
-@media screen and (: 1024px) {
+@media screen and (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1412,7 +1412,7 @@ select.form-control option {
 }
 
 /* Mobile Screens */
-@media screen and (: 768px) {
+@media screen and (max-width: 768px) {
   .card-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1423,32 +1423,58 @@ select.form-control option {
   }
 
   .app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    overflow-x: hidden !important;
   }
   
   .mobile-header {
-    display: flex;
-    flex-shrink: 0;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.75rem 1rem !important;
+    background: rgba(13, 15, 18, 0.96) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-bottom: 1px solid var(--border-glass) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
+    width: 100% !important;
+    flex-shrink: 0 !important;
   }
 
   .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 190px;
-    height: 100vh;
-    z-index: 30;
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 80px; /* Space for bottom nav bar */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-width: 82vw !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 90px !important; /* Space for bottom nav bar */
+    background: rgba(13, 15, 18, 0.98) !important;
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.5) !important;
   }
   .sidebar.open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
+  }
+
+  .mobile-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.65) !important;
+    z-index: 999 !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
   }
   
   .sidebar-brand h2 {
@@ -1460,18 +1486,18 @@ select.form-control option {
   }
 
   .main-content {
-    padding: 1.25rem 1rem 80px 1rem !important; /* Extra bottom padding for bottom nav */
-    gap: 1.5rem;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-    max-width: 100vw;
+    padding: 1rem 0.85rem calc(80px + env(safe-area-inset-bottom, 0px)) 0.85rem !important; /* Extra bottom padding for bottom nav */
+    gap: 1.25rem !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100vw !important;
   }
 
-  .topbar .live-clock {
-    display: none;
+  .topbar {
+    display: none !important; /* Mobile header replaces topbar cleanly */
   }
 
   .dashboard-grid {
@@ -1480,17 +1506,20 @@ select.form-control option {
 
   .dashboard-split {
     flex-direction: column;
+    gap: 1rem;
   }
   .flex-2, .flex-1 {
     flex: none;
     width: 100%;
   }
   .glass-card {
+    padding: 1rem !important;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: auto !important;
     overflow-y: visible !important;
     box-sizing: border-box !important;
+    border-radius: var(--radius-md) !important;
   }
   .glass-card .empty-state h4,
   .glass-card .empty-state p {
@@ -1580,25 +1609,43 @@ select.form-control option {
     display: flex;
     flex-direction: column;
   }
-
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
   
   .login-card {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.25rem !important;
+    margin: 1rem !important;
+    width: calc(100vw - 2rem) !important;
+    max-width: 420px !important;
   }
 
   .modal-content {
-    max-height: 90vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: calc(100dvh - 24px) !important;
+    padding: 1rem !important;
+    margin: 12px auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: var(--radius-md) !important;
   }
   
   .metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem !important;
+  }
+  .metric-card {
+    padding: 0.85rem 1rem !important;
+    gap: 10px !important;
+  }
+  .metric-icon {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1rem !important;
+  }
+  .metric-value {
+    font-size: 1.25rem !important;
+  }
+  .metric-label {
+    font-size: 0.7rem !important;
   }
 
   .employees-grid {
@@ -1607,14 +1654,16 @@ select.form-control option {
 
   .action-bar {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     width: 100%;
+    gap: 8px;
+    padding: 8px !important;
   }
   .action-bar .week-picker {
     width: 100% !important;
     justify-content: space-between !important;
     gap: 6px !important;
-    padding: 4px 8px !important;
+    padding: 6px 8px !important;
   }
   .action-bar .week-range-text {
     min-width: 0 !important;
@@ -1627,12 +1676,12 @@ select.form-control option {
   .action-bar .scheduler-controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     width: 100%;
   }
 
   .form-control, input, select, textarea {
-    font-size: 16px !important;
+    font-size: 16px !important; /* Prevents auto-zoom on iOS */
   }
 
   /* Prevent Safari from intercepting touch events with huge blurred orbs */
@@ -1771,7 +1820,7 @@ select.form-control option {
   display: none;
 }
 
-@media screen and (: 768px) {
+@media screen and (max-width: 768px) {
   .desktop-only-grid {
     display: none !important;
   }
@@ -1912,7 +1961,7 @@ select.form-control option {
   opacity: 1;
 }
 
-@media screen and (: 768px) {
+@media screen and (max-width: 768px) {
   .shift-card .btn-icon {
     opacity: 1;
   }
@@ -1923,7 +1972,7 @@ select.form-control option {
   display: none;
 }
 
-@media screen and (: 768px) {
+@media screen and (max-width: 768px) {
   .mobile-bottom-nav {
     display: flex !important;
     position: fixed;
@@ -1931,7 +1980,7 @@ select.form-control option {
     left: 0;
     right: 0;
     height: calc(62px + env(safe-area-inset-bottom, 0px));
-    background: rgba(18, 18, 26, 0.85);
+    background: rgba(13, 15, 18, 0.95);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
     border-top: 1px solid var(--border-glass);
@@ -1982,201 +2031,6 @@ select.form-control option {
 .scheduler-grid-table tfoot tr {
   background: rgba(255, 255, 255, 0.02);
   font-weight: 500;
-  border-top: 1px solid var(--border-color);
-}
-.scheduler-grid-table tfoot tr.grand-total {
-  background: rgba(0, 229, 255, 0.05);
-  font-weight: 700;
-  color: var(--accent-cyan);
-}
-.scheduler-grid-table tfoot td {
-  padding: 10px 12px;
-  text-align: center;
-  font-size: 0.85rem;
-  border-top: 1px solid var(--border-color);
-}
-.scheduler-grid-table tfoot td:first-child {
-  text-align: left;
-  font-weight: 600;
-  padding-left: 16px;
-}
-
-/* Daily View timeline and layout styles */
-.daily-timeline-container {
-  background: rgba(0, 0, 0, 0.15);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  border: 1px solid var(--border-glass);
-}
-.daily-timeline-visual {
-  transition: height 0.3s ease;
-}
-.timeline-bar {
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  transition: all 0.2s ease;
-}
-.timeline-bar:hover {
-  filter: brightness(1.2);
-  transform: translateY(-1px);
-  z-index: 10;
-}
-
-/* ==========================================================================
-   GOOGLE AI SUITE & STITCH VIBE DESIGN SYSTEM (BriskSchedules)
-   ========================================================================== */
-
-.ai-ops-hero {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(168, 85, 247, 0.06) 50%, rgba(16, 185, 129, 0.04) 100%);
-  border: 1px solid rgba(0, 229, 255, 0.25);
-  border-radius: var(--radius-lg);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.ai-ops-hero::after {
-  content: '';
-  position: absolute;
-  top: -50px;
-  right: -50px;
-  width: 150px;
-  height: 150px;
-  background: radial-gradient(circle, rgba(0, 229, 255, 0.2), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.ai-suite-nav-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  border-bottom: 1px solid var(--border-glass);
-  padding-bottom: 8px;
-}
-
-.ai-tab-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-glass);
-  color: var(--text-secondary);
-  transition: var(--transition-fast);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ai-tab-btn:hover {
-  background: rgba(0, 229, 255, 0.08);
-  border-color: rgba(0, 229, 255, 0.3);
-  color: var(--text-primary);
-}
-
-.ai-tab-btn.active {
-  background: linear-gradient(135deg, rgba(0, 229, 255, 0.18) 0%, rgba(168, 85, 247, 0.12) 100%);
-  border-color: var(--accent-cyan);
-  color: var(--text-primary);
-  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2);
-}
-
-.ai-workflow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.ai-workflow-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-glass);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: var(--transition-fast);
-  position: relative;
-}
-
-.ai-workflow-card:hover {
-  border-color: rgba(0, 229, 255, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-.ai-workflow-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.ai-workflow-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.ai-node-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.82rem;
-}
-
-.ai-node-step:last-child {
-  border-bottom: none;
-}
-
-.ai-step-num {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(0, 229, 255, 0.15);
-  color: var(--accent-cyan);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.72rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.broadcast-output-box {
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.82rem;
-  color: #e2e8f0;
-  white-space: pre-wrap;
-  max-height: 260px;
-  overflow-y: auto;
-  line-height: 1.4;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
-.sparkle-glow {
-  animation: sparklePulse 2.5s infinite alternate ease-in-out;
-}
-
-@keyframes sparklePulse {
-  0% { text-shadow: 0 0 4px rgba(0, 229, 255, 0.4); }
-  100% { text-shadow: 0 0 16px rgba(0, 229, 255, 0.9), 0 0 24px rgba(168, 85, 247, 0.6); }
   border-top: 1px solid var(--border-color);
 }
 .scheduler-grid-table tfoot tr.grand-total {
