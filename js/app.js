@@ -90,7 +90,7 @@ function getAwardBreakEntitlements(grossHours) {
   } else if (grossHours < 7.6) {
     return { paidBreaks: 1, unpaidMealMins: 30, description: '🍱 1x 30m Unpaid Lunch + ☕ 1x 10m Paid Rest' };
   } else {
-    return { paidBreaks: 2, unpaidMealMins: 45, description: '🍱 1x 30-60m Unpaid Lunch + ☕ 2x 10m Paid Rest' };
+    return { paidBreaks: 2, unpaidMealMins: 30, description: '🍱 1x 30m Unpaid Lunch + ☕ 2x 10m Paid Rest' };
   }
 }
 window.getAwardBreakEntitlements = getAwardBreakEntitlements;
