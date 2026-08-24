@@ -19,6 +19,8 @@
     "test:peter-login": "node scripts/test_peter_login.js",
     "reset:peter": "node scripts/reset_peter_auth.js",
     "test:login-diag": "node scripts/test_user_login.js",
+    "diagnose:login": "node --input-type=module < scripts/diagnose-login.js",
+    "fix:login": "node --input-type=module < scripts/fix-login.js",
     "test:probe": "node scripts/probe_live_db.js",
     "audit:inspect": "node scripts/deep_roster_inspector.js",
     "test:audit": "node C:/Users/Sung/.gemini/antigravity/brain/63d6222e-4163-47b8-b986-c8eecfaf946c/scratch/full_company_e2e_check.js",

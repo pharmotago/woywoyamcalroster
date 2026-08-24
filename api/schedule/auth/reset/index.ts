@@ -91,7 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const targetEmail = email.toLowerCase().trim();
 
     // 1. Check if user exists in Supabase Auth
-    const listRes = await supabaseAdmin.auth.admin.listUsers();
+    const listRes = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     const users: any[] = listRes.data?.users || [];
     let authUser: any = users.find((u: any) => u.email?.toLowerCase().trim() === targetEmail);
 
