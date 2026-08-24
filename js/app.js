@@ -1957,7 +1957,18 @@ window.getOrderedActiveEmployees = getOrderedActiveEmployees;
 window.moveEmployeeOrder = moveEmployeeOrder;
 
 function renderScheduler() {
-  document.getElementById('scheduler-week-range').textContent = getWeekRangeText(state.currentWeekStart);
+  const weekRange = getWeekRangeText(state.currentWeekStart);
+  const weekRangeEl = document.getElementById('scheduler-week-range');
+  if (weekRangeEl) weekRangeEl.textContent = weekRange;
+
+  const printWeekRangeEl = document.getElementById('print-roster-week-range');
+  if (printWeekRangeEl) printWeekRangeEl.textContent = `Week: ${weekRange}`;
+
+  const printTimestampEl = document.getElementById('print-roster-timestamp');
+  if (printTimestampEl) {
+    const now = new Date();
+    printTimestampEl.textContent = `${formatDateISO(now)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  }
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(state.currentWeekStart);
@@ -2488,22 +2499,22 @@ function getEffectiveShiftHourlyRate(shift) {
 
       tfoot.innerHTML = headcountRow + `
         <tr class="summary-row">
-          <td>Dispensary (Hours & Labor Cost)</td>
-          ${dispTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<br><span style="font-size:10px; color:#10b981; font-weight:600;">$${dispCosts[i].toFixed(0)}</span>` : '-'}</td>`).join('')}
+          <td>Dispensary Hours <span class="wage-val print-hide-wage">(Labor Cost)</span></td>
+          ${dispTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<span class="wage-val print-hide-wage"><br><span style="font-size:10px; color:#10b981; font-weight:600;">$${dispCosts[i].toFixed(0)}</span></span>` : '-'}</td>`).join('')}
         </tr>
         <tr class="summary-row">
-          <td>Front of Shop (Hours & Labor Cost)</td>
-          ${frontTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<br><span style="font-size:10px; color:#f59e0b; font-weight:600;">$${frontCosts[i].toFixed(0)}</span>` : '-'}</td>`).join('')}
+          <td>Front of Shop Hours <span class="wage-val print-hide-wage">(Labor Cost)</span></td>
+          ${frontTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<span class="wage-val print-hide-wage"><br><span style="font-size:10px; color:#f59e0b; font-weight:600;">$${frontCosts[i].toFixed(0)}</span></span>` : '-'}</td>`).join('')}
         </tr>
         <tr class="summary-row">
-          <td>Webster (Hours & Labor Cost)</td>
-          ${websterTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<br><span style="font-size:10px; color:#a855f7; font-weight:600;">$${websterCosts[i].toFixed(0)}</span>` : '-'}</td>`).join('')}
+          <td>Webster Hours <span class="wage-val print-hide-wage">(Labor Cost)</span></td>
+          ${websterTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<span class="wage-val print-hide-wage"><br><span style="font-size:10px; color:#a855f7; font-weight:600;">$${websterCosts[i].toFixed(0)}</span></span>` : '-'}</td>`).join('')}
         </tr>
         <tr class="summary-row grand-total">
-          <td>Total Scheduled Hours & Total Labor Cost (incl. Super 12% / Locum)</td>
-          ${grandTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<br><span style="font-size:11px; color:var(--accent-cyan); font-weight:700;">$${grandCosts[i].toFixed(0)}</span>` : '-'}</td>`).join('')}
+          <td>Total Scheduled Hours <span class="wage-val print-hide-wage">& Total Labor Cost</span></td>
+          ${grandTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<span class="wage-val print-hide-wage"><br><span style="font-size:11px; color:var(--accent-cyan); font-weight:700;">$${grandCosts[i].toFixed(0)}</span></span>` : '-'}</td>`).join('')}
         </tr>
-        <tr class="summary-row" style="background: rgba(0, 229, 255, 0.04); border-top: 1px dashed rgba(0, 229, 255, 0.2);">
+        <tr class="summary-row print-hide-wage" style="background: rgba(0, 229, 255, 0.04); border-top: 1px dashed rgba(0, 229, 255, 0.2);">
           <td style="font-weight:700; color:var(--accent-cyan);"><i class="fa-solid fa-chart-pie" style="margin-right:4px;"></i> Wage % of Projected Sales (Benchmark: 10.5–13.5%)</td>
           ${wagePctCells}
         </tr>
