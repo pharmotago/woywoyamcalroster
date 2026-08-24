@@ -930,7 +930,7 @@ body.theme-light {
   min-width: 0;
   width: 100%;
 }
-@media (max-width: 1024px) {
+@media screen and (: 1024px) {
   .timeclock-layout {
     grid-template-columns: 1fr;
     width: 100%;
@@ -1060,7 +1060,7 @@ body.theme-light {
   min-width: 0;
   width: 100%;
 }
-@media (max-width: 1024px) {
+@media screen and (: 1024px) {
   .timeoff-layout {
     grid-template-columns: 1fr;
     width: 100%;
@@ -1074,7 +1074,7 @@ body.theme-light {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1.5rem;
 }
-@media (min-width: 769px) {
+@media screen and (: 769px) {
   .settings-grid .flex-2 {
     grid-column: span 2;
   }
@@ -1398,7 +1398,7 @@ select.form-control option {
 }
 
 /* Tablet and Smaller */
-@media (max-width: 1024px) {
+@media screen and (: 1024px) {
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1409,7 +1409,7 @@ select.form-control option {
 }
 
 /* Mobile Screens */
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .card-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1768,7 +1768,7 @@ select.form-control option {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .desktop-only-grid {
     display: none !important;
   }
@@ -1909,7 +1909,7 @@ select.form-control option {
   opacity: 1;
 }
 
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .shift-card .btn-icon {
     opacity: 1;
   }
@@ -1920,7 +1920,7 @@ select.form-control option {
   display: none;
 }
 
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .mobile-bottom-nav {
     display: flex !important;
     position: fixed;
@@ -2016,211 +2016,6 @@ select.form-control option {
   filter: brightness(1.2);
   transform: translateY(-1px);
   z-index: 10;
-}
-
-/* =====================================
-   PRINT STYLESHEET — A4 Landscape & Clean Layout
-   ===================================== */
-@media print {
-  @page {
-    size: A4 landscape;
-    margin: 5mm 7mm 5mm 7mm;
-  }
-
-  body, .app-root, .main-content, .app-container {
-    background: #ffffff !important;
-    color: #000000 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    height: auto !important;
-    width: 100% !important;
-  }
-
-  .sidebar,
-  .topbar,
-  .app-header,
-  .week-picker button,
-  .scheduler-controls,
-  .cell-add-btn,
-  .btn-icon,
-  .mobile-only-timeline,
-  .mobile-bottom-nav,
-  .loading-overlay,
-  .orb,
-  .modal,
-  .action-bar button,
-  #trading-hours-form,
-  .staff-reorder-btn,
-  .staff-reorder-btn-group,
-  .print-hide {
-    display: none !important;
-  }
-
-  .tab-panel:not(.active) {
-    display: none !important;
-  }
-  .tab-panel.active {
-    display: block !important;
-  }
-
-  .glass-card, .calendar-workspace, .report-workspace {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    color: #000000 !important;
-  }
-
-  /* Scheduler Grid Print */
-  .scheduler-grid-container {
-    overflow: visible !important;
-    width: 100% !important;
-  }
-
-  .scheduler-grid-table {
-    border-collapse: collapse !important;
-    width: 100% !important;
-    table-layout: fixed !important;
-    color: #000000 !important;
-  }
-
-  .scheduler-grid-table th, 
-  .scheduler-grid-table td {
-    border: 1px solid #000000 !important;
-    color: #000000 !important;
-    font-size: 8.5pt !important;
-    padding: 4px !important;
-    background: #ffffff !important;
-    text-align: center !important;
-    vertical-align: top !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .scheduler-grid-table th:first-child,
-  .scheduler-grid-table td:first-child {
-    text-align: left !important;
-    width: 14% !important;
-  }
-
-  .scheduler-grid-table th {
-    background: #f1f5f9 !important;
-    font-weight: bold !important;
-  }
-
-  .shift-card {
-    border: 1px solid #334155 !important;
-    border-left: 4px solid #0f172a !important;
-    background: #ffffff !important;
-    color: #000000 !important;
-    padding: 3px 5px !important;
-    margin: 3px 0 !important;
-    border-radius: 3px !important;
-    box-shadow: none !important;
-    opacity: 1 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .shift-card-header {
-    font-weight: bold !important;
-    font-size: 8.5pt !important;
-  }
-  
-  .shift-card-time {
-    font-size: 8pt !important;
-    color: #0f172a !important;
-  }
-  
-  .shift-card-notes {
-    font-style: italic !important;
-    font-size: 7.5pt !important;
-    color: #334155 !important;
-  }
-
-  .scheduler-grid-table tfoot tr {
-    background: #f8fafc !important;
-  }
-  .scheduler-grid-table tfoot tr.grand-total {
-    background: #e2e8f0 !important;
-    font-weight: bold !important;
-  }
-
-  /* Daily View Print Header/Footer */
-  #panel-daily::before {
-    content: 'Amcal Pharmacy Woy Woy — Daily Roster';
-    display: block;
-    font-size: 16pt;
-    font-weight: 900;
-    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
-    text-align: center;
-    color: #000;
-    margin-bottom: 6px;
-    padding-bottom: 6px;
-    border-bottom: 2px solid #0f172a;
-  }
-
-  #panel-daily .daily-timeline-container {
-    margin-bottom: 12px !important;
-  }
-
-  #panel-daily .daily-timeline-visual {
-    border: 1px solid #ccc !important;
-    background: #f8fafc !important;
-  }
-
-  #panel-daily .timeline-bar {
-    opacity: 1 !important;
-    color: #000 !important;
-    font-weight: 700 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  #panel-daily .daily-timeline-labels {
-    color: #000 !important;
-    font-weight: 600 !important;
-  }
-
-  #panel-daily .badge {
-    border: 1px solid #334155 !important;
-    color: #000 !important;
-    background: #f1f5f9 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  #panel-daily::after {
-    content: 'Printed from Amcal Woy Woy Roster — https://woywoyamcalroster.vercel.app';
-    display: block;
-    font-size: 7pt;
-    color: #94a3b8;
-    text-align: center;
-    margin-top: 12px;
-    padding-top: 6px;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  /* Reports Panel Print */
-  .report-header-print {
-    display: block !important;
-    margin-bottom: 1.5rem;
-  }
-  .report-header-print h2 {
-    font-size: 1.5rem;
-    color: #000;
-  }
-  .data-table th {
-    background: #f1f5f9 !important;
-    color: #000 !important;
-    border-bottom: 2px solid #000 !important;
-  }
-  .data-table td {
-    border-bottom: 1px solid #ddd !important;
-    color: #000 !important;
-  }
 }
 
 /* ==========================================================================
@@ -2385,7 +2180,7 @@ select.form-control option {
    COMPACT & SMALL SCREEN SCROLLABILITY SUITE (Mobile, Tablet, Small Laptops)
    ========================================================================== */
 
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .ai-ops-hero {
     padding: 1.1rem;
     margin-bottom: 1rem;
@@ -2455,7 +2250,7 @@ select.form-control option {
   }
 }
 
-@media (max-width: 480px) {
+@media screen and (: 480px) {
   .topbar {
     padding-bottom: 0.5rem;
   }
@@ -2580,7 +2375,7 @@ select.form-control option {
    COMPACT & SMALL SCREEN SCROLLABILITY SUITE (Mobile, Tablet, Small Laptops)
    ========================================================================== */
 
-@media (max-width: 768px) {
+@media screen and (: 768px) {
   .ai-ops-hero {
     padding: 1.1rem;
     margin-bottom: 1rem;
@@ -2650,7 +2445,7 @@ select.form-control option {
   }
 }
 
-@media (max-width: 480px) {
+@media screen and (: 480px) {
   .topbar {
     padding-bottom: 0.5rem;
   }
@@ -2737,10 +2532,23 @@ select.form-control option {
 
   html, body, .app-root, .main-content, .app-container {
     height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
     position: static !important;
     background: #ffffff !important;
+  }
+
+  .tab-panel {
+    display: none !important;
+  }
+
+  .tab-panel.active {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .main-content {
@@ -2758,6 +2566,8 @@ select.form-control option {
     max-height: none !important;
     overflow: visible !important;
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;
