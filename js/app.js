@@ -2241,9 +2241,9 @@ function getEffectiveShiftHourlyRate(shift) {
         }
 
         // Color coding style
-        const roleColor = state.roles.find(r => r.name.toLowerCase() === shift.role.toLowerCase())?.color || '#4f46e5';
+        const roleColor = state.roles.find(r => r.name.toLowerCase() === shift.role.toLowerCase())?.color || '#0284c7';
         div.style.borderLeft = `4px solid ${roleColor}`;
-        div.style.background = `rgba(${hexToRgb(roleColor)}, 0.08)`;
+        div.style.background = `rgba(${hexToRgb(roleColor)}, 0.12)`;
 
         const shiftDuration = calculateShiftHours(shift.startTime, shift.endTime, 0);
         const breakEntitlement = getAwardBreakEntitlements(shiftDuration);
@@ -2261,7 +2261,7 @@ function getEffectiveShiftHourlyRate(shift) {
 
         div.innerHTML = `
           <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>${shift.role}</span>
+            <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}</span>
             <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>
           </div>
           <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} - ${formatTimeAmPm(shift.endTime)}</div>

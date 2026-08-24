@@ -2174,99 +2174,99 @@ select.form-control option {
 @keyframes sparklePulse {
   0% { text-shadow: 0 0 4px rgba(0, 229, 255, 0.4); }
   100% { text-shadow: 0 0 16px rgba(0, 229, 255, 0.9), 0 0 24px rgba(168, 85, 247, 0.6); }
+  border-top: 1px solid var(--border-color);
+}
+.scheduler-grid-table tfoot tr.grand-total {
+  background: rgba(0, 229, 255, 0.05);
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+.scheduler-grid-table tfoot td {
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 0.85rem;
+  border-top: 1px solid var(--border-color);
+}
+.scheduler-grid-table tfoot td:first-child {
+  text-align: left;
+  font-weight: 600;
+  padding-left: 16px;
+}
+
+/* Daily View timeline and layout styles */
+.daily-timeline-container {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--border-glass);
+}
+.daily-timeline-visual {
+  transition: height 0.3s ease;
+}
+.timeline-bar {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+.timeline-bar:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+  z-index: 10;
 }
 
 /* ==========================================================================
-   COMPACT & SMALL SCREEN SCROLLABILITY SUITE (Mobile, Tablet, Small Laptops)
+   GOOGLE AI SUITE & STITCH VIBE DESIGN SYSTEM (BriskSchedules)
    ========================================================================== */
 
-@media screen and (: 768px) {
-  .ai-ops-hero {
-    padding: 1.1rem;
-    margin-bottom: 1rem;
-  }
-  
-  .ai-suite-nav-tabs {
-    display: flex;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
-    gap: 6px;
-    padding-bottom: 6px;
-    scrollbar-width: thin;
-  }
-
-  .ai-tab-btn {
-    flex-shrink: 0;
-    white-space: nowrap;
-    font-size: 0.8rem;
-    padding: 6px 12px;
-  }
-
-  .ai-workflow-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .broadcast-output-box {
-    max-height: 220px;
-    font-size: 0.78rem;
-    word-break: break-word;
-    overflow-wrap: break-word;
-  }
-
-  .mixboard-palette-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)) !important;
-  }
-
-  /* Modal small screen scrolling guarantee */
-  .modal {
-    padding: 12px 8px !important;
-  }
-
-  .modal-content {
-    width: 96vw !important;
-    max-height: calc(100dvh - 20px) !important;
-    padding: 1rem !important;
-  }
-
-  .modal-body,
-  .modal-content form {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    max-height: calc(100dvh - 120px) !important;
-  }
-
-  /* Ensure all horizontal data tables can scroll seamlessly on touch devices */
-  .scheduler-grid-container,
-  .timesheet-scroll,
-  .leave-list-scroll,
-  .shift-list-scroll,
-  .data-table-container,
-  .table-responsive {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-x pan-y;
-  }
+.ai-ops-hero {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(168, 85, 247, 0.06) 50%, rgba(16, 185, 129, 0.04) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
-@media screen and (: 480px) {
-  .topbar {
-    padding-bottom: 0.5rem;
-  }
+.ai-ops-hero::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(0, 229, 255, 0.2), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
 
-  .topbar-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: 100%;
-  }
+.ai-suite-nav-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 8px;
+}
 
-  .page-title h1 {
-    font-size: 1.35rem;
-  }
+.ai-tab-btn {
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  .btn {
+.ai-tab-btn:hover {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.3);
+  color: var(--text-primary);
 }
 
 .ai-tab-btn.active {
@@ -2375,7 +2375,7 @@ select.form-control option {
    COMPACT & SMALL SCREEN SCROLLABILITY SUITE (Mobile, Tablet, Small Laptops)
    ========================================================================== */
 
-@media screen and (: 768px) {
+@media screen and (max-width: 768px) {
   .ai-ops-hero {
     padding: 1.1rem;
     margin-bottom: 1rem;
@@ -2445,7 +2445,7 @@ select.form-control option {
   }
 }
 
-@media screen and (: 480px) {
+@media screen and (max-width: 480px) {
   .topbar {
     padding-bottom: 0.5rem;
   }
@@ -2476,11 +2476,16 @@ select.form-control option {
 }
 
 @page {
-  size: A4 landscape;
-  margin: 6mm 8mm 6mm 8mm;
+  size: landscape;
+  margin: 5mm 6mm 5mm 6mm;
 }
 
 @media print {
+  @page {
+    size: landscape;
+    margin: 5mm 6mm 5mm 6mm;
+  }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -2497,21 +2502,33 @@ select.form-control option {
 
   /* Completely hide all UI navigation, controls, sidebars, buttons, badges, modals, overlays, and wage stats */
   .sidebar, 
+  #app-sidebar,
+  aside.sidebar,
   .topbar, 
+  header.topbar,
   .mobile-header,
+  header.mobile-header,
   .mobile-nav, 
+  .mobile-bottom-nav,
   .action-bar, 
+  div.action-bar,
+  .glass-card.action-bar,
+  .week-picker,
   .scheduler-controls,
+  .controls-row,
   .btn, 
   .btn-icon,
   .cell-add-btn,
+  .staff-reorder-btn,
   .staff-reorder-btn-group,
   .text-danger i.fa-trash,
   .modal-backdrop,
   .modal,
   .orb,
   .toast-container,
+  .loading-overlay,
   .pulse-indicator,
+  .mobile-only-timeline,
   .print-hide,
   .print-hide-wage,
   .wage-val,
@@ -2520,6 +2537,12 @@ select.form-control option {
   #btn-auto-schedule,
   #btn-clear-week,
   #btn-copy-week,
+  #sync-pending-badge,
+  #btn-changelog-modal,
+  #btn-global-refresh,
+  #theme-toggle,
+  #dash-quick-actions-card,
+  #dash-staff-actions-card,
   #toast-container {
     display: none !important;
   }
