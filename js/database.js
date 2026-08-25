@@ -1356,10 +1356,41 @@ const BriskDB = (function() {
     },
 
     addLeaveRequest: async function(lr) {
-      const newLr = { ...lr, status: 'Pending' };
+      const newLr = { ...lr, status: lr.status || 'Pending' };
       if (!newLr.id) {
         newLr.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'lr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
       }
+
+      // 1. Primary Strategy: Serverless Leave API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/leave', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'create',
+            leaveRequest: mapLeaveRequestToDb(newLr)
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.leaveRequest) {
+            const mapped = mapLeaveRequestFromDb(data.leaveRequest);
+            const existing = _leaveRequests.findIndex(r => r.id === mapped.id);
+            if (existing !== -1) _leaveRequests[existing] = mapped;
+            else _leaveRequests.push(mapped);
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless addLeaveRequest notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       const { data, error } = await supabase.from('brisk_leave_requests').insert(mapLeaveRequestToDb(newLr)).select().maybeSingle();
       if (error) throw error;
       const mapped = mapLeaveRequestFromDb(data || newLr);
@@ -1369,10 +1400,41 @@ const BriskDB = (function() {
       return mapped;
     },
     updateLeaveRequest: async function(updated) {
-      const { error } = await supabase.from('brisk_leave_requests').update(mapLeaveRequestToDb(updated)).eq('id', updated.id);
-      if (error) throw error;
+      // Optimistic in-memory update
       const idx = _leaveRequests.findIndex(r => r.id === updated.id);
       if (idx !== -1) _leaveRequests[idx] = { ..._leaveRequests[idx], ...updated };
+
+      // 1. Primary Strategy: Serverless Leave API (Bypasses RLS locks)
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/leave', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'decide',
+            id: updated.id,
+            status: updated.status
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.leaveRequest) {
+            const mapped = mapLeaveRequestFromDb(data.leaveRequest);
+            if (idx !== -1) _leaveRequests[idx] = { ..._leaveRequests[idx], ...mapped };
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless updateLeaveRequest notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
+      const { error } = await supabase.from('brisk_leave_requests').update(mapLeaveRequestToDb(updated)).eq('id', updated.id);
+      if (error) throw error;
     },
 
     saveSettings: async function(settings) {
