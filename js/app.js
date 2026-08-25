@@ -4027,30 +4027,9 @@ async function handleClockAction(action) {
 
   try {
     if (action === 'in') {
-      if (tc) return; // already clocked in
-
-      // Geofencing Check (Amcal Pharmacy Woy Woy: -33.4842, 151.3259)
-      try {
-        const position = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
-        });
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        
-        const WOY_WOY_LAT = -33.4842;
-        const WOY_WOY_LNG = 151.3259;
-        const ALLOWED_RADIUS = 0.005; // Roughly 500m
-        
-        const dist = Math.sqrt(Math.pow(lat - WOY_WOY_LAT, 2) + Math.pow(lng - WOY_WOY_LNG, 2));
-        
-        if (dist > ALLOWED_RADIUS) {
-          alert('Clock in denied: You must be near Amcal Pharmacy Woy Woy to clock in.');
-          return;
-        }
-        console.log(`Clocking in from Lat: ${lat}, Lng: ${lng}, Dist: ${dist}`);
-      } catch (err) {
-        alert('Geolocation is required to clock in. Please enable location services.');
-        return; // Block clock-in
+      if (tc) {
+        showToast('Already clocked in.', 'warning');
+        return;
       }
 
       tc = {
@@ -4064,16 +4043,19 @@ async function handleClockAction(action) {
         approvedBy: ''
       };
       await BriskDB.addTimecard(tc);
-      // Optimistically update local state so UI reflects instantly
-      state.timecards.push(tc);
+      showToast('Clocked in successfully!', 'success');
 
     } else if (action === 'out') {
-      if (!tc || tc.clockOut) return;
+      if (!tc || tc.clockOut) {
+        showToast('No active clock-in session found to clock out.', 'warning');
+        return;
+      }
       const lastBreak = tc.breaks && tc.breaks.length > 0 ? tc.breaks[tc.breaks.length - 1] : null;
       if (lastBreak && !lastBreak.end) lastBreak.end = nowISO;
       tc.clockOut = nowISO;
       tc.totalHours = calculateTimecardHours(tc);
       await BriskDB.updateTimecard(tc);
+      showToast('Clocked out successfully!', 'success');
 
     } else if (action === 'break-start' || action === 'break-start-lunch' || action === 'break-start-paid') {
       if (!tc || tc.clockOut) return;
@@ -4081,6 +4063,7 @@ async function handleClockAction(action) {
       const breakType = action === 'break-start-paid' ? 'paid_rest' : 'unpaid_lunch';
       tc.breaks.push({ start: nowISO, end: null, type: breakType });
       await BriskDB.updateTimecard(tc);
+      showToast(action === 'break-start-paid' ? 'Paid 10-min rest break started.' : '30-min unpaid meal break started.', 'info');
 
     } else if (action === 'break-end') {
       if (!tc || tc.clockOut) return;
@@ -4088,6 +4071,7 @@ async function handleClockAction(action) {
       if (lastBreak && !lastBreak.end) lastBreak.end = nowISO;
       tc.totalHours = calculateTimecardHours(tc);
       await BriskDB.updateTimecard(tc);
+      showToast('Break ended.', 'info');
     }
   } catch (err) {
     showToast('Clock action failed: ' + err.message, 'error');

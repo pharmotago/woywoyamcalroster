@@ -1320,37 +1320,96 @@ const BriskDB = (function() {
 
     addTimecard: async function(tc) {
       if (!tc.id) {
-        tc.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'temp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+        tc.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'tc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
       }
+
+      // Optimistic in-memory update
+      const existing = _timecards.findIndex(t => t.id === tc.id);
+      if (existing !== -1) _timecards[existing] = tc;
+      else _timecards.push(tc);
+
+      // 1. Primary Strategy: Serverless Timecard API
       try {
-        const { data, error } = await supabase.from('brisk_timecards').insert(mapTimecardToDb(tc)).select().maybeSingle();
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/timecard', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'upsert',
+            timecard: mapTimecardToDb(tc)
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.timecard) {
+            const mapped = mapTimecardFromDb(data.timecard);
+            const idx = _timecards.findIndex(t => t.id === mapped.id);
+            if (idx !== -1) _timecards[idx] = mapped;
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless addTimecard notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
+      try {
+        const { data, error } = await supabase.from('brisk_timecards').upsert([mapTimecardToDb(tc)]).select().maybeSingle();
         if (error) throw error;
         const mapped = mapTimecardFromDb(data || tc);
-        const existing = _timecards.findIndex(t => t.id === mapped.id);
-        if (existing !== -1) _timecards[existing] = mapped;
-        else _timecards.push(mapped);
+        const idx = _timecards.findIndex(t => t.id === mapped.id);
+        if (idx !== -1) _timecards[idx] = mapped;
         return mapped;
       } catch (err) {
         console.warn('[BriskDB] addTimecard offline fallback:', err);
-        const existing = _timecards.findIndex(t => t.id === tc.id);
-        if (existing !== -1) _timecards[existing] = tc;
-        else _timecards.push(tc);
         enqueueOfflineOperation('add', tc);
         return tc;
       }
     },
     updateTimecard: async function(updated) {
+      // Optimistic in-memory update
+      const idx = _timecards.findIndex(t => t.id === updated.id);
+      if (idx !== -1) _timecards[idx] = { ..._timecards[idx], ...updated };
+      else _timecards.push(updated);
+
+      // 1. Primary Strategy: Serverless Timecard API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/timecard', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'upsert',
+            timecard: mapTimecardToDb(updated)
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.timecard) {
+            const mapped = mapTimecardFromDb(data.timecard);
+            const curIdx = _timecards.findIndex(t => t.id === mapped.id);
+            if (curIdx !== -1) _timecards[curIdx] = mapped;
+            return;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless updateTimecard notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       try {
         const { error } = await supabase.from('brisk_timecards').update(mapTimecardToDb(updated)).eq('id', updated.id);
         if (error) throw error;
-        const idx = _timecards.findIndex(t => t.id === updated.id);
-        if (idx !== -1) _timecards[idx] = { ..._timecards[idx], ...updated };
-        else _timecards.push(updated);
       } catch (err) {
         console.warn('[BriskDB] updateTimecard offline fallback:', err);
-        const idx = _timecards.findIndex(t => t.id === updated.id);
-        if (idx !== -1) _timecards[idx] = { ..._timecards[idx], ...updated };
-        else _timecards.push(updated);
         enqueueOfflineOperation('update', updated);
       }
     },
