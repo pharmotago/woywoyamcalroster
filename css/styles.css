@@ -1576,12 +1576,69 @@ select.form-control option {
     -webkit-overflow-scrolling: touch;
   }
   .shift-list-scroll .data-table,
-  .timesheet-scroll .data-table,
-  .leave-list-scroll .data-table {
+  .timesheet-scroll .data-table {
     min-width: 0;
     width: 100%;
     table-layout: auto;
   }
+
+  /* Mobile Responsive Cards for Leave Requests */
+  .leave-list-scroll .data-table,
+  .leave-list-scroll .data-table thead,
+  .leave-list-scroll .data-table tbody,
+  .leave-list-scroll .data-table tr.leave-request-row,
+  .leave-list-scroll .data-table tr.leave-request-row td {
+    display: block !important;
+    width: 100% !important;
+  }
+  .leave-list-scroll .data-table thead {
+    display: none !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--border-glass) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: 12px !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+    white-space: normal !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td:last-child {
+    border-bottom: none !important;
+    padding-top: 10px !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td.leave-actions-cell {
+    justify-content: stretch !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td.leave-actions-cell .action-group {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .leave-list-scroll .data-table tr.leave-request-row td.leave-actions-cell button {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
   .data-table th,
   .data-table td {
     padding: 8px 6px !important;

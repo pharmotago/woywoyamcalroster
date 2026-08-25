@@ -4418,33 +4418,34 @@ function renderTimeOffPanel() {
     let actionsHtml = '';
 
     if (req.status === 'Pending') {
-      statusBadge = '<span class="badge badge-warning">Pending</span>';
+      statusBadge = '<span class="badge badge-warning" style="font-weight:700;">PENDING</span>';
       actionsHtml = `
-        <div class="action-group">
-        <button class="btn btn-success" style="padding: 4px 8px; font-size:11px;" onclick="decideLeaveRequest('${req.id}', 'Approved')">Approve</button>
-        <button class="btn btn-danger" style="padding: 4px 8px; font-size:11px;" onclick="decideLeaveRequest('${req.id}', 'Rejected')">Reject</button>
+        <div class="action-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-success" style="padding: 6px 12px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+          <button class="btn btn-danger" style="padding: 6px 12px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
         </div>
       `;
     } else if (req.status === 'Approved') {
-      statusBadge = '<span class="badge badge-success">Approved</span>';
-      actionsHtml = `<button class="btn btn-outline" style="padding: 4px 8px; font-size:11px;" onclick="decideLeaveRequest('${req.id}', 'Pending')">Set Pending</button>`;
+      statusBadge = '<span class="badge badge-success" style="font-weight:700;">APPROVED</span>';
+      actionsHtml = `<button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>`;
     } else {
-      statusBadge = '<span class="badge badge-danger">Rejected</span>';
-      actionsHtml = `<button class="btn btn-outline" style="padding: 4px 8px; font-size:11px;" onclick="decideLeaveRequest('${req.id}', 'Pending')">Set Pending</button>`;
+      statusBadge = '<span class="badge badge-danger" style="font-weight:700;">REJECTED</span>';
+      actionsHtml = `<button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>`;
     }
 
-    const certBadge = req.medicalCertSighted ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:9px; margin-top:3px; display:inline-block;"><i class="fa-solid fa-file-medical"></i> Cert Sighted</span>` : '';
+    const certBadge = req.medicalCertSighted ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; margin-top:4px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-medical"></i> Cert Sighted</span>` : '';
 
     const tr = document.createElement('tr');
+    tr.className = 'leave-request-row';
     tr.innerHTML = `
-      <td><strong>${empName}</strong></td>
-      <td>${req.startDate} ~ ${req.endDate}</td>
-      <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: normal;">
-        <div>${req.reason}</div>
+      <td data-label="Staff Name"><strong style="color:var(--text-primary); font-size:0.95rem;">${empName}</strong></td>
+      <td data-label="Period"><span style="color:var(--accent-gold); font-weight:600;">${req.startDate} ~ ${req.endDate}</span></td>
+      <td data-label="Reason" style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+        <div style="font-size:0.88rem; color:var(--text-secondary);">${req.reason || 'No reason provided'}</div>
         ${certBadge}
       </td>
-      <td>${statusBadge}</td>
-      ${isManager ? `<td><div style="display:flex; gap: 4px;">${actionsHtml}</div></td>` : ''}
+      <td data-label="Status">${statusBadge}</td>
+      ${isManager ? `<td data-label="Action" class="leave-actions-cell">${actionsHtml}</td>` : ''}
     `;
     tbody.appendChild(tr);
   });
@@ -4528,69 +4529,78 @@ async function decideLeaveRequest(reqId, decision) {
   const req = state.leaveRequests.find(r => r.id === reqId);
   if (!req) return;
 
-  req.status = decision;
-  await BriskDB.updateLeaveRequest(req);
-  const reqEmp = state.employees.find(e => e.id === req.employeeId);
-  if (typeof BriskDB.logAudit === 'function') {
-    BriskDB.logAudit('LEAVE_DECIDE', `Leave request for ${reqEmp ? reqEmp.name : req.employeeId} (${req.startDate} ~ ${req.endDate}) set to '${decision}'`, req.id);
-  }
+  try {
+    req.status = decision;
+    await BriskDB.updateLeaveRequest(req);
+    const reqEmp = state.employees.find(e => e.id === req.employeeId);
+    const empDisplayName = reqEmp ? reqEmp.name : 'Employee';
 
-  if (decision === 'Approved') {
-    const start = new Date(req.startDate + 'T00:00:00');
-    const end = new Date(req.endDate + 'T00:00:00');
-    start.setHours(0,0,0,0);
-    end.setHours(23,59,59,999);
-
-    const conflictingShifts = state.shifts.filter(s => {
-      if (s.employeeId !== req.employeeId) return false;
-      const sDate = new Date(s.date + 'T00:00:00');
-      sDate.setHours(0,0,0,0);
-      return sDate >= start && sDate <= end;
-    });
-
-    if (conflictingShifts.length > 0) {
-      try {
-        const updatedShifts = conflictingShifts.map(s => ({ ...s, employeeId: null }));
-        await BriskDB.batchUpdateShifts(updatedShifts);
-        
-        // Partial auto-schedule to fill the gaps using the leave's week
-        const targetWeekStart = getMondayOfCurrentWeek(new Date(req.startDate + 'T00:00:00'));
-        const targetWeekStr = formatDateISO(targetWeekStart);
-        // Refresh state.shifts to reflect the unassignments locally before running scheduler
-        state.shifts = state.shifts.map(s => {
-          if (updatedShifts.find(us => us.id === s.id)) return { ...s, employeeId: null };
-          return s;
-        });
-        const result = BriskScheduler.run(state.shifts, state.employees, state.leaveRequests, targetWeekStr, state.timecards, false);
-        
-        if (result.success && result.assignedCount > 0) {
-          const reAssignedShifts = result.shifts.filter(s => updatedShifts.find(us => us.id === s.id && s.employeeId !== null));
-          if (reAssignedShifts.length > 0) {
-             await BriskDB.batchUpdateShifts(reAssignedShifts);
-             showToast(`Automatically unassigned ${updatedShifts.length} conflicting shifts.\nAuto-scheduler was able to backfill ${reAssignedShifts.length} of them immediately!`, 'success');
-          } else {
-             showToast(`Automatically unassigned ${updatedShifts.length} conflicting shifts.\nCould not find available staff to auto-backfill them.`, 'success');
-          }
-        } else {
-          showToast(`Successfully unassigned ${updatedShifts.length} conflicting shifts.`, 'success');
-        }
-      } catch(err) {
-        console.error('Failed to unassign conflicting shifts:', err);
-        showToast('Failed to automatically unassign conflicting shifts.', 'error');
-      }
+    if (typeof BriskDB.logAudit === 'function') {
+      BriskDB.logAudit('LEAVE_DECIDE', `Leave request for ${empDisplayName} (${req.startDate} ~ ${req.endDate}) set to '${decision}'`, req.id);
     }
+
+    if (decision === 'Approved') {
+      showToast(`Leave request for ${empDisplayName} approved!`, 'success');
+      const start = new Date(req.startDate + 'T00:00:00');
+      const end = new Date(req.endDate + 'T00:00:00');
+      start.setHours(0,0,0,0);
+      end.setHours(23,59,59,999);
+
+      const conflictingShifts = state.shifts.filter(s => {
+        if (s.employeeId !== req.employeeId) return false;
+        const sDate = new Date(s.date + 'T00:00:00');
+        sDate.setHours(0,0,0,0);
+        return sDate >= start && sDate <= end;
+      });
+
+      if (conflictingShifts.length > 0) {
+        try {
+          const updatedShifts = conflictingShifts.map(s => ({ ...s, employeeId: null }));
+          await BriskDB.batchUpdateShifts(updatedShifts);
+          
+          // Partial auto-schedule to fill the gaps using the leave's week
+          const targetWeekStart = getMondayOfCurrentWeek(new Date(req.startDate + 'T00:00:00'));
+          const targetWeekStr = formatDateISO(targetWeekStart);
+          // Refresh state.shifts to reflect the unassignments locally before running scheduler
+          state.shifts = state.shifts.map(s => {
+            if (updatedShifts.find(us => us.id === s.id)) return { ...s, employeeId: null };
+            return s;
+          });
+          const result = BriskScheduler.run(state.shifts, state.employees, state.leaveRequests, targetWeekStr, state.timecards, false);
+          
+          if (result.success && result.assignedCount > 0) {
+            const reAssignedShifts = result.shifts.filter(s => updatedShifts.find(us => us.id === s.id && s.employeeId !== null));
+            if (reAssignedShifts.length > 0) {
+               await BriskDB.batchUpdateShifts(reAssignedShifts);
+               showToast(`Automatically unassigned ${updatedShifts.length} conflicting shifts.\nAuto-scheduler backfilled ${reAssignedShifts.length} shifts!`, 'success');
+            }
+          } else {
+            showToast(`Unassigned ${updatedShifts.length} conflicting shifts for ${empDisplayName}.`, 'info');
+          }
+        } catch(err) {
+          console.error('Failed to unassign conflicting shifts:', err);
+        }
+      }
+    } else if (decision === 'Rejected') {
+      showToast(`Leave request for ${empDisplayName} rejected.`, 'info');
+    } else {
+      showToast(`Leave request for ${empDisplayName} set to pending.`, 'info');
+    }
+
+    loadDataFromState();
+    renderTimeOffPanel();
+
+    // Trigger instant background sync to match server state parity
+    BriskDB.syncFromServer()
+      .then(() => {
+        loadDataFromState();
+        renderTimeOffPanel();
+      })
+      .catch(e => console.warn('Background sync after decide leave failed:', e));
+  } catch (err) {
+    console.error('Failed to decide leave request:', err);
+    showToast('Failed to update leave status: ' + (err.message || err), 'error');
   }
-
-  loadDataFromState();
-  renderTimeOffPanel();
-
-  // Trigger instant background sync to match server state parity
-  BriskDB.syncFromServer()
-    .then(() => {
-      loadDataFromState();
-      renderTimeOffPanel();
-    })
-    .catch(e => console.warn('Background sync after decide leave failed:', e));
 }
 
 
@@ -5195,6 +5205,7 @@ window.onAwardClassificationChange = onAwardClassificationChange;
 // Removed moved binding: applyJuniorUpgrade
 window.unapproveTimecard = unapproveTimecard;
 window.approveTimecard = approveTimecard;
+window.decideLeaveRequest = decideLeaveRequest;
 window.openLocumRemittanceModal = openLocumRemittanceModal;
 window.closeLocumRemittanceModal = closeLocumRemittanceModal;
 window.printLocumRemittance = printLocumRemittance;
