@@ -1264,7 +1264,7 @@ function switchTab(tabName) {
   renderActivePanel();
   
   // Close sidebar on mobile after navigating
-  if (window.innerWidth <= 768) {
+  if (window.innerWidth <= 1024) {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('mobile-overlay');
     if (sidebar) sidebar.classList.remove('open');

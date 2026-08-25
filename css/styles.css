@@ -933,7 +933,7 @@ body.theme-light {
   min-width: 0;
   width: 100%;
 }
-@media screen and (: 1024px) {
+@media screen and (max-width: 1024px) {
   .timeclock-layout {
     grid-template-columns: 1fr;
     width: 100%;
@@ -1063,7 +1063,7 @@ body.theme-light {
   min-width: 0;
   width: 100%;
 }
-@media screen and (: 1024px) {
+@media screen and (max-width: 1024px) {
   .timeoff-layout {
     grid-template-columns: 1fr;
     width: 100%;
@@ -1077,7 +1077,7 @@ body.theme-light {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 1.5rem;
 }
-@media screen and (: 769px) {
+@media screen and (min-width: 769px) {
   .settings-grid .flex-2 {
     grid-column: span 2;
   }
@@ -1400,19 +1400,16 @@ select.form-control option {
   pointer-events: auto;
 }
 
-/* Tablet and Smaller */
+/* Tablet and Mobile Screens */
 @media screen and (max-width: 1024px) {
   .dashboard-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
   .dashboard-split {
     flex-direction: column;
     gap: 16px;
   }
-}
 
-/* Mobile Screens */
-@media screen and (max-width: 768px) {
   .card-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1820,7 +1817,7 @@ select.form-control option {
   display: none;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .desktop-only-grid {
     display: none !important;
   }
@@ -1961,7 +1958,7 @@ select.form-control option {
   opacity: 1;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .shift-card .btn-icon {
     opacity: 1;
   }
@@ -1972,7 +1969,7 @@ select.form-control option {
   display: none;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .mobile-bottom-nav {
     display: flex !important;
     position: fixed;
@@ -2232,7 +2229,7 @@ select.form-control option {
    COMPACT & SMALL SCREEN SCROLLABILITY SUITE (Mobile, Tablet, Small Laptops)
    ========================================================================== */
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
   .ai-ops-hero {
     padding: 1.1rem;
     margin-bottom: 1rem;
