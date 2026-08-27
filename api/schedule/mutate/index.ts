@@ -38,14 +38,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return jsonRes(res, { error: 'Method not allowed' }, 405);
 
   try {
+    // =========================================================================
+    // 0. AUTHENTICATION & CALLER IDENTITY VERIFICATION (C-1 Guard)
+    // =========================================================================
+    const authHeader = (req.headers.authorization as string) || '';
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return jsonRes(res, { error: 'Unauthorized: Missing or invalid Authorization Bearer header.' }, 401);
+    }
+
+    const token = authHeader.substring(7).trim();
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) {
+      return jsonRes(res, { error: 'Unauthorized: Invalid or expired session token.' }, 401);
+    }
+
+    // Look up caller profile and employee mapping in database
+    const callerEmail = (user.email || '').toLowerCase().trim();
+    const { data: userProfile } = await supabaseAdmin
+      .from('brisk_users')
+      .select('id, employee_id, role, name, email')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    let callerEmployeeId = userProfile?.employee_id || null;
+    if (!callerEmployeeId && callerEmail) {
+      const { data: empMatch } = await supabaseAdmin
+        .from('brisk_employees')
+        .select('id')
+        .eq('email', callerEmail)
+        .maybeSingle();
+      if (empMatch) callerEmployeeId = empMatch.id;
+    }
+
+    const callerRole = (userProfile?.role || (user.user_metadata?.role as string) || '').toLowerCase();
+    const callerName = (userProfile?.name || (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || '').toLowerCase();
+    
+    // Strict manager check
+    const MANAGER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy'];
+    const isManagerOrOwner =
+      ['owner', 'admin', 'manager', 'partner'].includes(callerRole) ||
+      MANAGER_NAMES.some(m => callerName.includes(m) || callerEmail.includes(m.split(' ')[0]));
+
     const body = req.body || {};
     const entity = body.entity || body.type;
     const action = body.action;
 
     // =========================================================================
-    // 1. ENTITY: EMPLOYEE
+    // 1. ENTITY: EMPLOYEE (Manager Only)
     // =========================================================================
     if (entity === 'employee') {
+      if (!isManagerOrOwner) {
+        return jsonRes(res, { error: 'Forbidden: Only managers and owners can manage employees.' }, 403);
+      }
+
       const empData = body.employee || body.data || body;
 
       if (action === 'create') {
@@ -97,9 +142,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // =========================================================================
-    // 2. ENTITY: SHIFT
+    // 2. ENTITY: SHIFT (Manager Only)
     // =========================================================================
     if (entity === 'shift') {
+      if (!isManagerOrOwner) {
+        return jsonRes(res, { error: 'Forbidden: Only managers and owners can modify shifts.' }, 403);
+      }
+
       const s = body.shift || body.data || body;
 
       if (action === 'create') {
@@ -170,12 +219,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // =========================================================================
-    // 3. ENTITY: LEAVE
+    // 3. ENTITY: LEAVE (C-2 Guard)
     // =========================================================================
     if (entity === 'leave') {
       const lrData = body.leaveRequest || body.data || body;
 
+      // C-2: Only managers can approve or reject leave requests
       if (action === 'decide') {
+        if (!isManagerOrOwner) {
+          return jsonRes(res, { error: 'Forbidden: Only managers can approve or reject leave requests.' }, 403);
+        }
+
         const targetId = body.id || lrData.id;
         const status = body.status || lrData.status;
         if (!targetId || !status) return jsonRes(res, { error: 'ID and status required.' }, 400);
@@ -210,13 +264,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (action === 'create') {
+        const targetEmpId = lrData.employee_id || lrData.employeeId;
+        
+        // If not manager, employee can ONLY submit leave for their own employee ID
+        if (!isManagerOrOwner) {
+          if (!callerEmployeeId || (targetEmpId && targetEmpId !== callerEmployeeId)) {
+            return jsonRes(res, { error: 'Forbidden: Employees can only submit leave requests for themselves.' }, 403);
+          }
+        }
+
         const newObj = {
           id: lrData.id || `lr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-          employee_id: lrData.employee_id || lrData.employeeId,
+          employee_id: isManagerOrOwner ? (targetEmpId || callerEmployeeId) : callerEmployeeId,
           start_date: lrData.start_date || lrData.startDate,
           end_date: lrData.end_date || lrData.endDate,
           reason: lrData.reason || '',
-          status: lrData.status || 'Pending'
+          status: isManagerOrOwner ? (lrData.status || 'Pending') : 'Pending' // Employees cannot auto-approve
         };
 
         const { data: inserted, error: insertErr } = await supabaseAdmin
@@ -231,33 +294,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // =========================================================================
-    // 4. ENTITY: TIMECARD
+    // 4. ENTITY: TIMECARD (C-3 & C-5 Guard)
     // =========================================================================
     if (entity === 'timecard') {
       const tcData = body.timecard || body.data || body;
 
-      if (action === 'upsert' || action === 'add' || action === 'update') {
-        const obj: Record<string, unknown> = {
-          id: tcData.id || body.id || `tc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-          employee_id: tcData.employee_id || tcData.employeeId,
-          date: tcData.date,
-          clock_in: tcData.clock_in || tcData.clockIn || null,
-          clock_out: tcData.clock_out || tcData.clockOut || null,
-          breaks: tcData.breaks || [],
-          total_hours: tcData.total_hours != null ? tcData.total_hours : (tcData.totalHours != null ? tcData.totalHours : 0),
-          approved: !!(tcData.approved),
-          approved_by: tcData.approved_by || tcData.approvedBy || null
-        };
-
-        const { data, error } = await supabaseAdmin.from('brisk_timecards').upsert([obj]).select().maybeSingle();
-        if (error) throw error;
-        return jsonRes(res, { success: true, timecard: data }, 200);
-      }
-
+      // C-3: Only managers can approve or unapprove timecards
       if (action === 'approve' || action === 'unapprove') {
+        if (!isManagerOrOwner) {
+          return jsonRes(res, { error: 'Forbidden: Only managers can approve or unapprove timesheets.' }, 403);
+        }
+
         const targetId = body.id || tcData.id;
         const isApproved = action === 'approve';
-        const approvedBy = body.approvedBy || body.approved_by || 'Manager';
+        const approvedBy = body.approvedBy || body.approved_by || callerName || 'Manager';
 
         const { data, error } = await supabaseAdmin
           .from('brisk_timecards')
@@ -266,6 +316,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .select()
           .maybeSingle();
 
+        if (error) throw error;
+        return jsonRes(res, { success: true, timecard: data }, 200);
+      }
+
+      if (action === 'upsert' || action === 'add' || action === 'update') {
+        const targetEmpId = tcData.employee_id || tcData.employeeId;
+
+        // C-5: If not manager, employee can ONLY clock/upsert timecards for their own employee ID
+        if (!isManagerOrOwner) {
+          if (!callerEmployeeId || (targetEmpId && targetEmpId !== callerEmployeeId)) {
+            return jsonRes(res, { error: 'Forbidden: Employees can only record timecards for themselves.' }, 403);
+          }
+        }
+
+        const obj: Record<string, unknown> = {
+          id: tcData.id || body.id || `tc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          employee_id: isManagerOrOwner ? (targetEmpId || callerEmployeeId) : callerEmployeeId,
+          date: tcData.date,
+          clock_in: tcData.clock_in || tcData.clockIn || null,
+          clock_out: tcData.clock_out || tcData.clockOut || null,
+          breaks: tcData.breaks || [],
+          total_hours: tcData.total_hours != null ? tcData.total_hours : (tcData.totalHours != null ? tcData.totalHours : 0),
+          approved: isManagerOrOwner ? !!(tcData.approved) : false, // Employees cannot self-approve
+          approved_by: isManagerOrOwner ? (tcData.approved_by || tcData.approvedBy || null) : null
+        };
+
+        const { data, error } = await supabaseAdmin.from('brisk_timecards').upsert([obj]).select().maybeSingle();
         if (error) throw error;
         return jsonRes(res, { success: true, timecard: data }, 200);
       }
@@ -278,3 +355,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonRes(res, { error: msg }, 500);
   }
 }
+

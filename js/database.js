@@ -93,6 +93,15 @@ const BriskDB = (function() {
     return localSession ? localSession.token : '';
   }
 
+  async function getMutateAuthToken() {
+    try {
+      const freshToken = await getValidToken();
+      if (freshToken) return freshToken;
+    } catch (e) {}
+    const localSession = getSession();
+    return localSession ? localSession.token : '';
+  }
+
   function setSession(session) {
     if (session) {
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
@@ -1196,12 +1205,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'employee',
@@ -1253,12 +1262,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'employee',
@@ -1298,12 +1307,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'employee',
@@ -1331,12 +1340,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'shift',
@@ -1384,12 +1393,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'shift',
@@ -1459,12 +1468,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'shift',
@@ -1504,12 +1513,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'shift',
@@ -1545,12 +1554,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'shift',
@@ -1594,12 +1603,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'timecard',
@@ -1643,12 +1652,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'timecard',
@@ -1688,12 +1697,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'leave',
@@ -1732,12 +1741,12 @@ const BriskDB = (function() {
 
       // 1. Primary Strategy: Unified Serverless Mutate API (Bypasses RLS locks)
       try {
-        const session = getSession() || {};
+        const token = await getMutateAuthToken();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+            'Authorization': token ? ('Bearer ' + token) : ''
           },
           body: JSON.stringify({
             entity: 'leave',
@@ -1768,6 +1777,21 @@ const BriskDB = (function() {
       _settings = { ..._settings, ...settings };
       const { error } = await supabase.from('brisk_settings').upsert(mapSettingsToDb(_settings));
       if (error) console.error('Failed to save settings to Supabase:', error);
+    },
+
+    exportData: function() {
+      const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) ? window.state.currentUser : null;
+      if (!currentUser || (currentUser.role !== 'owner' && currentUser.role !== 'admin' && currentUser.role !== 'manager')) {
+        return JSON.stringify({ error: 'Permission denied: Manager access required.' });
+      }
+      return JSON.stringify({
+        employees: _employees,
+        shifts: [..._shifts, ..._historicalShifts],
+        timecards: [..._timecards, ..._historicalTimecards],
+        leaveRequests: [..._leaveRequests, ..._historicalLeaveRequests],
+        settings: _settings,
+        exportedAt: new Date().toISOString()
+      }, null, 2);
     },
 
     supabase: supabase,

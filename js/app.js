@@ -1077,10 +1077,33 @@ async function bootApplication() {
 
 
 function loadDataFromState() {
-  state.employees = BriskDB.getEmployees();
+  const isManager = hasManagerPermissions(state.currentUser);
+  const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
+
+  const rawEmployees = BriskDB.getEmployees();
+  if (isManager) {
+    state.employees = rawEmployees;
+    state.leaveRequests = BriskDB.getLeaveRequests();
+    state.timecards = BriskDB.getTimecards();
+  } else {
+    // C-4 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone)
+    state.employees = rawEmployees.map(e => {
+      if (e.id === myEmpId) return { ...e };
+      return {
+        ...e,
+        hourlyRate: 0,
+        awardLevel: '',
+        dob: undefined,
+        phone: undefined,
+        availability: { ...(e.availability || {}) }
+      };
+    });
+    // C-4 Guard: Non-managers only access their own leave requests in memory
+    state.leaveRequests = BriskDB.getLeaveRequests().filter(lr => lr.employeeId === myEmpId);
+    // C-4 Guard: Non-managers only access their own timecards in memory
+    state.timecards = BriskDB.getTimecards().filter(tc => tc.employeeId === myEmpId);
+  }
   state.shifts = BriskDB.getShifts();
-  state.timecards = BriskDB.getTimecards();
-  state.leaveRequests = BriskDB.getLeaveRequests();
   state.settings = BriskDB.getSettings();
   state.roles = BriskDB.getRoles();
   state.positions = BriskDB.getPositions();
@@ -4030,8 +4053,15 @@ function updateTerminalStatus() {
 }
 
 async function handleClockAction(action) {
-  const empId = document.getElementById('clock-emp-select').value;
-  if (!empId) return;
+  const isManager = hasManagerPermissions(state.currentUser);
+  const empId = isManager
+    ? document.getElementById('clock-emp-select').value
+    : (state.currentUser?.employeeId || state.currentUser?.id);
+
+  if (!empId) {
+    showToast('Employee profile not identified for timeclock.', 'error');
+    return;
+  }
 
   // Disable all clock buttons immediately to prevent double-tap
   const btns = ['btn-clock-in','btn-clock-out','btn-start-lunch','btn-start-paid-break','btn-end-break'];
@@ -4276,6 +4306,11 @@ function checkConsecutiveDaysWorked(employeeId, targetDateStr, excludeShiftId) {
 }
 
 async function approveTimecard(tcId) {
+  const isManagerOrOwner = hasManagerPermissions(state.currentUser);
+  if (!isManagerOrOwner) {
+    showToast('Permission denied: Only managers can approve timecards.', 'error');
+    return;
+  }
   const tc = state.timecards.find(t => t.id === tcId);
   if (!tc) return;
 
@@ -4553,6 +4588,11 @@ async function handleLeaveSubmit(event) {
 }
 
 async function decideLeaveRequest(reqId, decision) {
+  const isManagerOrOwner = hasManagerPermissions(state.currentUser);
+  if (!isManagerOrOwner) {
+    showToast('Permission denied: Only managers can approve or reject leave requests.', 'error');
+    return;
+  }
   const req = state.leaveRequests.find(r => r.id === reqId);
   if (!req) return;
 
