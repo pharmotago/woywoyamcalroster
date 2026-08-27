@@ -38,7 +38,7 @@
     "vercel:deploy": "vercel --prod --yes --cwd .",
     "deploy:prod": "powershell -Command \"Move-Item -Path node_modules -Destination ..\\temp_brisk_nm -Force -ErrorAction SilentlyContinue; Move-Item -Path _node_modules_tmp -Destination ..\\temp_brisk_nm -Force -ErrorAction SilentlyContinue; try { vercel --prod --yes } finally { Move-Item -Path ..\\temp_brisk_nm -Destination node_modules -Force -ErrorAction SilentlyContinue }\"",
     "deploy": "git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
-    "commit:mobile": "git add css/styles.css index.html js/app.js js/database.js api/schedule/leave/index.ts api/schedule/timecard/index.ts api/schedule/employee/index.ts api/schedule/shift/index.ts sw.js scripts/check_app.js package.json && git commit -m \"fix(employee-shift): v9.1.9 - serverless employee & shift persistence with instant UI sync [auto]\" && git push origin main && vercel --prod --yes --cwd .",
+    "commit:mobile": "git add -A && git commit -m \"fix(mutate-api): v9.1.9 - unified serverless mutate endpoint with instant UI sync [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "sync-deploy": "git reset HEAD~1 && git add ../.gitignore ../AGENTS.md . && git commit -m \"fix: resilient login profile recovery, v8.5.1 cache-busting, and mcp api [auto]\" && git push origin main",
     "cap:sync": "cap sync",
     "cap:add:ios": "cap add ios",

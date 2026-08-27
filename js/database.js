@@ -1194,16 +1194,17 @@ const BriskDB = (function() {
       const newEmp = { ...emp, active: true };
       const dbObj = mapEmployeeToDb(newEmp);
 
-      // 1. Primary Strategy: Serverless Employee API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/employee', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'employee',
             action: 'create',
             employee: dbObj
           })
@@ -1250,16 +1251,17 @@ const BriskDB = (function() {
       if (idx !== -1) _employees[idx] = { ..._employees[idx], ...mappedLocal };
       else _employees.push(mappedLocal);
 
-      // 1. Primary Strategy: Serverless Employee API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/employee', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'employee',
             action: 'update',
             employee: dbObj
           })
@@ -1294,16 +1296,17 @@ const BriskDB = (function() {
       const idx = _employees.findIndex(e => e.id === id);
       if (idx !== -1) _employees[idx].active = false;
 
-      // 1. Primary Strategy: Serverless Employee API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/employee', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'employee',
             action: 'delete',
             id
           })
@@ -1326,16 +1329,17 @@ const BriskDB = (function() {
     addShift: async function(shift) {
       const dbObj = mapShiftToDb(shift);
 
-      // 1. Primary Strategy: Serverless Shift API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/shift', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'shift',
             action: 'create',
             shift: dbObj
           })
@@ -1378,16 +1382,17 @@ const BriskDB = (function() {
       if (!shiftsArray || shiftsArray.length === 0) return [];
       let mappedShifts = shiftsArray.map(mapShiftToDb);
 
-      // 1. Primary Strategy: Serverless Shift API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/shift', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'shift',
             action: 'batchInsert',
             shifts: mappedShifts
           })
@@ -1452,16 +1457,17 @@ const BriskDB = (function() {
       const idx = _shifts.findIndex(s => s.id === updated.id);
       if (idx !== -1) _shifts[idx] = { ..._shifts[idx], ...updated };
 
-      // 1. Primary Strategy: Serverless Shift API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/shift', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'shift',
             action: 'update',
             shift: dbObj
           })
@@ -1496,16 +1502,17 @@ const BriskDB = (function() {
     deleteShift: async function(id) {
       _shifts = _shifts.filter(s => s.id !== id);
 
-      // 1. Primary Strategy: Serverless Shift API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/shift', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'shift',
             action: 'delete',
             id
           })
@@ -1536,16 +1543,17 @@ const BriskDB = (function() {
         else _shifts.push(mapped);
       });
 
-      // 1. Primary Strategy: Serverless Shift API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/shift', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'shift',
             action: 'batchUpdate',
             shifts: mappedShifts
           })
@@ -1584,16 +1592,17 @@ const BriskDB = (function() {
       if (existing !== -1) _timecards[existing] = tc;
       else _timecards.push(tc);
 
-      // 1. Primary Strategy: Serverless Timecard API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/timecard', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'timecard',
             action: 'upsert',
             timecard: mapTimecardToDb(tc)
           })
@@ -1632,16 +1641,17 @@ const BriskDB = (function() {
       if (idx !== -1) _timecards[idx] = { ..._timecards[idx], ...updated };
       else _timecards.push(updated);
 
-      // 1. Primary Strategy: Serverless Timecard API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/timecard', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'timecard',
             action: 'upsert',
             timecard: mapTimecardToDb(updated)
           })
@@ -1676,16 +1686,17 @@ const BriskDB = (function() {
         newLr.id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'lr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
       }
 
-      // 1. Primary Strategy: Serverless Leave API
+      // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/leave', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'leave',
             action: 'create',
             leaveRequest: mapLeaveRequestToDb(newLr)
           })
@@ -1719,16 +1730,17 @@ const BriskDB = (function() {
       const idx = _leaveRequests.findIndex(r => r.id === updated.id);
       if (idx !== -1) _leaveRequests[idx] = { ..._leaveRequests[idx], ...updated };
 
-      // 1. Primary Strategy: Serverless Leave API (Bypasses RLS locks)
+      // 1. Primary Strategy: Unified Serverless Mutate API (Bypasses RLS locks)
       try {
         const session = getSession() || {};
-        const res = await fetch('/api/schedule/leave', {
+        const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': session.token ? ('Bearer ' + session.token) : ''
           },
           body: JSON.stringify({
+            entity: 'leave',
             action: 'decide',
             id: updated.id,
             status: updated.status
