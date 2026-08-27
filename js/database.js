@@ -1193,6 +1193,38 @@ const BriskDB = (function() {
     addEmployee: async function(emp) {
       const newEmp = { ...emp, active: true };
       const dbObj = mapEmployeeToDb(newEmp);
+
+      // 1. Primary Strategy: Serverless Employee API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/employee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'create',
+            employee: dbObj
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.employee) {
+            const mapped = mapEmployeeFromDb(data.employee);
+            const idx = _employees.findIndex(e => e.id === mapped.id);
+            if (idx !== -1) _employees[idx] = mapped;
+            else _employees.push(mapped);
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless addEmployee notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { data, error } = await supabase.from('brisk_employees').insert(dbObj).select().maybeSingle();
       if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
         delete dbObj.award_level;
@@ -1202,10 +1234,52 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-      return mapEmployeeFromDb(data);
+      const mapped = mapEmployeeFromDb(data);
+      const idx = _employees.findIndex(e => e.id === mapped.id);
+      if (idx !== -1) _employees[idx] = mapped;
+      else _employees.push(mapped);
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+      return mapped;
     },
     updateEmployee: async function(updated) {
       const dbObj = mapEmployeeToDb(updated);
+
+      // Optimistic in-memory update
+      const mappedLocal = mapEmployeeFromDb({ ...dbObj, id: updated.id });
+      const idx = _employees.findIndex(e => e.id === updated.id);
+      if (idx !== -1) _employees[idx] = { ..._employees[idx], ...mappedLocal };
+      else _employees.push(mappedLocal);
+
+      // 1. Primary Strategy: Serverless Employee API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/employee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'update',
+            employee: dbObj
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.employee) {
+            const mapped = mapEmployeeFromDb(data.employee);
+            const curIdx = _employees.findIndex(e => e.id === mapped.id);
+            if (curIdx !== -1) _employees[curIdx] = mapped;
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless updateEmployee notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { error } = await supabase.from('brisk_employees').update(dbObj).eq('id', updated.id);
       if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
         delete dbObj.award_level;
@@ -1214,14 +1288,75 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
     },
     deleteEmployee: async function(id) {
+      const idx = _employees.findIndex(e => e.id === id);
+      if (idx !== -1) _employees[idx].active = false;
+
+      // 1. Primary Strategy: Serverless Employee API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/employee', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'delete',
+            id
+          })
+        });
+
+        if (res.ok) {
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+          return;
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless deleteEmployee notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Fallback
       const { error } = await supabase.from('brisk_employees').update({ active: false }).eq('id', id);
       if (error) throw error;
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
     },
 
     addShift: async function(shift) {
       const dbObj = mapShiftToDb(shift);
+
+      // 1. Primary Strategy: Serverless Shift API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'create',
+            shift: dbObj
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.shift) {
+            const mapped = mapShiftFromDb(data.shift);
+            const existing = _shifts.findIndex(s => s.id === mapped.id);
+            if (existing !== -1) _shifts[existing] = mapped;
+            else _shifts.push(mapped);
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless addShift notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { data, error } = await supabase.from('brisk_shifts').insert(dbObj).select().maybeSingle();
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         delete dbObj.status;
@@ -1236,11 +1371,46 @@ const BriskDB = (function() {
       const existing = _shifts.findIndex(s => s.id === mapped.id);
       if (existing !== -1) _shifts[existing] = mapped;
       else _shifts.push(mapped);
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return mapped;
     },
     addShiftsBatch: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return [];
       let mappedShifts = shiftsArray.map(mapShiftToDb);
+
+      // 1. Primary Strategy: Serverless Shift API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'batchInsert',
+            shifts: mappedShifts
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.shifts)) {
+            const inserted = data.shifts.map(mapShiftFromDb);
+            inserted.forEach(mapped => {
+              const existing = _shifts.findIndex(s => s.id === mapped.id);
+              if (existing !== -1) _shifts[existing] = mapped;
+              else _shifts.push(mapped);
+            });
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            return inserted;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless addShiftsBatch notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { data, error } = await supabase.from('brisk_shifts').insert(mappedShifts).select();
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         mappedShifts.forEach(s => {
@@ -1272,10 +1442,45 @@ const BriskDB = (function() {
         if (existing !== -1) _shifts[existing] = mapped;
         else _shifts.push(mapped);
       });
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return inserted;
     },
     updateShift: async function(updated) {
       const dbObj = mapShiftToDb(updated);
+
+      // Optimistic in-memory update
+      const idx = _shifts.findIndex(s => s.id === updated.id);
+      if (idx !== -1) _shifts[idx] = { ..._shifts[idx], ...updated };
+
+      // 1. Primary Strategy: Serverless Shift API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'update',
+            shift: dbObj
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.shift) {
+            const mapped = mapShiftFromDb(data.shift);
+            if (idx !== -1) _shifts[idx] = mapped;
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            return mapped;
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless updateShift notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { error } = await supabase.from('brisk_shifts').update(dbObj).eq('id', updated.id);
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         delete dbObj.status;
@@ -1285,18 +1490,76 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-      const idx = _shifts.findIndex(s => s.id === updated.id);
-      if (idx !== -1) _shifts[idx] = { ..._shifts[idx], ...updated };
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return updated;
     },
     deleteShift: async function(id) {
+      _shifts = _shifts.filter(s => s.id !== id);
+
+      // 1. Primary Strategy: Serverless Shift API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'delete',
+            id
+          })
+        });
+
+        if (res.ok) {
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+          return;
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless deleteShift notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Fallback
       const { error } = await supabase.from('brisk_shifts').delete().eq('id', id);
       if (error) throw error;
-      _shifts = _shifts.filter(s => s.id !== id);
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
     },
     batchUpdateShifts: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return;
       const mappedShifts = shiftsArray.map(mapShiftToDb);
+
+      // Optimistic in-memory update
+      shiftsArray.forEach(updated => {
+        const mapped = mapShiftFromDb(mapShiftToDb(updated));
+        const idx = _shifts.findIndex(s => s.id === updated.id);
+        if (idx !== -1) _shifts[idx] = { ..._shifts[idx], ...mapped };
+        else _shifts.push(mapped);
+      });
+
+      // 1. Primary Strategy: Serverless Shift API
+      try {
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/shift', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          },
+          body: JSON.stringify({
+            action: 'batchUpdate',
+            shifts: mappedShifts
+          })
+        });
+
+        if (res.ok) {
+          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+          return;
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless batchUpdateShifts notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
       let { error } = await supabase.from('brisk_shifts').upsert(mappedShifts);
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         mappedShifts.forEach(s => {
@@ -1308,14 +1571,7 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-
-      // Optimistic in-memory update
-      shiftsArray.forEach(updated => {
-        const mapped = mapShiftFromDb(mapShiftToDb(updated));
-        const idx = _shifts.findIndex(s => s.id === updated.id);
-        if (idx !== -1) _shifts[idx] = { ..._shifts[idx], ...mapped };
-        else _shifts.push(mapped);
-      });
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
     },
 
     addTimecard: async function(tc) {

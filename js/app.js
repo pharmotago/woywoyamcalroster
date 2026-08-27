@@ -3818,6 +3818,7 @@ async function handleEmployeeSubmit(event) {
     }
   }
 
+  const existingEmp = id ? state.employees.find(e => e.id === id) : null;
   const employeeData = {
     name,
     role,
@@ -3829,7 +3830,8 @@ async function handleEmployeeSubmit(event) {
     employmentType,
     dob: dob,
     certificates: window.currentEditingCertificates || [],
-    availability
+    availability,
+    active: existingEmp ? existingEmp.active : true
   };
 
   try {
@@ -3849,6 +3851,9 @@ async function handleEmployeeSubmit(event) {
     }
     closeEmployeeModal();
     loadDataFromState();
+    renderEmployeesList();
+    renderScheduler();
+    calculateLaborCostForecast();
   } catch (err) {
     showToast('Failed to save employee.', 'error');
   } finally {
