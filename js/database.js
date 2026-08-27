@@ -1973,6 +1973,10 @@ const BriskDB = (function() {
     },
 
     getAuditLogs: function() {
+      const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) ? window.state.currentUser : null;
+      if (!currentUser || (typeof window.hasManagerPermissions === 'function' && !window.hasManagerPermissions(currentUser))) {
+        return [];
+      }
       try {
         const raw = localStorage.getItem('brisk_audit_logs');
         return raw ? JSON.parse(raw) : [];
@@ -1982,6 +1986,10 @@ const BriskDB = (function() {
     },
 
     clearAuditLogs: function() {
+      const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) ? window.state.currentUser : null;
+      if (!currentUser || (typeof window.hasManagerPermissions === 'function' && !window.hasManagerPermissions(currentUser))) {
+        return false;
+      }
       try {
         localStorage.removeItem('brisk_audit_logs');
         return true;

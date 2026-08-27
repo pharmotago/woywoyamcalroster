@@ -753,6 +753,22 @@ async function resolveAndRestoreAuthSession() {
           }
         } catch (pErr) {}
 
+        // Fallback: If employee_id is still not resolved, query brisk_employees by email
+        if (!empId) {
+          try {
+            const { data: empRecord } = await BriskDB.supabase
+              .from('brisk_employees')
+              .select('id, name, role')
+              .eq('email', cleanEmail)
+              .maybeSingle();
+            if (empRecord) {
+              empId = empRecord.id;
+              empName = empRecord.name || empName;
+              if (!isWhitelistedLeader && empRecord.role) resolvedRole = empRecord.role;
+            }
+          } catch (e) {}
+        }
+
         const restoredSession = {
           email: cleanEmail,
           role: resolvedRole,
@@ -1065,17 +1081,25 @@ async function bootApplication() {
 
 function loadDataFromState() {
   const isManager = hasManagerPermissions(state.currentUser);
-  const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
-
   const rawEmployees = BriskDB.getEmployees();
+
+  let myEmpId = state.currentUser?.employeeId || null;
+  if (!myEmpId && state.currentUser?.email) {
+    const matched = rawEmployees.find(e => e.email && e.email.toLowerCase().trim() === state.currentUser.email.toLowerCase().trim());
+    if (matched) {
+      myEmpId = matched.id;
+      state.currentUser.employeeId = matched.id;
+    }
+  }
+
   if (isManager) {
     state.employees = rawEmployees;
     state.leaveRequests = BriskDB.getLeaveRequests();
     state.timecards = BriskDB.getTimecards();
   } else {
-    // C-4 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone)
+    // C-4 & M-1 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone)
     state.employees = rawEmployees.map(e => {
-      if (e.id === myEmpId) return { ...e };
+      if (myEmpId && e.id === myEmpId) return { ...e };
       return {
         ...e,
         hourlyRate: 0,
@@ -1085,10 +1109,14 @@ function loadDataFromState() {
         availability: { ...(e.availability || {}) }
       };
     });
-    // C-4 Guard: Non-managers only access their own leave requests in memory
-    state.leaveRequests = BriskDB.getLeaveRequests().filter(lr => lr.employeeId === myEmpId);
-    // C-4 Guard: Non-managers only access their own timecards in memory
-    state.timecards = BriskDB.getTimecards().filter(tc => tc.employeeId === myEmpId);
+    // C-4 & M-1 Guard: Non-managers only access their own leave requests in memory
+    state.leaveRequests = myEmpId
+      ? BriskDB.getLeaveRequests().filter(lr => lr.employeeId && lr.employeeId === myEmpId)
+      : [];
+    // C-4 & M-1 Guard: Non-managers only access their own timecards in memory
+    state.timecards = myEmpId
+      ? BriskDB.getTimecards().filter(tc => tc.employeeId && tc.employeeId === myEmpId)
+      : [];
   }
   state.shifts = BriskDB.getShifts();
   state.settings = BriskDB.getSettings();
@@ -1940,7 +1968,13 @@ function renderDashboard() {
     const empName = emp ? emp.name : '<span class="text-danger">Unassigned</span>';
     
     let statusBadge = '<span class="badge">Not Clocked In</span>';
-    if (emp) {
+    const isManager = hasManagerPermissions(state.currentUser);
+    const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
+
+    if (!isManager && shift.employeeId !== myEmpId) {
+      // M-3 Guard: Protect real-time minute-by-minute attendance privacy of colleagues for employee role
+      statusBadge = '<span class="badge" style="background:rgba(255,255,255,0.06); color:var(--text-secondary); border:1px solid var(--border-glass);">Scheduled</span>';
+    } else if (emp) {
       const tc = state.timecards.find(t => t.employeeId === emp.id && t.date === todayStr);
       if (tc) {
         if (tc.clockOut) {
@@ -4563,8 +4597,9 @@ async function handleLeaveSubmit(event) {
     return;
   }
 
-  // Conflict validation: Prevent leave requests on days where the employee is already scheduled to work
-  const hasConflictingShifts = state.shifts.some(s => {
+  // Conflict validation: Prevent leave requests on days where the employee is already scheduled to work (fresh lookup)
+  const freshShifts = (typeof BriskDB !== 'undefined' && BriskDB.getShifts) ? BriskDB.getShifts() : (state.shifts || []);
+  const hasConflictingShifts = freshShifts.some(s => {
     if (s.employeeId !== empId) return false;
     return s.date >= start && s.date <= end;
   });
