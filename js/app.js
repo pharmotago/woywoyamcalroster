@@ -4407,7 +4407,16 @@ function renderTimeOffPanel() {
       state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
   }
 
-  const requests = [...state.leaveRequests];
+  const isManager = hasManagerPermissions(state.currentUser);
+
+  // Employees only see their own leave requests; managers/owners see all
+  let requests;
+  if (isManager) {
+    requests = [...state.leaveRequests];
+  } else {
+    const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
+    requests = state.leaveRequests.filter(lr => lr.employeeId === myEmpId);
+  }
   
   requests.sort((a,b) => {
     if (a.status === 'Pending' && b.status !== 'Pending') return -1;
@@ -4415,8 +4424,6 @@ function renderTimeOffPanel() {
     return b.startDate.localeCompare(a.startDate);
   });
 
-  const isManager = hasManagerPermissions(state.currentUser);
-  
   // Hide Decisions header column if employee
   const thDec = document.querySelector('.manager-action-th');
   if (thDec) {
@@ -4425,7 +4432,8 @@ function renderTimeOffPanel() {
   }
 
   if (requests.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${isManager ? 5 : 4}" style="padding: 0;"><div class="empty-state"><i class="fa-solid fa-plane-slash"></i><h4>No leave requests</h4><p>There are no leave requests filed at this time.</p></div></td></tr>`;
+    const emptyMsg = isManager ? 'There are no leave requests filed at this time.' : 'You have no leave requests. Submit one using the form above.';
+    tbody.innerHTML = `<tr><td colspan="${isManager ? 5 : 4}" style="padding: 0;"><div class="empty-state"><i class="fa-solid fa-plane-slash"></i><h4>No leave requests</h4><p>${emptyMsg}</p></div></td></tr>`;
     return;
   }
 
