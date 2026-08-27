@@ -400,6 +400,10 @@ async function saveDailySalesTargets(targets) {
 window.saveDailySalesTargets = saveDailySalesTargets;
 
 function openSalesTargetsModal() {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Sales Forecast & Wage KPI is only available to Managers and Owners.', 'warning');
+    return;
+  }
   const modal = document.getElementById('modal-sales-kpi');
   if (!modal) return;
 
@@ -1167,6 +1171,12 @@ if (localStorage.getItem('theme') === 'light') {
 function applyRoleAccessControl() {
   const isManager = hasManagerPermissions(state.currentUser);
 
+  // Set global body class for CSS-level privacy lockdown
+  if (document.body) {
+    document.body.classList.toggle('role-employee', !isManager);
+    document.body.classList.toggle('role-manager', isManager);
+  }
+
   const menuEmployees = document.getElementById('menu-employees');
   const menuReports = document.getElementById('menu-reports');
   const menuSettings = document.getElementById('menu-settings');
@@ -1181,14 +1191,23 @@ function applyRoleAccessControl() {
   const clockEmpSelect = document.getElementById('clock-emp-select');
   const adminPanel = document.getElementById('timeclock-admin-panel');
   const leaveSelectorGroup = document.getElementById('leave-employee-selector-group');
+  const costBadge = document.getElementById('labor-cost-forecast-badge');
+  const wageBadge = document.getElementById('wage-ratio-forecast-badge');
+  const repKpiCard = document.getElementById('rep-wage-kpi-card');
+  const repReconcileCard = document.getElementById('rep-sales-reconcile-card');
 
   if (!isManager) {
-    // Hide manager menus, show staff actions
+    // Hide manager menus & financial metrics, show staff actions
     if (menuEmployees) menuEmployees.classList.add('hide');
     if (menuReports) menuReports.classList.add('hide');
     if (menuSettings) menuSettings.classList.add('hide');
     if (schedulerControls) schedulerControls.classList.add('hide');
     if (quickActionsCard) quickActionsCard.classList.add('hide');
+    if (costBadge) { costBadge.classList.add('hide'); costBadge.style.display = 'none'; }
+    if (wageBadge) { wageBadge.classList.add('hide'); wageBadge.style.display = 'none'; }
+    if (repKpiCard) { repKpiCard.classList.add('hide'); repKpiCard.style.display = 'none'; }
+    if (repReconcileCard) { repReconcileCard.classList.add('hide'); repReconcileCard.style.display = 'none'; }
+
     if (staffActionsCard) staffActionsCard.classList.remove('hide');
     if (personalSummaryCard) personalSummaryCard.classList.remove('hide');
     if (nextShiftCard) nextShiftCard.classList.remove('hide');
@@ -1203,12 +1222,17 @@ function applyRoleAccessControl() {
       clockEmpSelect.disabled = true;
     }
   } else {
-    // Show manager menus, hide staff actions
+    // Show manager menus & financial metrics, hide staff actions
     if (menuEmployees) menuEmployees.classList.remove('hide');
     if (menuReports) menuReports.classList.remove('hide');
     if (menuSettings) menuSettings.classList.remove('hide');
     if (schedulerControls) schedulerControls.classList.remove('hide');
     if (quickActionsCard) quickActionsCard.classList.remove('hide');
+    if (costBadge) { costBadge.classList.remove('hide'); costBadge.style.display = 'inline-flex'; }
+    if (wageBadge) { wageBadge.classList.remove('hide'); wageBadge.style.display = 'inline-flex'; }
+    if (repKpiCard) { repKpiCard.classList.remove('hide'); repKpiCard.style.display = 'flex'; }
+    if (repReconcileCard) { repReconcileCard.classList.remove('hide'); repReconcileCard.style.display = 'block'; }
+
     if (staffActionsCard) staffActionsCard.classList.add('hide');
     if (personalSummaryCard) personalSummaryCard.classList.add('hide');
     if (nextShiftCard) nextShiftCard.classList.add('hide');
@@ -1226,6 +1250,12 @@ function applyRoleAccessControl() {
 
 // Switch tabs routing
 function switchTab(tabName) {
+  const isManager = hasManagerPermissions(state.currentUser);
+  if (!isManager && (tabName === 'employees' || tabName === 'reports' || tabName === 'settings')) {
+    showToast('Access restricted: Only Owners and Managers can access this panel.', 'warning');
+    tabName = 'dashboard';
+  }
+
   state.currentTab = tabName;
 
   // Toggle active class and ARIA selected on menu buttons

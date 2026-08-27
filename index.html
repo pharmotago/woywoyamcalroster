@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=9.1.9">
+  <link rel="stylesheet" href="css/styles.css?v=9.2.0">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.1.9)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.0)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -503,10 +503,10 @@
             <button class="btn btn-outline" onclick="window.print()" title="Print weekly roster">
               <i class="fa-solid fa-print"></i> Print
             </button>
-            <div id="labor-cost-forecast-badge" style="background: rgba(168, 85, 247, 0.1); border: 1px solid var(--primary-color); border-radius: 20px; font-weight: bold;">
+            <div id="labor-cost-forecast-badge" class="manager-only" style="display: none; background: rgba(168, 85, 247, 0.1); border: 1px solid var(--primary-color); border-radius: 20px; font-weight: bold;">
               <i class="fa-solid fa-chart-line text-primary"></i> <span id="labor-cost-forecast-value">$0.00</span>
             </div>
-            <div id="wage-ratio-forecast-badge" onclick="openSalesTargetsModal()" style="background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" title="Click to input Daily Sales and analyze Wage % of Sales KPI">
+            <div id="wage-ratio-forecast-badge" class="manager-only" onclick="openSalesTargetsModal()" style="display: none; background: rgba(16, 185, 129, 0.12); border: 1px solid #10b981; border-radius: 20px; font-weight: bold; cursor: pointer; transition: all 0.2s ease;" title="Click to input Daily Sales and analyze Wage % of Sales KPI">
               <i class="fa-solid fa-chart-pie text-neon"></i> <span id="wage-ratio-forecast-text">Wage KPI: <strong id="wage-ratio-forecast-value">0.0%</strong></span>
             </div>
           </div>
@@ -2030,13 +2030,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=9.1.9"></script>
+  <script type="module" src="js/app.js?v=9.2.0"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=9.1.9')
+        navigator.serviceWorker.register('sw.js?v=9.2.0')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load

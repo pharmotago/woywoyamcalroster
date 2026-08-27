@@ -2833,3 +2833,22 @@ select.form-control option {
     height: auto !important;
   }
 }
+
+/* ==========================================================================
+   STRICT ROLE-BASED ACCESS CONTROL & FINANCIAL DATA PRIVACY
+   ========================================================================== */
+body.role-employee .manager-only,
+body.role-employee .wage-val,
+body.role-employee #labor-cost-forecast-badge,
+body.role-employee #wage-ratio-forecast-badge,
+body.role-employee #rep-wage-kpi-card,
+body.role-employee #rep-sales-reconcile-card,
+body.role-employee #menu-employees,
+body.role-employee #menu-reports,
+body.role-employee #menu-settings,
+body.role-employee #scheduler-manager-controls,
+body.role-employee .staff-reorder-btn-group,
+body.role-employee .cell-add-btn,
+body.role-employee #timeclock-admin-panel {
+  display: none !important;
+}
