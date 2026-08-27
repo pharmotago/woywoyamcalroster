@@ -325,6 +325,21 @@ const BriskDB = (function() {
   }
 
   function enqueueOfflineOperation(type, timecard) {
+    if (!timecard || !timecard.id) return;
+
+    // H-7 Guard: Enforce identity & approved lock for non-managers
+    const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) ? window.state.currentUser : null;
+    const isManager = currentUser && (typeof window.hasManagerPermissions === 'function' ? window.hasManagerPermissions(currentUser) : false);
+    if (!isManager && currentUser && currentUser.employeeId) {
+      if (timecard.employeeId && timecard.employeeId !== currentUser.employeeId) {
+        console.warn('[BriskDB] Unauthorized offline timecard injection blocked for employeeId:', timecard.employeeId);
+        return;
+      }
+      timecard.employeeId = currentUser.employeeId;
+      timecard.approved = false;
+      timecard.approvedBy = null;
+    }
+
     const existingIdx = _offlineQueue.findIndex(op => op.timecard.id === timecard.id);
     if (existingIdx !== -1) {
       const existingOp = _offlineQueue[existingIdx];
@@ -1005,9 +1020,14 @@ const BriskDB = (function() {
     }
   }
 
-  // Generate Invite
+  // Generate Invite (H-6 Guard)
   async function apiGenerateInvite(email, role) {
     try {
+      const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) ? window.state.currentUser : null;
+      if (!currentUser || (typeof window.hasManagerPermissions === 'function' && !window.hasManagerPermissions(currentUser))) {
+        return { error: 'Permission denied: Only managers and owners can generate invitation links.' };
+      }
+
       const normalizedEmail = (email || '').toLowerCase().trim();
       const requestedRole = role || 'employee';
       // Normalize role for brisk_invitations table check constraint ('manager' or 'employee')

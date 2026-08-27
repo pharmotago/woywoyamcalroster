@@ -579,6 +579,9 @@ async function handleSaveSalesTargets(event) {
 window.handleSaveSalesTargets = handleSaveSalesTargets;
 
 function renderSettingsPanel() {
+  if (!hasManagerPermissions(state.currentUser)) {
+    return;
+  }
   const DEFAULT_TRADING_HOURS = {
     '0': { open: '08:30', close: '17:30', closed: false },
     '1': { open: '08:00', close: '20:00', closed: false },
@@ -687,28 +690,17 @@ function hasManagerPermissions(user = state.currentUser) {
   const email = String(user.email || '').toLowerCase().trim();
   const role = String(user.role || '').toLowerCase().trim();
 
-  // 1. Explicit Named Whitelist Leaders:
-  // Peter Kim, Glen Kanawati, Katherine Nguyen, Vicki Duffy
-  const WHITELIST = [
-    'peter kim', 'peter', 'pharmotago',
-    'glen kanawati', 'glen', 'glenkanawati',
-    'katherine nguyen', 'katherine', 'nguyek',
-    'vicki duffy', 'vicki', 'vicky duffy', 'vicky', 'vickilorraine75'
-  ];
-  for (const w of WHITELIST) {
-    if (name.includes(w) || email.includes(w.replace(/\s+/g, ''))) {
-      return true;
-    }
+  // 1. Explicit Named Whitelist Leaders (Exact Full Name or Verified Emails)
+  const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
+  const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
+  
+  if (WHITELIST_NAMES.includes(name) || WHITELIST_EMAILS.includes(email) || email.startsWith('peter.kim') || email.startsWith('glen.kanawati') || email.startsWith('pharmotago')) {
+    return true;
   }
 
-  // 2. Explicit Management Roles:
-  if (
-    role.includes('owner') ||
-    role.includes('admin') ||
-    role.includes('manager') ||
-    role.includes('lead') ||
-    role.includes('partner')
-  ) {
+  // 2. Explicit Management Roles (Exact Match)
+  const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+  if (VALID_MANAGER_ROLES.includes(role)) {
     return true;
   }
 
@@ -716,13 +708,8 @@ function hasManagerPermissions(user = state.currentUser) {
   if (user.employeeId && state.employees && state.employees.length > 0) {
     const emp = state.employees.find(e => e.id === user.employeeId);
     if (emp && emp.role) {
-      const empRole = emp.role.toLowerCase();
-      if (
-        empRole.includes('owner') ||
-        empRole.includes('manager') ||
-        empRole.includes('partner') ||
-        empRole.includes('admin')
-      ) {
+      const empRole = emp.role.toLowerCase().trim();
+      if (VALID_MANAGER_ROLES.includes(empRole)) {
         return true;
       }
     }
@@ -3537,9 +3524,16 @@ window.triggerClearWeek = triggerClearWeek;
 
 function renderEmployeesList() {
   const container = document.getElementById('employees-cards-container');
+  if (!container) return;
   container.innerHTML = '';
 
-  const searchVal = document.getElementById('employee-search-input').value.toLowerCase();
+  if (!hasManagerPermissions(state.currentUser)) {
+    container.innerHTML = `<div style="grid-column: 1/-1;"><div class="empty-state"><i class="fa-solid fa-lock"></i><h4>Access Restricted</h4><p>Employee management is restricted to Managers and Owners.</p></div></div>`;
+    return;
+  }
+
+  const searchInput = document.getElementById('employee-search-input');
+  const searchVal = searchInput ? searchInput.value.toLowerCase() : '';
   const orderedActive = getOrderedActiveEmployees(true);
   
   const filtered = orderedActive.filter(emp => {
@@ -3731,6 +3725,10 @@ window.onAwardClassificationChange = onAwardClassificationChange;
    ========================================================================== */
 
 function openAddEmployeeModal() {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only Owners and Managers can add new employees.', 'warning');
+    return;
+  }
   document.getElementById('employee-modal-title').textContent = 'Register New Employee';
   document.getElementById('employee-id').value = '';
   document.getElementById('emp-name').value = '';
@@ -3780,6 +3778,10 @@ function openAddEmployeeModal() {
 }
 
 function openEditEmployeeModal(empId) {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only Owners and Managers can edit employee profiles.', 'warning');
+    return;
+  }
   const emp = state.employees.find(e => e.id === empId);
   if (!emp) return;
 
@@ -4351,6 +4353,10 @@ async function unapproveTimecard(tcId) {
 }
 
 function openTimecardEditModal(tcId) {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only managers can edit timesheet records.', 'warning');
+    return;
+  }
   const tc = state.timecards.find(t => t.id === tcId);
   if (!tc) return;
 
@@ -4379,6 +4385,10 @@ function closeTimecardEditModal() {
 }
 
 async function saveTimecardEdit() {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only managers can edit timesheets.', 'error');
+    return;
+  }
   const tcId = document.getElementById('timecard-edit-id').value;
   const inVal = document.getElementById('timecard-edit-in').value;
   const outVal = document.getElementById('timecard-edit-out').value;
@@ -4436,20 +4446,33 @@ function renderTimeOffPanel() {
   if (startDateInput) startDateInput.setAttribute('min', todayISO);
   if (endDateInput) endDateInput.setAttribute('min', todayISO);
 
-  const leaveSelect = document.getElementById('leave-emp-select');
-  if (leaveSelect) {
-    leaveSelect.innerHTML = '<option value="">Select Employee</option>' + 
-      state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
-  }
-
   const isManager = hasManagerPermissions(state.currentUser);
+  const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
+
+  const leaveSelect = document.getElementById('leave-emp-select');
+  const leaveSelectorGroup = document.getElementById('leave-employee-selector-group');
+  if (leaveSelect) {
+    if (isManager) {
+      if (leaveSelectorGroup) leaveSelectorGroup.classList.remove('hide');
+      leaveSelect.disabled = false;
+      leaveSelect.innerHTML = '<option value="">Select Employee</option>' + 
+        state.employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    } else {
+      if (leaveSelectorGroup) leaveSelectorGroup.classList.add('hide');
+      leaveSelect.disabled = true;
+      const myEmp = state.employees.find(e => e.id === myEmpId);
+      leaveSelect.innerHTML = myEmp 
+        ? `<option value="${myEmp.id}">${myEmp.name}</option>`
+        : `<option value="${myEmpId || ''}">My Profile</option>`;
+      leaveSelect.value = myEmpId || '';
+    }
+  }
 
   // Employees only see their own leave requests; managers/owners see all
   let requests;
   if (isManager) {
     requests = [...state.leaveRequests];
   } else {
-    const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
     requests = state.leaveRequests.filter(lr => lr.employeeId === myEmpId);
   }
   
@@ -4517,9 +4540,11 @@ async function handleLeaveSubmit(event) {
   event.preventDefault();
 
   // If employee role, automatically set empId to current user employeeId
-  const empId = !hasManagerPermissions(state.currentUser) ? state.currentUser.employeeId : document.getElementById('leave-emp-select').value;
+  const isManager = hasManagerPermissions(state.currentUser);
+  const myEmpId = state.currentUser?.employeeId || state.currentUser?.id;
+  const empId = isManager ? document.getElementById('leave-emp-select').value : myEmpId;
   if (!empId) {
-    showToast('Please select an employee for the leave request.', 'error');
+    showToast('Employee profile not identified for leave request.', 'error');
     return;
   }
   const start = document.getElementById('leave-start-date').value;
