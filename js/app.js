@@ -1081,15 +1081,23 @@ async function bootApplication() {
 
 
 function loadDataFromState() {
-  const isManager = hasManagerPermissions(state.currentUser);
+  const session = (typeof BriskDB !== 'undefined' && typeof BriskDB.getSession === 'function') ? BriskDB.getSession() : null;
+  const user = state.currentUser || session;
+  const sessionRole = String(user?.role || '').toLowerCase().trim();
+  const sessionEmail = String(user?.email || '').toLowerCase().trim();
+  const isManager = hasManagerPermissions(user) ||
+    ['owner', 'manager', 'admin', 'partner', 'managing pharmacist', 'pharmacist manager'].includes(sessionRole) ||
+    ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'].includes(sessionEmail) ||
+    sessionEmail.startsWith('pharmotago');
+
   const rawEmployees = BriskDB.getEmployees();
 
-  let myEmpId = state.currentUser?.employeeId || null;
-  if (!myEmpId && state.currentUser?.email) {
-    const matched = rawEmployees.find(e => e.email && e.email.toLowerCase().trim() === state.currentUser.email.toLowerCase().trim());
+  let myEmpId = user?.employeeId || null;
+  if (!myEmpId && user?.email) {
+    const matched = rawEmployees.find(e => e.email && e.email.toLowerCase().trim() === user.email.toLowerCase().trim());
     if (matched) {
       myEmpId = matched.id;
-      state.currentUser.employeeId = matched.id;
+      if (state.currentUser) state.currentUser.employeeId = matched.id;
     }
   }
 

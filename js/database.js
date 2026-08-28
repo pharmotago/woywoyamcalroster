@@ -156,7 +156,7 @@ const BriskDB = (function() {
       email: emp.email,
       role: emp.role,
       phone: emp.phone,
-      hourlyRate: parseFloat(emp.hourly_rate || 0) || 0,
+      hourlyRate: (emp.hourly_rate != null && !isNaN(parseFloat(emp.hourly_rate))) ? parseFloat(emp.hourly_rate) : (emp.hourly_rate === null ? undefined : 0),
       maxHours: parseInt(emp.max_hours || 38) || 38,
       awardLevel: emp.award_level || emp.awardLevel || 'custom',
       employmentType: emp.employment_type || emp.employmentType || 'permanent',
@@ -360,12 +360,31 @@ const BriskDB = (function() {
   }
 
   function getRealtimeSecurityContext() {
-    const currentUser = (typeof window !== 'undefined' && window.state?.currentUser) ? window.state.currentUser : null;
-    const isManager = typeof window !== 'undefined' && typeof window.hasManagerPermissions === 'function'
-      ? window.hasManagerPermissions(currentUser)
-      : false;
-    const myEmpId = currentUser?.employeeId || null;
-    return { currentUser, isManager, myEmpId };
+    const session = getSession();
+    const currentUser = (typeof window !== 'undefined' && window.state?.currentUser) ? window.state.currentUser : session;
+    let isManager = false;
+    if (typeof window !== 'undefined' && typeof window.hasManagerPermissions === 'function') {
+      isManager = window.hasManagerPermissions(currentUser);
+    }
+    if (!isManager && (currentUser || session)) {
+      const u = currentUser || session;
+      const role = String(u?.role || '').toLowerCase().trim();
+      const email = String(u?.email || '').toLowerCase().trim();
+      const name = String(u?.name || '').toLowerCase().trim();
+      const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
+      const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
+      const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+      if (
+        WHITELIST_NAMES.includes(name) ||
+        WHITELIST_EMAILS.includes(email) ||
+        email.startsWith('pharmotago') ||
+        VALID_MANAGER_ROLES.includes(role)
+      ) {
+        isManager = true;
+      }
+    }
+    const myEmpId = currentUser?.employeeId || session?.employeeId || null;
+    return { currentUser: currentUser || session, isManager, myEmpId };
   }
 
   function assertManagerPermissionForFallback() {
@@ -475,8 +494,16 @@ const BriskDB = (function() {
         const mappedNew = mapEmployeeFromDb(newRec);
         if (mappedNew) {
           const { isManager } = getRealtimeSecurityContext();
+          const existing = _employees.find(e => e.id === mappedNew.id);
           if (!isManager) {
-            delete mappedNew.hourlyRate;
+            // Security: strip sensitive fields for non-managers
+            // But preserve hourlyRate from existing in-memory value to prevent
+            // realtime timing race from wiping the rate just set by manager save
+            if (existing && existing.hourlyRate != null) {
+              mappedNew.hourlyRate = existing.hourlyRate;
+            } else {
+              delete mappedNew.hourlyRate;
+            }
             delete mappedNew.dob;
             delete mappedNew.phone;
           }
@@ -484,7 +511,9 @@ const BriskDB = (function() {
             if (!_employees.some(e => e.id === mappedNew.id)) _employees.push(mappedNew);
           } else if (eventType === 'UPDATE') {
             const idx = _employees.findIndex(e => e.id === mappedNew.id);
-            if (idx !== -1) _employees[idx] = mappedNew;
+            // Use merge (spread) instead of full replace to prevent undefined fields
+            // from wiping correctly-set values (e.g. hourlyRate) in memory
+            if (idx !== -1) _employees[idx] = { ..._employees[idx], ...mappedNew };
             else _employees.push(mappedNew);
           }
           window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
@@ -1351,9 +1380,10 @@ const BriskDB = (function() {
           if (data && data.success && data.employee) {
             const mapped = mapEmployeeFromDb(data.employee);
             const curIdx = _employees.findIndex(e => e.id === mapped.id);
-            if (curIdx !== -1) _employees[curIdx] = mapped;
+            if (curIdx !== -1) _employees[curIdx] = { ..._employees[curIdx], ...mapped };
+            else _employees.push(mapped);
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
-            return mapped;
+            return _employees[curIdx !== -1 ? curIdx : _employees.length - 1];
           }
         }
       } catch (apiErr) {
