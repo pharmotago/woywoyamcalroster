@@ -74,10 +74,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const callerName = (userProfile?.name || (user.user_metadata?.name as string) || (user.user_metadata?.full_name as string) || '').toLowerCase();
     
     // Strict manager check
-    const MANAGER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy'];
+    const MANAGER_NAMES_EXACT = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
+    const MANAGER_EMAILS_EXACT = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
     const isManagerOrOwner =
-      ['owner', 'admin', 'manager', 'partner'].includes(callerRole) ||
-      MANAGER_NAMES.some(m => callerName.includes(m) || callerEmail.includes(m.split(' ')[0]));
+      ['owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager'].includes(callerRole) ||
+      MANAGER_EMAILS_EXACT.includes(callerEmail) ||
+      MANAGER_NAMES_EXACT.includes(callerName.trim()) ||
+      callerEmail.startsWith('pharmotago@');
 
     const body = req.body || {};
     const entity = body.entity || body.type;
@@ -232,7 +235,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const targetId = body.id || lrData.id;
         const status = body.status || lrData.status;
-        if (!targetId || !status) return jsonRes(res, { error: 'ID and status required.' }, 400);
+        const VALID_STATUSES = ['Pending', 'Approved', 'Rejected'];
+        if (!targetId || !status || !VALID_STATUSES.includes(status)) {
+          return jsonRes(res, { error: 'Valid ID and status (Pending, Approved, Rejected) required.' }, 400);
+        }
 
         const { data: updatedLr, error: updateErr } = await supabaseAdmin
           .from('brisk_leave_requests')

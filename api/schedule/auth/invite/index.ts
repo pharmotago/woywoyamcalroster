@@ -100,9 +100,7 @@ async function sendInviteEmail(toEmail: string, code: string, inviteUrl: string,
   };
 
   try {
-    console.log('SMTP Config:', { host: smtpHost, port: smtpPort, user: smtpUser, passLength: smtpPass.length });
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
     return { sent: true, messageId: info.messageId };
   } catch (err: any) {
     console.error('Failed to send invite email:', err.message, err.code, err.response);

@@ -359,6 +359,22 @@ const BriskDB = (function() {
     }
   }
 
+  function getRealtimeSecurityContext() {
+    const currentUser = (typeof window !== 'undefined' && window.state?.currentUser) ? window.state.currentUser : null;
+    const isManager = typeof window !== 'undefined' && typeof window.hasManagerPermissions === 'function'
+      ? window.hasManagerPermissions(currentUser)
+      : false;
+    const myEmpId = currentUser?.employeeId || null;
+    return { currentUser, isManager, myEmpId };
+  }
+
+  function assertManagerPermissionForFallback() {
+    const { isManager } = getRealtimeSecurityContext();
+    if (!isManager) {
+      throw new Error('Permission denied: Only managers and owners can perform this operation.');
+    }
+  }
+
   let _isProcessingQueue = false;
   async function processOfflineQueue() {
     if (_offlineQueue.length === 0 || _isProcessingQueue) return;
@@ -368,24 +384,37 @@ const BriskDB = (function() {
     
     _isProcessingQueue = true;
     try {
-      console.log(`[BriskDB] Processing ${_offlineQueue.length} offline operations...`);
       const queueToProcess = [..._offlineQueue];
       
       for (const op of queueToProcess) {
         try {
-          if (op.type === 'add') {
-            const { error } = await supabase.from('brisk_timecards').insert(mapTimecardToDb(op.timecard));
-            if (error) throw error;
-          } else if (op.type === 'update') {
-            const { error } = await supabase.from('brisk_timecards').update(mapTimecardToDb(op.timecard)).eq('id', op.timecard.id);
-            if (error) throw error;
+          const token = await getMutateAuthToken();
+          if (token) {
+            const res = await fetch('/api/schedule/mutate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({
+                entity: 'timecard',
+                action: 'upsert',
+                timecard: mapTimecardToDb(op.timecard)
+              })
+            });
+            if (!res.ok) {
+              const errJson = await res.json().catch(() => ({}));
+              throw new Error(errJson.error || `HTTP ${res.status}`);
+            }
+          } else {
+            break;
           }
           
           // Remove successfully processed operation
           _offlineQueue = _offlineQueue.filter(item => item.timecard.id !== op.timecard.id);
           saveOfflineQueue();
         } catch (err) {
-          console.error('[BriskDB] Failed to sync offline operation:', err);
+          console.warn('[BriskDB] Offline timecard sync will retry:', err?.message || err);
           break; // retry on next interval
         }
       }
@@ -445,6 +474,12 @@ const BriskDB = (function() {
 
         const mappedNew = mapEmployeeFromDb(newRec);
         if (mappedNew) {
+          const { isManager } = getRealtimeSecurityContext();
+          if (!isManager) {
+            delete mappedNew.hourlyRate;
+            delete mappedNew.dob;
+            delete mappedNew.phone;
+          }
           if (eventType === 'INSERT') {
             if (!_employees.some(e => e.id === mappedNew.id)) _employees.push(mappedNew);
           } else if (eventType === 'UPDATE') {
@@ -497,6 +532,10 @@ const BriskDB = (function() {
         }
         const mappedNew = mapTimecardFromDb(newRec);
         if (mappedNew) {
+          const { isManager, myEmpId } = getRealtimeSecurityContext();
+          // Non-managers should only keep their own timecards in memory
+          if (!isManager && myEmpId && mappedNew.employeeId !== myEmpId) return;
+
           if (eventType === 'INSERT') {
             if (!_timecards.some(t => t.id === mappedNew.id)) _timecards.push(mappedNew);
           } else if (eventType === 'UPDATE') {
@@ -523,6 +562,10 @@ const BriskDB = (function() {
         }
         const mappedNew = mapLeaveRequestFromDb(newRec);
         if (mappedNew) {
+          const { isManager, myEmpId } = getRealtimeSecurityContext();
+          // Non-managers should only keep their own leave requests in memory
+          if (!isManager && myEmpId && mappedNew.employeeId !== myEmpId) return;
+
           if (eventType === 'INSERT') {
             if (!_leaveRequests.some(l => l.id === mappedNew.id)) _leaveRequests.push(mappedNew);
           } else if (eventType === 'UPDATE') {
@@ -1171,6 +1214,7 @@ const BriskDB = (function() {
     getRoles: () => _roles.length > 0 ? _roles : DEFAULT_ROLES,
     getPositions: () => _positions.length > 0 ? _positions : DEFAULT_POSITIONS,
     addPosition: async function(name) {
+      assertManagerPermissionForFallback();
       const newPos = { id: 'pos_' + Date.now(), name };
       _positions.push(newPos);
       _positions.sort((a,b) => a.name.localeCompare(b.name));
@@ -1180,6 +1224,7 @@ const BriskDB = (function() {
       return newPos;
     },
     updatePosition: async function(updated) {
+      assertManagerPermissionForFallback();
       const idx = _positions.findIndex(p => p.id === updated.id);
       if (idx !== -1) {
         _positions[idx] = { ..._positions[idx], ...updated };
@@ -1190,11 +1235,13 @@ const BriskDB = (function() {
       await createOrUpdateSystemRolesInDb(_roles, _positions);
     },
     deletePosition: async function(id) {
+      assertManagerPermissionForFallback();
       _positions = _positions.filter(p => p.id !== id);
       localStorage.setItem('brisk_positions', JSON.stringify(_positions));
       await createOrUpdateSystemRolesInDb(_roles, _positions);
     },
     addRole: async function(role) {
+      assertManagerPermissionForFallback();
       const newRole = { id: 'role_' + Date.now(), ...role };
       _roles.push(newRole);
       _roles.sort((a,b) => a.name.localeCompare(b.name));
@@ -1204,6 +1251,7 @@ const BriskDB = (function() {
       return newRole;
     },
     updateRole: async function(updated) {
+      assertManagerPermissionForFallback();
       const idx = _roles.findIndex(r => r.id === updated.id);
       if (idx !== -1) {
         _roles[idx] = { ..._roles[idx], ...updated };
@@ -1214,6 +1262,7 @@ const BriskDB = (function() {
       await createOrUpdateSystemRolesInDb(_roles, _positions);
     },
     deleteRole: async function(id) {
+      assertManagerPermissionForFallback();
       _roles = _roles.filter(r => r.id !== id);
       localStorage.setItem('brisk_roles', JSON.stringify(_roles));
       await createOrUpdateSystemRolesInDb(_roles, _positions);
@@ -1255,6 +1304,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { data, error } = await supabase.from('brisk_employees').insert(dbObj).select().maybeSingle();
       if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
         delete dbObj.award_level;
@@ -1311,6 +1361,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { error } = await supabase.from('brisk_employees').update(dbObj).eq('id', updated.id);
       if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
         delete dbObj.award_level;
@@ -1350,6 +1401,7 @@ const BriskDB = (function() {
       }
 
       // 2. Fallback
+      assertManagerPermissionForFallback();
       const { error } = await supabase.from('brisk_employees').update({ active: false }).eq('id', id);
       if (error) throw error;
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
@@ -1390,6 +1442,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { data, error } = await supabase.from('brisk_shifts').insert(dbObj).select().maybeSingle();
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         delete dbObj.status;
@@ -1445,6 +1498,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { data, error } = await supabase.from('brisk_shifts').insert(mappedShifts).select();
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         mappedShifts.forEach(s => {
@@ -1516,6 +1570,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { error } = await supabase.from('brisk_shifts').update(dbObj).eq('id', updated.id);
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         delete dbObj.status;
@@ -1556,6 +1611,7 @@ const BriskDB = (function() {
       }
 
       // 2. Fallback
+      assertManagerPermissionForFallback();
       const { error } = await supabase.from('brisk_shifts').delete().eq('id', id);
       if (error) throw error;
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
@@ -1597,6 +1653,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       let { error } = await supabase.from('brisk_shifts').upsert(mappedShifts);
       if (error && (error.message.includes('status') || error.message.includes('unpaid_meal_mins') || error.message.includes('color') || error.code === 'PGRST204')) {
         mappedShifts.forEach(s => {
@@ -1746,6 +1803,10 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      const { isManager, myEmpId } = getRealtimeSecurityContext();
+      if (!isManager && (!myEmpId || newLr.employeeId !== myEmpId)) {
+        throw new Error('Permission denied: Employees can only submit leave requests for themselves.');
+      }
       const { data, error } = await supabase.from('brisk_leave_requests').insert(mapLeaveRequestToDb(newLr)).select().maybeSingle();
       if (error) throw error;
       const mapped = mapLeaveRequestFromDb(data || newLr);
@@ -1789,6 +1850,7 @@ const BriskDB = (function() {
       }
 
       // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
       const { error } = await supabase.from('brisk_leave_requests').update(mapLeaveRequestToDb(updated)).eq('id', updated.id);
       if (error) throw error;
     },

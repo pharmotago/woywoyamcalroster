@@ -694,7 +694,8 @@ function hasManagerPermissions(user = state.currentUser) {
   const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
   const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
   
-  if (WHITELIST_NAMES.includes(name) || WHITELIST_EMAILS.includes(email) || email.startsWith('peter.kim') || email.startsWith('glen.kanawati') || email.startsWith('pharmotago')) {
+  const cleanName = name.replace(/^(dr\.|mr\.|mrs\.|ms\.)\s+/i, '').replace(/\s*\([^)]*\)/g, '').trim();
+  if (WHITELIST_NAMES.includes(cleanName) || WHITELIST_NAMES.includes(name) || WHITELIST_EMAILS.includes(email) || email.startsWith('peter.kim') || email.startsWith('glen.kanawati') || email.startsWith('pharmotago')) {
     return true;
   }
 
@@ -1218,6 +1219,7 @@ function applyRoleAccessControl() {
   const menuEmployees = document.getElementById('menu-employees');
   const menuReports = document.getElementById('menu-reports');
   const menuSettings = document.getElementById('menu-settings');
+  const menuAiOps = document.getElementById('menu-ai-ops');
   const schedulerControls = document.getElementById('scheduler-manager-controls');
   const quickActionsCard = document.getElementById('dash-quick-actions-card');
   const staffActionsCard = document.getElementById('dash-staff-actions-card');
@@ -1239,6 +1241,7 @@ function applyRoleAccessControl() {
     if (menuEmployees) menuEmployees.classList.add('hide');
     if (menuReports) menuReports.classList.add('hide');
     if (menuSettings) menuSettings.classList.add('hide');
+    if (menuAiOps) menuAiOps.classList.add('hide');
     if (schedulerControls) schedulerControls.classList.add('hide');
     if (quickActionsCard) quickActionsCard.classList.add('hide');
     if (costBadge) { costBadge.classList.add('hide'); costBadge.style.display = 'none'; }
@@ -1264,6 +1267,7 @@ function applyRoleAccessControl() {
     if (menuEmployees) menuEmployees.classList.remove('hide');
     if (menuReports) menuReports.classList.remove('hide');
     if (menuSettings) menuSettings.classList.remove('hide');
+    if (menuAiOps) menuAiOps.classList.remove('hide');
     if (schedulerControls) schedulerControls.classList.remove('hide');
     if (quickActionsCard) quickActionsCard.classList.remove('hide');
     if (costBadge) { costBadge.classList.remove('hide'); costBadge.style.display = 'inline-flex'; }
@@ -1289,7 +1293,7 @@ function applyRoleAccessControl() {
 // Switch tabs routing
 function switchTab(tabName) {
   const isManager = hasManagerPermissions(state.currentUser);
-  if (!isManager && (tabName === 'employees' || tabName === 'reports' || tabName === 'settings')) {
+  if (!isManager && (tabName === 'employees' || tabName === 'reports' || tabName === 'settings' || tabName === 'ai-ops')) {
     showToast('Access restricted: Only Owners and Managers can access this panel.', 'warning');
     tabName = 'dashboard';
   }
@@ -2321,8 +2325,10 @@ function getEffectiveShiftHourlyRate(shift) {
               const shiftStartMs = new Date(`${targetDate}T${shift.startTime}:00`).getTime();
               const shiftEndMs = new Date(`${targetDate}T${shift.endTime}:00`).getTime();
               for (const s of empShifts) {
+                if (s.date === targetDate) continue; // Same-day multi-role shift: skip cross-day 10h rest check
                 const sStartMs = new Date(`${s.date}T${(s.startTime || '00:00').substring(0, 5)}:00`).getTime();
-                const sEndMs = new Date(`${s.date}T${(s.endTime || '00:00').substring(0, 5)}:00`).getTime();
+                let sEndMs = new Date(`${s.date}T${(s.endTime || '00:00').substring(0, 5)}:00`).getTime();
+                if (sEndMs <= sStartMs) sEndMs += 86400000;
                 let gapHours = 999;
                 if (shiftStartMs >= sEndMs) gapHours = (shiftStartMs - sEndMs) / (1000 * 60 * 60);
                 else if (sStartMs >= shiftEndMs) gapHours = (sStartMs - shiftEndMs) / (1000 * 60 * 60);
@@ -2352,7 +2358,8 @@ function getEffectiveShiftHourlyRate(shift) {
       cellShifts.forEach(shift => {
         const div = document.createElement('div');
         div.className = 'shift-card';
-        if (hasManagerPermissions(state.currentUser)) {
+        const isMgr = hasManagerPermissions(state.currentUser);
+        if (isMgr) {
           div.draggable = true;
           div.style.cursor = 'pointer';
           div.addEventListener('dragstart', (e) => {
@@ -2387,10 +2394,12 @@ function getEffectiveShiftHourlyRate(shift) {
           }
         }
 
+        const delBtnHtml = isMgr ? `<button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>` : '';
+
         div.innerHTML = `
           <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
             <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}</span>
-            <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>
+            ${delBtnHtml}
           </div>
           <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} - ${formatTimeAmPm(shift.endTime)}</div>
           ${breakBadgeHtml}
@@ -2548,10 +2557,13 @@ function getEffectiveShiftHourlyRate(shift) {
         div.style.borderLeft = `4px solid ${roleColor}`;
         div.style.background = `rgba(${hexToRgb(roleColor)}, 0.08)`;
 
+        const isMgrUnassigned = hasManagerPermissions(state.currentUser);
+        const delBtnUnassigned = isMgrUnassigned ? `<button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>` : '';
+
         div.innerHTML = `
           <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
             <span>${shift.role}</span>
-            <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>
+            ${delBtnUnassigned}
           </div>
           <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} - ${formatTimeAmPm(shift.endTime)}</div>
           ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
@@ -3151,6 +3163,8 @@ async function handleShiftSubmit(event) {
       if (shiftEndMs <= shiftStartMs) shiftEndMs += 86400000;
 
       for (const s of empShifts) {
+        if (s.date === date) continue; // Same-day multi-role split shift: skip cross-day 10h rest break warning
+
         const sStartMs = new Date(`${s.date}T${(s.startTime || '00:00').substring(0, 5)}:00`).getTime();
         let sEndMs = new Date(`${s.date}T${(s.endTime || '00:00').substring(0, 5)}:00`).getTime();
         if (sEndMs <= sStartMs) sEndMs += 86400000;
@@ -4594,6 +4608,19 @@ async function handleLeaveSubmit(event) {
   const todayStr = formatDateISO(new Date());
   if (start < todayStr) {
     showToast('Start date cannot be in the past.', 'error');
+    return;
+  }
+
+  // Duplicate / Overlapping Leave Check (Prevent multiple requests for same dates)
+  const freshLeaveReqs = (typeof BriskDB !== 'undefined' && BriskDB.getLeaveRequests) ? BriskDB.getLeaveRequests() : (state.leaveRequests || []);
+  const hasOverlappingLeave = freshLeaveReqs.some(lr => {
+    if (lr.employeeId !== empId) return false;
+    if (lr.status === 'Rejected') return false;
+    return !(end < lr.startDate || start > lr.endDate);
+  });
+
+  if (hasOverlappingLeave) {
+    showToast('A pending or approved leave request already exists for these dates.', 'error');
     return;
   }
 
