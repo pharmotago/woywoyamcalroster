@@ -1013,20 +1013,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-// Boot the application: load data and apply role-based views
+// Boot the application: load data instantly and apply role-based views
 async function bootApplication() {
   state.currentWeekStart = getMondayOfCurrentWeek(new Date());
+  
+  // 1. Instant 0ms Paint: Load data immediately from local cache & render initial view
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('app-root').style.display = '';
+  
+  const cachedName = state.currentUser?.name || '';
+  const displayName = cachedName || '…';
+  document.getElementById('sidebar-user-name').textContent = displayName;
+  document.getElementById('dash-user-name').textContent = displayName;
+
+  loadDataFromState();
+  applyRoleAccessControl();
+  renderActivePanel();
+
+  // Hide loading overlay immediately for instant responsive boot
+  const loadingOverlay = document.getElementById('loading-overlay');
+  if (loadingOverlay) loadingOverlay.classList.add('hide');
+
   try {
-    // Show app layout, hide login
-    document.getElementById('login-screen').classList.remove('active');
-
-    // Show a temporary loading placeholder while we fetch the real name
-    const cachedName = state.currentUser.name || '';
-    const displayName = cachedName || '…';
-    document.getElementById('sidebar-user-name').textContent = displayName;
-    document.getElementById('dash-user-name').textContent = displayName;
-
-    // Sync data from cloud (employees, shifts, timecards, leave, swaps)
+    // 2. Background Cloud Sync (Stale-While-Revalidate): fast non-blocking refresh
     await BriskDB.syncFromServer();
     try {
       state.swaps = (typeof SwapDB !== 'undefined' && SwapDB.getSwaps) ? await SwapDB.getSwaps() : [];
@@ -1037,15 +1046,13 @@ async function bootApplication() {
     }
     loadDataFromState();
 
-    // BUG 4 FIX: Re-read the actual user profile name from freshly synced brisk_users
-    // This resolves stale localStorage or missing name fallback showing "User"
+    // Re-read the actual user profile name from freshly synced session
     const freshSession = BriskDB.getSession();
     if (freshSession && freshSession.name) {
       state.currentUser.name = freshSession.name;
       document.getElementById('sidebar-user-name').textContent = freshSession.name;
       document.getElementById('dash-user-name').textContent = freshSession.name;
     } else if (!cachedName) {
-      // Fallback: query from loaded employee list if name still missing
       const myEmployee = state.employees.find(e => e.email === state.currentUser.email);
       if (myEmployee && myEmployee.name) {
         state.currentUser.name = myEmployee.name;
@@ -1054,10 +1061,7 @@ async function bootApplication() {
       }
     }
 
-    // Apply Role-Based Access Control (RBAC)
-    applyRoleAccessControl();
-
-    // Ensure Owner option is present in invite-role dropdown (forces instant UI update even if cached HTML)
+    // Ensure Owner option is present in invite-role dropdown
     const inviteRoleSelect = document.getElementById('invite-role');
     if (inviteRoleSelect && !inviteRoleSelect.querySelector('option[value="owner"]')) {
       const ownerOpt = document.createElement('option');
@@ -1066,19 +1070,13 @@ async function bootApplication() {
       inviteRoleSelect.appendChild(ownerOpt);
     }
 
-    // Render active panel
+    applyRoleAccessControl();
     renderActivePanel();
   } catch (err) {
     console.error('Failed to sync from server on boot:', err);
-    showToast('Syncing is taking longer than expected. Loading in background...', 'info');
     loadDataFromState();
     applyRoleAccessControl();
     renderActivePanel();
-  } finally {
-    // Hide loading overlay
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) loadingOverlay.classList.add('hide');
-    document.getElementById('app-root').style.display = '';
   }
 }
 
