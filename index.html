@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=9.2.8">
+  <link rel="stylesheet" href="css/styles.css?v=9.2.9">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -154,7 +154,7 @@
           <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
           <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
         </svg>
-        <span style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Woywoy Rosters</span>
+        <span style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Woy Woy Rosters</span>
       </div>
       <form id="login-form" onsubmit="handleLoginSubmit(event)" style="margin-top: 1.5rem;">
         <div class="form-group">
@@ -163,7 +163,7 @@
         </div>
         <div class="form-group">
           <label for="login-password">Password</label>
-          <input type="password" id="login-password" class="form-control" placeholder="?™™™™™™™? autocomplete="current-password" required>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
           <a href="javascript:void(0)" id="btn-forgot-password" onclick="if(window.openResetPasswordModal){window.openResetPasswordModal(event)}else{var m=document.getElementById('modal-reset-password');if(m)m.classList.add('active');}" style="color:var(--accent-gold); font-size:12px; display:block; margin-top:0.5rem; text-align:right; text-decoration:none; cursor:pointer;">Forgot Password?</a>
         </div>
         <button type="submit" class="btn btn-primary btn-block" style="margin-top: 1rem;">Log In</button>
@@ -197,7 +197,7 @@
         </div>
         <div class="form-group">
           <label for="reg-password">Password</label>
-          <input type="password" id="reg-password" class="form-control" placeholder="?™™™™™™™? autocomplete="new-password" required minlength="8" title="Password must be at least 8 characters">
+          <input type="password" id="reg-password" class="form-control" placeholder="••••••••" autocomplete="new-password" required minlength="8" title="Password must be at least 8 characters">
         </div>
         <button type="submit" class="btn btn-neon btn-block" style="margin-top: 1rem;">Register Account</button>
         
@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.8)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.9)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -1813,11 +1813,11 @@
           <p class="text-muted" style="font-size: 13px;">Update your account password. Must be at least 6 characters.</p>
           <div class="form-group" style="margin-top: 1rem;">
             <label for="change-new-password">New Password</label>
-            <input type="password" id="change-new-password" class="form-control" required placeholder="?™™™™™™™? minlength="6">
+            <input type="password" id="change-new-password" class="form-control" required placeholder="••••••••" minlength="6">
           </div>
           <div class="form-group" style="margin-top: 1rem;">
             <label for="change-confirm-password">Confirm Password</label>
-            <input type="password" id="change-confirm-password" class="form-control" required placeholder="?™™™™™™™? minlength="6">
+            <input type="password" id="change-confirm-password" class="form-control" required placeholder="••••••••" minlength="6">
           </div>
         </div>
         <div class="modal-footer">
@@ -2037,18 +2037,34 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.2.8)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.2.9)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v9.2.8 -->
+        <!-- v9.2.9 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.2.8 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.2.9 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Clean Password Placeholders & Staff Guide Sync</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">30 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Login & Password Input Polish:</strong> Fixed broken encoding placeholders in login, registration, and change-password forms.</li>
+            <li><strong>Woy Woy Rosters Branding:</strong> Cleaned up header spacing and typography across all authentication screens.</li>
+            <li><strong>Staff Guide PDF & Version Sync:</strong> Linked verified 3-page operations manual PDF and updated version badges.</li>
+          </ul>
+        </div>
+
+        <!-- v9.2.8 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v9.2.8</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Staff Guide PDF & UI Polish</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">29 Aug 2026</span>
@@ -2122,13 +2138,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=9.2.8"></script>
+  <script type="module" src="js/app.js?v=9.2.9"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=9.2.8')
+        navigator.serviceWorker.register('sw.js?v=9.2.9')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load
