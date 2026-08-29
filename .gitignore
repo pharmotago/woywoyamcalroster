@@ -5,6 +5,7 @@ node_modules
 scratch
 *.sql
 *.pdf
+!Amcal_Woy_Woy_Staff_User_Guide.pdf
 android
 ios
 package-lock.json

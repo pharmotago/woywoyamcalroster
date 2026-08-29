@@ -12,6 +12,7 @@
     "roster:qa": "node --experimental-vm-modules scripts/roster_qa_engine.js",
     "roster:check": "npm run test:syntax && npm run roster:qa",
     "roster:audit": "npm run roster:check",
+    "build:guide": "node scripts/generate_pdf_guide.js",
     "weekly:hours": "node scripts/get_weekly_hours.js",
     "test:pay-rate": "node scripts/test_pay_rate_update.js",
     "test:db-users": "node scripts/check_db_users.js",

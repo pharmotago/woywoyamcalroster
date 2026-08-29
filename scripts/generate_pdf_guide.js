@@ -92,8 +92,8 @@ drawHeader('Staff Operating Manual');
 
 doc.moveDown(2);
 doc.fillColor(PRIMARY).fontSize(20).font('Helvetica-Bold').text('Amcal Pharmacy Woy Woy');
-doc.fillColor(ACCENT).fontSize(14).font('Helvetica-Bold').text('Amcal Woy Woy Roster & Time Clock System Guide (v6.9)');
-doc.fillColor(TEXT_MUTED).fontSize(9).font('Helvetica').text('Published: August 2026 | System Version 6.9 | Canonical App Origin: https://woywoyamcalroster.vercel.app');
+doc.fillColor(ACCENT).fontSize(14).font('Helvetica-Bold').text('Staff Roster & Time Clock System Operations Guide (v9.2.8)');
+doc.fillColor(TEXT_MUTED).fontSize(9).font('Helvetica').text('Published: August 2026 | System Edition v9.2.8 | Canonical App: https://woywoyamcalroster.vercel.app');
 
 doc.moveDown(1);
 
@@ -134,10 +134,10 @@ drawParagraph('Staff members can review store rosters using two complementary vi
 drawSubHeading('3.1 Weekly Scheduler Grid');
 drawBullet('7-Day Grid View', 'Displays all staff shifts for Monday through Sunday. Navigate between weeks using the left/right arrow buttons.');
 drawBullet('Role Color Badges', 'Shifts are color-coded by position (e.g. Pharmacist Manager, Dispensary Tech, Pharmacy Assistant, Webster).');
-drawBullet('Shift Break Badges', 'Every shift displaying 4+ hours shows break icons (e.g., 🍱 30m Lunch | ☕ 2x 10m Paid).');
+drawBullet('Shift Break Badges', 'Every shift displaying 4+ hours shows break icons (e.g. [Lunch: 30m] | [Rest: 2x 10m Paid]).');
 
 drawSubHeading('3.2 Daily View & Interactive Timeline');
-drawBullet('Daily Timeline Bar', 'Visual graph showing coverage across store trading hours (8:30 AM – 5:30 PM). Hover/tap any bar for shift details.');
+drawBullet('Daily Timeline Bar', 'Visual graph showing coverage across store trading hours (8:30 AM - 5:30 PM). Hover/tap any bar for shift details.');
 drawBullet('Daily Shifts Table', 'Lists all rostered staff for the selected day along with assigned roles, shift times, break entitlements, and manager notes.');
 drawBullet('A4 Roster Print', 'Click "Print Roster" to generate an A4 landscape formatted printout suitable for the dispensary notice board.');
 
@@ -206,17 +206,17 @@ drawBullet('Dates & Reason', 'Specify start date, end date, and any relevant not
 drawBullet('Approval Status', 'Track real-time status (Pending, Approved, Rejected) under the Time Off tab.');
 
 drawSectionHeading('8', 'System Updates & Technical Support');
-drawBullet('English Update Log (Release Notes)', 'Click the "Updates (v6.9)" button in the top navigation bar to review recent system improvements and features.');
+drawBullet('English Update Log (Release Notes)', 'Click the "Updates (v9.2.8)" button in the top navigation bar to review recent system improvements, live pay calculations, and Fair Work 2026 features.');
 drawBullet('Technical Support', 'For assistance with logins or rosters, contact the Pharmacist Manager or system administrator.');
 
 // --- Footer for all pages ---
-const range = doc.bufferedPageRange();
-for (let i = range.start; i < range.start + range.count; i++) {
+const totalPages = doc.bufferedPageRange().count;
+for (let i = 0; i < totalPages; i++) {
   doc.switchToPage(i);
-  doc.rect(40, 790, 515, 20).fill(PRIMARY);
+  doc.rect(40, 780, 515, 20).fill(PRIMARY);
   doc.fillColor('#ffffff').fontSize(8).font('Helvetica')
-     .text('Amcal Pharmacy Woy Woy - Confidential Roster Operations Manual', 50, 796);
-  doc.text(`Page ${i + 1} of ${range.count}`, 450, 796, { align: 'right', width: 95 });
+     .text('Amcal Pharmacy Woy Woy - Confidential Roster Operations Manual', 50, 786, { lineBreak: false });
+  doc.text(`Page ${i + 1} of ${totalPages}`, 450, 786, { align: 'right', width: 95, lineBreak: false });
 }
 
 doc.end();

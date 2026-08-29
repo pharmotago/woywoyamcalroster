@@ -5621,6 +5621,18 @@ function closeLocumRemittanceModal() {
   if (modal) modal.classList.remove('active');
 }
 
+function openChangelogModal() {
+  const modal = document.getElementById('modal-changelog');
+  if (modal) modal.classList.add('active');
+}
+window.openChangelogModal = openChangelogModal;
+
+function closeChangelogModal() {
+  const modal = document.getElementById('modal-changelog');
+  if (modal) modal.classList.remove('active');
+}
+window.closeChangelogModal = closeChangelogModal;
+
 function printLocumRemittance() {
   window.print();
 }

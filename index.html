@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.5)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.8)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -2021,6 +2021,98 @@
       <div class="modal-footer" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
         <button type="button" class="btn btn-outline" onclick="printLocumRemittance()"><i class="fa-solid fa-print"></i> Print / Save PDF</button>
         <button type="button" class="btn btn-primary" onclick="closeLocumRemittanceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
+  <!-- MODAL: SYSTEM UPDATES & CHANGELOG -->
+  <!-- ===================================== -->
+  <div id="modal-changelog" class="modal" onclick="if(event.target === this) closeChangelogModal()">
+    <div class="modal-content" style="max-width: 680px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,229,255,0.12); display:flex; align-items:center; justify-content:center; color:var(--accent-cyan); font-size:1.1rem;">
+            <i class="fa-solid fa-list-check"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.2.8)</span>
+          </div>
+        </div>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
+        
+        <!-- v9.2.8 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.2.8 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Staff Guide PDF & UI Polish</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">29 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Staff Operations Manual PDF:</strong> Updated to v9.2.8 with 3-page clean layout and direct one-click download.</li>
+            <li><strong>Interactive Changelog Modal:</strong> Added instant release notes modal directly accessible from the header.</li>
+            <li><strong>Woy Woy Amcal Branding:</strong> Tailored dashboard subtitle and cleaned up all typography and special characters.</li>
+          </ul>
+        </div>
+
+        <!-- v9.2.7 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:0.8rem; font-weight:800;">v9.2.7</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Sync Security & Auto-Sync Refresh</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">29 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Serverless Sync Security:</strong> Added manager role verification; non-manager endpoints automatically mask sensitive wage data.</li>
+            <li><strong>30s Live Heartbeat Sync:</strong> Added automatic state propagation so UI stays in real-time sync with database changes.</li>
+            <li><strong>Award Classification Guard:</strong> Prevented award auto-calculation from overriding manually saved custom hourly rates.</li>
+          </ul>
+        </div>
+
+        <!-- v9.2.6 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); font-size:0.8rem; font-weight:800;">v9.2.6</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Pay Rate Persistence & Realtime Merge</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">28 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Realtime Merge Architecture:</strong> Realtime listener now uses object spread merging to preserve memory pay rates during updates.</li>
+            <li><strong>Manager Session Detection:</strong> Enhanced realtime security context resolution with instant session and role fallback.</li>
+          </ul>
+        </div>
+
+        <!-- v9.2.5 -->
+        <div style="padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); font-size:0.8rem; font-weight:800;">v9.2.5</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Pharmacy Award 2026 & Locum Remittance</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">27 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Pharmacy Award 2026 Standard:</strong> 10-min paid rest breaks protection and higher duties allowances.</li>
+            <li><strong>Locum Contractor Invoicing:</strong> Itemized remittance statements (+GST, +Super, or Flat Rate).</li>
+            <li><strong>Wage-to-Sales KPI Target:</strong> Real-time labor percentage tracker against Australian Community Pharmacy benchmarks.</li>
+          </ul>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+        <a href="staff-guide.html" target="_blank" class="btn btn-outline" style="font-size:0.8rem;">
+          <i class="fa-solid fa-book-open text-cyan"></i> Open Web Staff Guide
+        </a>
+        <button class="btn btn-primary" onclick="closeChangelogModal()">Close</button>
       </div>
     </div>
   </div>
