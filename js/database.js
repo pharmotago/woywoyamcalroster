@@ -156,7 +156,7 @@ const BriskDB = (function() {
       email: emp.email,
       role: emp.role,
       phone: emp.phone,
-      hourlyRate: (emp.hourly_rate != null && !isNaN(parseFloat(emp.hourly_rate))) ? parseFloat(emp.hourly_rate) : (emp.hourly_rate === null ? undefined : 0),
+      hourlyRate: (!isNaN(parseFloat(emp.hourly_rate)) && emp.hourly_rate != null) ? parseFloat(emp.hourly_rate) : 0,
       maxHours: parseInt(emp.max_hours || 38) || 38,
       awardLevel: emp.award_level || emp.awardLevel || 'custom',
       employmentType: emp.employment_type || emp.employmentType || 'permanent',

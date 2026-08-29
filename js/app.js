@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dbUpdateTimeout = setTimeout(() => {
       loadDataFromState(); // also updates sidebar badges
       renderActivePanel();
-    }, 50);
+    }, 150); // Bug #9 Fix: 50ms → 150ms to reduce Realtime/API race condition window
   });
 
   // Listen for offline queue sync status updates
@@ -958,10 +958,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Background Heartbeat Sync every 30s (non-intrusive)
+  // Bug #5 Fix: loadDataFromState() must be called after syncFromServer() so
+  // that state.employees reflects the updated _employees in-memory cache.
   setInterval(async () => {
     if (state.currentUser && document.visibilityState === 'visible' && !document.hidden && typeof BriskDB !== 'undefined' && BriskDB.syncFromServer) {
       try {
         await BriskDB.syncFromServer();
+        loadDataFromState(); // propagate fresh DB data → state.employees → UI
       } catch (e) {
         // silent background sync catch
       }
@@ -3858,6 +3861,13 @@ function openEditEmployeeModal(empId) {
   if (typeSelect) typeSelect.value = emp.employmentType || 'permanent';
 
   onAwardClassificationChange();
+  // Bug #6 Fix: onAwardClassificationChange() may overwrite the emp-rate field
+  // with the award classification's base rate. Always restore the actual DB value
+  // afterwards so that editing a profile never silently changes the saved rate.
+  const rateInputFix = document.getElementById('emp-rate');
+  if (rateInputFix && emp.hourlyRate != null && emp.hourlyRate !== '') {
+    rateInputFix.value = emp.hourlyRate;
+  }
   onEmployeeDobChange();
 
   const isManagerOrOwner = hasManagerPermissions(state.currentUser);
