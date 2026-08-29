@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amcal-rosters-v9.2.9';
+const CACHE_NAME = 'amcal-rosters-v9.3.0';
 const ASSETS = [
   './',
   './index.html',
@@ -36,8 +36,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
-  // Don't cache Supabase API calls or external dynamic requests
-  if (event.request.url.includes('supabase.co') || event.request.url.includes('/api/')) return;
+  // Don't cache Supabase API calls, external dynamic requests, or binary PDF downloads
+  if (event.request.url.includes('supabase.co') || event.request.url.includes('/api/') || event.request.url.endsWith('.pdf') || event.request.url.includes('staff-guide')) return;
 
   // Network-First strategy for HTML and JS to ensure instant updates
   event.respondWith(

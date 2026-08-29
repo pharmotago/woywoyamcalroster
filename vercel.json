@@ -22,6 +22,14 @@
       ]
     },
     {
+      "source": "/(.*)\\.pdf",
+      "headers": [
+        { "key": "Content-Type", "value": "application/pdf" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"Amcal_Woy_Woy_Staff_User_Guide.pdf\"" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
       "source": "/(images|icons)/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
@@ -36,6 +44,6 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/((?!.*\\.(?:js|css|pdf|html|png|jpg|jpeg|svg|ico|json|webmanifest|txt|map)).*)", "destination": "/index.html" }
   ]
 }

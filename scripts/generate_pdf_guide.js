@@ -206,7 +206,7 @@ drawBullet('Dates & Reason', 'Specify start date, end date, and any relevant not
 drawBullet('Approval Status', 'Track real-time status (Pending, Approved, Rejected) under the Time Off tab.');
 
 drawSectionHeading('8', 'System Updates & Technical Support');
-drawBullet('English Update Log (Release Notes)', 'Click the "Updates (v9.2.8)" button in the top navigation bar to review recent system improvements, live pay calculations, and Fair Work 2026 features.');
+drawBullet('English Update Log (Release Notes)', 'Click the "Updates (v9.2.9)" button in the top navigation bar to review recent system improvements, live pay calculations, and Fair Work 2026 features.');
 drawBullet('Technical Support', 'For assistance with logins or rosters, contact the Pharmacist Manager or system administrator.');
 
 // --- Footer for all pages ---
@@ -223,4 +223,52 @@ doc.end();
 
 stream.on('finish', () => {
   console.log(`✅ PDF User Guide generated successfully at: ${outputPath}`);
+  
+  // Auto-generate Serverless Guide Download API Endpoint
+  const guideApiDir = path.join(__dirname, '..', 'api', 'schedule', 'guide');
+  if (!fs.existsSync(guideApiDir)) fs.mkdirSync(guideApiDir, { recursive: true });
+  
+  const guideApiContent = `import type { VercelRequest, VercelResponse } from '@vercel/node';
+import fs from 'fs';
+import path from 'path';
+
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  const origin = (req.headers.origin as string) || '';
+  const allowedOrigins = [
+    'https://woywoyamcalroster.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173'
+  ];
+  if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://woywoyamcalroster.vercel.app');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  try {
+    const pdfPath = path.join(process.cwd(), 'Amcal_Woy_Woy_Staff_User_Guide.pdf');
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ error: 'Staff User Guide PDF not found on server.' });
+    }
+
+    const fileBuffer = fs.readFileSync(pdfPath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Amcal_Woy_Woy_Staff_User_Guide.pdf"');
+    res.setHeader('Content-Length', fileBuffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.status(200).send(fileBuffer);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[GuideAPI] Error:', msg);
+    return res.status(500).json({ error: msg });
+  }
+}
+`;
+  fs.writeFileSync(path.join(guideApiDir, 'index.ts'), guideApiContent, 'utf8');
+  console.log(`✅ Guide API endpoint generated at: ${path.join(guideApiDir, 'index.ts')}`);
 });
