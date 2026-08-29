@@ -15,40 +15,33 @@ function jsonRes(res: VercelResponse, data: unknown, status = 200) {
   return res.status(status).json(data);
 }
 
-// Bug #7 Fix + Robust Manager Check: Resolve whether the calling user is a manager.
-// Checks token authentication as well as verified manager emails.
-async function resolveIsManager(token: string, emailCandidate?: string): Promise<boolean> {
-  const normEmail = (emailCandidate || '').toLowerCase().trim();
-  if (normEmail && (MANAGER_EMAILS.includes(normEmail) || normEmail.startsWith('pharmotago'))) {
-    return true;
+// Bug #7 Fix: Resolve whether the calling user is a manager.
+// Returns true only for confirmed manager/owner roles. Unauthenticated = false.
+async function resolveIsManager(token: string): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return false;
+    const email = (user.email || '').toLowerCase().trim();
+    if (MANAGER_EMAILS.includes(email) || email.startsWith('pharmotago')) return true;
+    // Check brisk_users table for role
+    const { data: profile } = await supabaseAdmin
+      .from('brisk_users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (profile && MANAGER_ROLES.includes((profile.role || '').toLowerCase().trim())) return true;
+    // Fallback: check brisk_employees by email
+    const { data: emp } = await supabaseAdmin
+      .from('brisk_employees')
+      .select('role')
+      .eq('email', user.email)
+      .maybeSingle();
+    if (emp && MANAGER_ROLES.includes((emp.role || '').toLowerCase().trim())) return true;
+    return false;
+  } catch {
+    return false;
   }
-
-  if (token) {
-    try {
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-      if (!error && user && user.email) {
-        const email = user.email.toLowerCase().trim();
-        if (MANAGER_EMAILS.includes(email) || email.startsWith('pharmotago')) return true;
-        // Check brisk_users table for role
-        const { data: profile } = await supabaseAdmin
-          .from('brisk_users')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (profile && MANAGER_ROLES.includes((profile.role || '').toLowerCase().trim())) return true;
-        // Fallback: check brisk_employees by email
-        const { data: emp } = await supabaseAdmin
-          .from('brisk_employees')
-          .select('role')
-          .eq('email', user.email)
-          .maybeSingle();
-        if (emp && MANAGER_ROLES.includes((emp.role || '').toLowerCase().trim())) return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return false;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -66,14 +59,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', 'https://woywoyamcalroster.vercel.app');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Email');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Resolve caller's manager status from Bearer token or email identifier.
+  // Resolve caller's manager status from Bearer token.
+  // Non-managers receive employee data with sensitive fields (hourly_rate, phone, dob) masked as null.
   const authHeader = (req.headers.authorization as string) || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '';
-  const bodyEmail = (req.body && req.body.email) ? req.body.email : ((req.headers['x-user-email'] as string) || '');
-  const isManager = await resolveIsManager(token, bodyEmail);
+  const isManager = await resolveIsManager(token);
 
   try {
     const thirtyDaysAgo = new Date();

@@ -5,59 +5,62 @@ import supabase from './supabase-client.js';
 
 const BriskDB = (function() {
   const STORAGE_KEYS = {
-    SESSION: 'brisk_session',
-    CACHE_EMPLOYEES: 'brisk_cache_employees',
-    CACHE_SHIFTS: 'brisk_cache_shifts',
-    CACHE_TIMECARDS: 'brisk_cache_timecards',
-    CACHE_SETTINGS: 'brisk_cache_settings',
-    CACHE_LEAVE: 'brisk_cache_leave'
+    SESSION: 'brisk_session'
   };
 
-  // Instant 0ms Local Cache Loader
-  function loadLocalCache() {
-    try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      const emps = localStorage.getItem(STORAGE_KEYS.CACHE_EMPLOYEES);
-      if (emps) {
-        const parsed = JSON.parse(emps);
-        if (Array.isArray(parsed) && parsed.length > 0) _employees = parsed;
-      }
-      const shifts = localStorage.getItem(STORAGE_KEYS.CACHE_SHIFTS);
-      if (shifts) {
-        const parsed = JSON.parse(shifts);
-        if (Array.isArray(parsed)) _shifts = parsed;
-      }
-      const tc = localStorage.getItem(STORAGE_KEYS.CACHE_TIMECARDS);
-      if (tc) {
-        const parsed = JSON.parse(tc);
-        if (Array.isArray(parsed)) _timecards = parsed;
-      }
-      const st = localStorage.getItem(STORAGE_KEYS.CACHE_SETTINGS);
-      if (st) {
-        const parsed = JSON.parse(st);
-        if (parsed) _settings = parsed;
-      }
-      const lr = localStorage.getItem(STORAGE_KEYS.CACHE_LEAVE);
-      if (lr) {
-        const parsed = JSON.parse(lr);
-        if (Array.isArray(parsed)) _leaveRequests = parsed;
-      }
-    } catch (e) {
-      console.warn('[DB] Local cache load note:', e);
-    }
-  }
-  loadLocalCache();
+  let _employees = [];
+  let _shifts = [];
+  let _historicalShifts = [];
+  let _timecards = [];
+  let _historicalTimecards = [];
+  let _leaveRequests = [];
+  let _historicalLeaveRequests = [];
+  const DEFAULT_TRADING_HOURS = {
+    "1": { "open": "08:30", "close": "17:30", "closed": false },
+    "2": { "open": "08:30", "close": "17:30", "closed": false },
+    "3": { "open": "08:30", "close": "17:30", "closed": false },
+    "4": { "open": "08:30", "close": "17:30", "closed": false },
+    "5": { "open": "08:30", "close": "17:30", "closed": false },
+    "6": { "open": "09:00", "close": "13:00", "closed": false },
+    "0": { "open": "00:00", "close": "00:00", "closed": true }
+  };
+  let _settings = { companyName: 'Amcal Pharmacy Woywoy Rosters', tradingHours: DEFAULT_TRADING_HOURS };
+  
+  let _roles = [];
+  const DEFAULT_ROLES = [
+    { id: 'role_dispensary', name: 'Dispensary', color: '#10b981' },
+    { id: 'role_tills', name: 'Tills', color: '#f59e0b' },
+    { id: 'role_webster', name: 'Webster', color: '#a855f7' },
+    { id: 'role_floor', name: 'Floor', color: '#3b82f6' },
+    { id: 'role_stock_receive', name: 'Stock Receive & Orders', color: '#06b6d4' },
+    { id: 'role_stock_control', name: 'Stock Control & Gap Scan', color: '#8b5cf6' },
+    { id: 'role_till_banking', name: 'Till Up & Banking', color: '#d97706' },
+    { id: 'role_brand_strategy', name: 'Brand Strategy', color: '#ec4899' },
+    { id: 'role_promotions', name: 'Promotions & Catalogue', color: '#f97316' },
+    { id: 'role_displays', name: 'Promotional Ends & Displays', color: '#14b8a6' },
+    { id: 'role_merchandising', name: 'Counter & Merchandising', color: '#6366f1' }
+  ];
 
-  function saveLocalCache() {
-    try {
-      if (typeof window === 'undefined' || !window.localStorage) return;
-      if (_employees.length > 0) localStorage.setItem(STORAGE_KEYS.CACHE_EMPLOYEES, JSON.stringify(_employees));
-      if (_shifts.length > 0) localStorage.setItem(STORAGE_KEYS.CACHE_SHIFTS, JSON.stringify(_shifts));
-      if (_timecards.length > 0) localStorage.setItem(STORAGE_KEYS.CACHE_TIMECARDS, JSON.stringify(_timecards));
-      if (_settings) localStorage.setItem(STORAGE_KEYS.CACHE_SETTINGS, JSON.stringify(_settings));
-      if (_leaveRequests.length > 0) localStorage.setItem(STORAGE_KEYS.CACHE_LEAVE, JSON.stringify(_leaveRequests));
-    } catch (e) {}
-  }
+  let _positions = [];
+  const DEFAULT_POSITIONS = [
+    { id: 'pos_owner', name: 'Owner' },
+    { id: 'pos_pm', name: 'Pharmacist Manager' },
+    { id: 'pos_pharmacist', name: 'Pharmacist' },
+    { id: 'pos_rm', name: 'Retail Manager' },
+    { id: 'pos_dt', name: 'Dispense Technician' },
+    { id: 'pos_pa', name: 'Pharmacy Assistant' },
+    { id: 'pos_ra', name: 'Retail Associate' }
+  ];
+
+  let _listeners = [];
+  let _initialLoadCompleted = {
+    employees: false,
+    shifts: false,
+    timecards: false,
+    leaveRequests: false
+  };
+  let _fetchedHistoricalRanges = new Set();
+  let _activeFetches = {};
 
   // Helper to load session
   function getSession() {
@@ -668,12 +671,7 @@ const BriskDB = (function() {
 
   // Triggered on app load
   async function syncFromServer() {
-    let session = getSession() || {};
-    let token = session.token || '';
-    try {
-      const freshToken = await getValidToken();
-      if (freshToken) token = freshToken;
-    } catch (e) {}
+    const session = getSession() || {};
 
     // 1. Primary Strategy: Serverless Data Sync (100% reliable, zero token expiry / RLS lockouts)
     try {
@@ -681,8 +679,7 @@ const BriskDB = (function() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? ('Bearer ' + token) : '',
-          'X-User-Email': session.email || ''
+          'Authorization': session.token ? ('Bearer ' + session.token) : ''
         },
         body: JSON.stringify({ email: session.email || '' })
       });
@@ -691,15 +688,7 @@ const BriskDB = (function() {
       if (contentType.includes('application/json')) {
         const syncData = await res.json();
         if (syncData.success && Array.isArray(syncData.employees) && syncData.employees.length > 0) {
-          const existingRateMap = new Map(_employees.map(e => [e.id, e.hourlyRate]));
-          _employees = syncData.employees.map(emp => {
-            const mapped = mapEmployeeFromDb(emp);
-            if ((!mapped.hourlyRate || mapped.hourlyRate === 0) && existingRateMap.has(mapped.id)) {
-              const prev = existingRateMap.get(mapped.id);
-              if (prev && prev > 0) mapped.hourlyRate = prev;
-            }
-            return mapped;
-          });
+          _employees = syncData.employees.map(mapEmployeeFromDb);
           _initialLoadCompleted.employees = true;
 
           if (Array.isArray(syncData.shifts)) {
@@ -731,8 +720,6 @@ const BriskDB = (function() {
               localStorage.setItem('brisk_positions', JSON.stringify(_positions));
             }
           }
-
-          saveLocalCache();
 
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'all' } }));
