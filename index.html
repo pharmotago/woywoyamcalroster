@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=9.2.9">
+  <link rel="stylesheet" href="css/styles.css?v=9.3.2">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.2.9)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.3.2)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -516,6 +516,9 @@
             </button>
             <button class="btn btn-outline" onclick="openAddShiftModal()" title="Add single shift">
               <i class="fa-solid fa-plus"></i> Add Shift
+            </button>
+            <button class="btn btn-outline" onclick="openEmailRosterModal()" title="Email weekly roster briefing to staff">
+              <i class="fa-solid fa-paper-plane text-cyan"></i> Email Roster
             </button>
             <button class="btn btn-outline" onclick="exportRosterIcs()" title="Export schedule to Apple Calendar / Google Calendar (.ics)">
               <i class="fa-solid fa-calendar-arrow-down text-cyan"></i> iCal (.ics)
@@ -1731,20 +1734,30 @@
   <!-- MODAL: EMAIL ROSTER MODAL -->
   <!-- ===================================== -->
   <div id="modal-email-roster" class="modal">
-    <div class="modal-content glass-card" role="dialog" aria-modal="true">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 620px;">
       <div class="modal-header">
         <h3><i class="fa-solid fa-paper-plane text-neon"></i> Email Roster to Staff</h3>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeEmailRosterModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="email-roster-emp-id">
-        <p>Review the roster briefing email text before sending it to <strong id="email-roster-emp-name" style="color:var(--accent-gold);">Loading...</strong> <span id="email-roster-emp-email" style="color:var(--text-secondary); font-size:0.85em;"></span>.</p>
-        <textarea id="email-roster-textarea" class="form-control" rows="10" style="font-family: monospace; font-size: 13px; margin-top: 1rem;"></textarea>
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="email-roster-recipient-select" style="font-weight: 600; font-size: 0.88rem;">Select Recipient(s):</label>
+          <select id="email-roster-recipient-select" class="form-control" onchange="onEmailRecipientChange(this.value)" style="margin-top: 4px;">
+            <option value="all">📢 All Active Staff (Team Broadcast)</option>
+          </select>
+        </div>
+        <p id="email-roster-target-info" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
+          Sending official roster briefing for <strong id="email-roster-week-label" style="color:var(--accent-cyan);">Week of ...</strong>
+        </p>
+        <div class="form-group">
+          <label for="email-roster-textarea" style="font-weight: 600; font-size: 0.88rem;">Custom Message / Briefing Note:</label>
+          <textarea id="email-roster-textarea" class="form-control" rows="8" style="font-family: monospace; font-size: 13px; margin-top: 4px; resize: vertical;"></textarea>
+        </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
         <button class="btn btn-outline" onclick="closeEmailRosterModal()">Cancel</button>
-        <button class="btn btn-neon" onclick="sendRosterEmail()">
-          <i class="fa-solid fa-paper-plane"></i> Send Roster Email
+        <button class="btn btn-neon" onclick="sendRosterEmail()" id="btn-send-roster-email">
+          <i class="fa-solid fa-paper-plane"></i> Send Email
         </button>
       </div>
     </div>
@@ -2037,18 +2050,34 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.2.9)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.3.2)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v9.2.9 -->
+        <!-- v9.3.2 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.2.9 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.3.2 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Team Email Roster Broadcast & Shift Save Engine</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">30 Aug 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Email Roster to Staff:</strong> Added 1-click team email broadcast with responsive Amcal HTML schedule briefings.</li>
+            <li><strong>Manager Shift Mutation Shield:</strong> Reinforced shift creation, updates, and deletes with zero-token-expiry manager authentication.</li>
+            <li><strong>Full Shift Metadata Persistence:</strong> Ensured shift status, break allowances, and color attributes are safely synced to cloud.</li>
+          </ul>
+        </div>
+
+        <!-- v9.2.9 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v9.2.9</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Clean Password Placeholders & Staff Guide Sync</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">30 Aug 2026</span>
@@ -2138,13 +2167,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=9.2.9"></script>
+  <script type="module" src="js/app.js?v=9.3.2"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=9.2.9')
+        navigator.serviceWorker.register('sw.js?v=9.3.2')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load

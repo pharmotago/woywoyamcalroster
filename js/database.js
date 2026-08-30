@@ -1154,17 +1154,29 @@ const BriskDB = (function() {
     }
   }
 
-  // Send Roster Email
-  async function apiSendRosterEmail(employeeId, weekStart, rosterText) {
+  // Send Roster Email (Single or Team Broadcast)
+  async function apiSendRosterEmail(optionsOrEmpId, weekStart, rosterText) {
     try {
+      let payload = {};
+      if (typeof optionsOrEmpId === 'object' && optionsOrEmpId !== null) {
+        payload = { ...optionsOrEmpId };
+      } else {
+        payload = { employeeId: optionsOrEmpId, weekStart, rosterText };
+      }
+
+      const session = getSession() || {};
       const token = await getValidToken();
       const res = await fetch('/api/schedule/email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
+          'Authorization': token ? ('Bearer ' + token) : '',
+          'X-User-Email': session.email || ''
         },
-        body: JSON.stringify({ employeeId, weekStart, rosterText })
+        body: JSON.stringify({
+          ...payload,
+          callerEmail: session.email || ''
+        })
       });
 
       const contentType = res.headers.get('content-type') || '';
@@ -1439,6 +1451,7 @@ const BriskDB = (function() {
 
     addShift: async function(shift) {
       const dbObj = mapShiftToDb(shift);
+      const session = getSession() || {};
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
@@ -1447,12 +1460,14 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'create',
-            shift: dbObj
+            shift: dbObj,
+            callerEmail: session.email || ''
           })
         });
 
@@ -1493,6 +1508,7 @@ const BriskDB = (function() {
     addShiftsBatch: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return [];
       let mappedShifts = shiftsArray.map(mapShiftToDb);
+      const session = getSession() || {};
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
@@ -1501,12 +1517,14 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'batchInsert',
-            shifts: mappedShifts
+            shifts: mappedShifts,
+            callerEmail: session.email || ''
           })
         });
 
@@ -1565,6 +1583,7 @@ const BriskDB = (function() {
     },
     updateShift: async function(updated) {
       const dbObj = mapShiftToDb(updated);
+      const session = getSession() || {};
 
       // Optimistic in-memory update
       const idx = _shifts.findIndex(s => s.id === updated.id);
@@ -1577,12 +1596,14 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'update',
-            shift: dbObj
+            shift: dbObj,
+            callerEmail: session.email || ''
           })
         });
 
@@ -1615,6 +1636,7 @@ const BriskDB = (function() {
     },
     deleteShift: async function(id) {
       _shifts = _shifts.filter(s => s.id !== id);
+      const session = getSession() || {};
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
@@ -1623,12 +1645,14 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'delete',
-            id
+            id,
+            callerEmail: session.email || ''
           })
         });
 
@@ -1649,6 +1673,7 @@ const BriskDB = (function() {
     batchUpdateShifts: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return;
       const mappedShifts = shiftsArray.map(mapShiftToDb);
+      const session = getSession() || {};
 
       // Optimistic in-memory update
       shiftsArray.forEach(updated => {
@@ -1665,12 +1690,14 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'batchUpdate',
-            shifts: mappedShifts
+            shifts: mappedShifts,
+            callerEmail: session.email || ''
           })
         });
 

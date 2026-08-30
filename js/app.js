@@ -5007,44 +5007,86 @@ function exportToXeroCsv() {
 }
 window.exportToXeroCsv = exportToXeroCsv;
 
-// Open specific staff member's roster email modal
+// Open Roster Email modal (Supports All Staff Broadcast or Single Employee)
 function openEmailRosterModal(employeeId) {
-  const emp = state.employees.find(e => e.id === employeeId);
-  if (!emp) return;
-
   const mon = new Date(state.currentWeekStart);
+  const weekLabel = getWeekRangeText(mon);
+  
+  const weekLabelElem = document.getElementById('email-roster-week-label');
+  if (weekLabelElem) weekLabelElem.textContent = `Week of ${weekLabel}`;
 
-  document.getElementById('email-roster-emp-id').value = employeeId;
-  // BUG 3 FIX: Populate name AND email address so modal shows "sending it to Peter Kim (peter@example.com)"
-  document.getElementById('email-roster-emp-name').textContent = emp.name || '(unknown)';
-  const empEmailSpan = document.getElementById('email-roster-emp-email');
-  if (empEmailSpan) {
-    empEmailSpan.textContent = emp.email ? `(${emp.email})` : '(no email on record)';
-  }
-
-  let text = `Here is your roster for the week of ${getWeekRangeText(mon)}:\n\n`;
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(mon);
-    d.setDate(mon.getDate() + i);
-    const dateStr = formatDateISO(d);
+  const select = document.getElementById('email-roster-recipient-select');
+  if (select) {
+    select.innerHTML = '<option value="all">📢 All Active Staff (Team Broadcast)</option>';
     
-    const dayShifts = state.shifts.filter(s => s.employeeId === employeeId && s.date === dateStr);
-    if (dayShifts.length > 0) {
-      dayShifts.forEach(s => {
-        text += `📅 [${DAY_NAMES[d.getDay()]}] ${dateStr}\n`;
-        text += `   - Time: ${formatTimeAmPm(s.startTime)} ~ ${formatTimeAmPm(s.endTime)}\n`;
-        text += `   - Role: ${s.role}\n`;
-        if (s.notes) text += `   - Notes: ${s.notes}\n`;
-        text += `\n`;
-      });
+    // Sort employees by name
+    const sortedEmployees = [...state.employees]
+      .filter(e => e.active !== false)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    sortedEmployees.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = `${e.name} ${e.email ? `(${e.email})` : '⚠️ (no email)'}`;
+      select.appendChild(opt);
+    });
+
+    if (employeeId && select.querySelector(`option[value="${employeeId}"]`)) {
+      select.value = employeeId;
+    } else {
+      select.value = 'all';
     }
   }
 
-  document.getElementById('email-roster-textarea').value = text;
+  onEmailRecipientChange(select ? select.value : 'all');
   document.getElementById('modal-email-roster').classList.add('active');
 }
 
+function onEmailRecipientChange(targetId) {
+  const mon = new Date(state.currentWeekStart);
+  const weekLabel = getWeekRangeText(mon);
+  const textarea = document.getElementById('email-roster-textarea');
+  const targetInfo = document.getElementById('email-roster-target-info');
+
+  if (targetId === 'all') {
+    const validCount = state.employees.filter(e => e.active !== false && e.email && e.email.includes('@')).length;
+    if (targetInfo) {
+      targetInfo.innerHTML = `Sending individual schedule briefings to <strong>${validCount} active staff members</strong> with emails on record for <strong style="color:var(--accent-cyan);">${weekLabel}</strong>.`;
+    }
+    if (textarea) {
+      textarea.value = `Hi Team,\n\nThe official roster for the week starting ${weekLabel} has been published.\nPlease check your shift times, break allocations, and trading hours in the schedule below.\n\nWarm regards,\nManagement Team\nAmcal Pharmacy Woy Woy`;
+    }
+  } else {
+    const emp = state.employees.find(e => e.id === targetId);
+    if (!emp) return;
+
+    if (targetInfo) {
+      targetInfo.innerHTML = `Sending schedule briefing to <strong>${emp.name}</strong> <span style="color:var(--text-secondary); font-size:0.85em;">${emp.email ? `(${emp.email})` : '⚠️ (no email on record)'}</span>.`;
+    }
+
+    let text = `Hi ${emp.name},\n\nHere is your work schedule for the week of ${weekLabel}:\n\n`;
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      const dateStr = formatDateISO(d);
+      
+      const dayShifts = state.shifts.filter(s => s.employeeId === emp.id && s.date === dateStr);
+      if (dayShifts.length > 0) {
+        dayShifts.forEach(s => {
+          text += `📅 [${DAY_NAMES[d.getDay()]}] ${dateStr}\n`;
+          text += `   - Time: ${formatTimeAmPm(s.startTime)} ~ ${formatTimeAmPm(s.endTime)}\n`;
+          text += `   - Role: ${s.role || 'Staff'}\n`;
+          if (s.notes) text += `   - Notes: ${s.notes}\n`;
+          text += `\n`;
+        });
+      }
+    }
+    text += `Please log in to the portal if you need to request shift swaps or leave.\n\nBest regards,\nAmcal Pharmacy Woy Woy`;
+
+    if (textarea) textarea.value = text;
+  }
+}
 
 function closeEmailRosterModal() {
   document.getElementById('modal-email-roster').classList.remove('active');
@@ -5052,22 +5094,38 @@ function closeEmailRosterModal() {
 
 // Call backend API route to send SMTP email
 async function sendRosterEmail() {
-  const empId = document.getElementById('email-roster-emp-id').value;
-  const text = document.getElementById('email-roster-textarea').value;
+  const select = document.getElementById('email-roster-recipient-select');
+  const target = select ? select.value : 'all';
+  const customText = document.getElementById('email-roster-textarea').value;
   const weekStart = formatDateISO(state.currentWeekStart);
 
-  const btn = document.querySelector('#modal-email-roster .btn-neon');
+  const btn = document.getElementById('btn-send-roster-email') || document.querySelector('#modal-email-roster .btn-neon');
   const originalText = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Emails...';
 
   try {
-    const res = await BriskDB.apiSendRosterEmail(empId, weekStart, text);
+    let payload = {};
+    if (target === 'all') {
+      payload = {
+        broadcast: true,
+        weekStart,
+        customMessage: customText
+      };
+    } else {
+      payload = {
+        employeeId: target,
+        weekStart,
+        rosterText: customText
+      };
+    }
+
+    const res = await BriskDB.apiSendRosterEmail(payload);
 
     if (res.error) {
       showToast(`Error: ${res.error}`, 'error');
     } else {
-      showToast(res.message, 'success');
+      showToast(res.message || 'Roster emails successfully sent!', 'success');
       closeEmailRosterModal();
     }
   } catch (err) {
@@ -5347,6 +5405,7 @@ window.openAddEmployeeModal = openAddEmployeeModal;
 window.openEditEmployeeModal = openEditEmployeeModal;
 window.closeEmployeeModal = closeEmployeeModal;
 window.openEmailRosterModal = openEmailRosterModal;
+window.onEmailRecipientChange = onEmailRecipientChange;
 window.closeEmailRosterModal = closeEmailRosterModal;
 window.sendRosterEmail = sendRosterEmail;
 window.copyInviteUrl = copyInviteUrl;
