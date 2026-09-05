@@ -663,7 +663,7 @@ body.theme-light {
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  min-width: 960px;
+  min-width: 1100px;
 }
 .scheduler-grid-table thead th {
   position: sticky;
@@ -698,7 +698,7 @@ body.theme-light {
 }
 .col-day {
   width: 12.14%;
-  min-width: 95px;
+  min-width: 120px;
 }
 .day-date {
   display: block;
@@ -710,7 +710,8 @@ body.theme-light {
 .scheduler-grid-table td {
   border-right: 1px solid var(--border-glass);
   border-bottom: 1px solid var(--border-glass);
-  height: 95px;
+  min-height: 40px;
+  height: auto;
   vertical-align: top;
   padding: 5px;
   position: relative;
@@ -850,6 +851,108 @@ body.theme-light {
   background: var(--accent-amber);
   color: #fff;
   border-color: var(--accent-gold);
+}
+
+/* Timeline Shift Styles */
+.shift-timeline-container {
+  position: relative;
+  width: 100%;
+  min-height: 28px;
+  padding: 2px 0;
+}
+.shift-timeline-ruler {
+  background: repeating-linear-gradient(to right, transparent, transparent 19px, #e2e8f0 20px);
+}
+.shift-timeline-bar {
+  position: absolute;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.shift-timeline-bar:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+.shift-timeline-bar .bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+.shift-timeline-bar .bar-tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #1a202c;
+  z-index: 20;
+}
+.shift-timeline-bar:hover .bar-tooltip {
+  display: block;
+}
+.shift-timeline-bar.dragging {
+  opacity: 0.5;
+}
+.leave-overlay-stripe {
+  background: repeating-linear-gradient(45deg, rgba(255,0,0,0.1), rgba(255,0,0,0.1) 10px, transparent 10px, transparent 20px);
+}
+.emp-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.emp-hours-bar {
+  height: 4px;
+  border-radius: 2px;
+  background-color: #e2e8f0;
+}
+.emp-hours-bar .bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+}
+.presence-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+.stacked-bar-chart {
+  display: flex;
+  flex-direction: row;
+  height: 16px;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 /* Employee Cards Grid UI */

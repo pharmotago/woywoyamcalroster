@@ -1057,6 +1057,11 @@ async function bootApplication() {
     // Apply Role-Based Access Control (RBAC)
     applyRoleAccessControl();
 
+    // Initialize Presence Tracking for concurrent editing awareness
+    if (typeof initPresenceTracking === 'function') {
+      initPresenceTracking();
+    }
+
     // Ensure Owner option is present in invite-role dropdown (forces instant UI update even if cached HTML)
     const inviteRoleSelect = document.getElementById('invite-role');
     if (inviteRoleSelect && !inviteRoleSelect.querySelector('option[value="owner"]')) {
@@ -1489,6 +1494,10 @@ async function handleRegisterSubmit(event) {
 
 function handleLogout() {
   if (confirm('Are you sure you want to log out?')) {
+    if (presenceChannel) {
+      try { presenceChannel.unsubscribe(); } catch (e) {}
+      presenceChannel = null;
+    }
     BriskDB.setSession(null);
     state.currentUser = null;
     state.employees = [];
@@ -2154,7 +2163,17 @@ function renderScheduler() {
     const elId = `head-date-${d.getDay()}`;
     const headerEl = document.getElementById(elId);
     if (headerEl) {
-      headerEl.innerHTML = `${dd}/${mm} ${pharmacistCoverageBadge}`;
+      let tradingHoursSubLabel = '';
+      if (th) {
+        if (th.closed) {
+          tradingHoursSubLabel = `<div style="font-size:7.5pt; color:#f87171; font-weight:600; margin-top:1px;">Closed</div>`;
+        } else {
+          tradingHoursSubLabel = `<div style="font-size:7.5pt; color:var(--text-muted); margin-top:1px;">${th.open || '08:30'}–${th.close || '17:30'}</div>`;
+        }
+      } else {
+        tradingHoursSubLabel = dayOfWeek === 0 ? `<div style="font-size:7.5pt; color:#f87171; font-weight:600; margin-top:1px;">Closed</div>` : `<div style="font-size:7.5pt; color:var(--text-muted); margin-top:1px;">08:30–17:30</div>`;
+      }
+      headerEl.innerHTML = `${dd}/${mm}${tradingHoursSubLabel}${pharmacistCoverageBadge}`;
     }
   }
 
@@ -2227,6 +2246,14 @@ function getEffectiveShiftHourlyRate(shift) {
     });
   }
 
+  // Build fast O(1) shift lookup map for the current week
+  const weekShiftsMap = new Map();
+  state.shifts.forEach(s => {
+    const k = `${s.employeeId || ''}_${s.date}`;
+    if (!weekShiftsMap.has(k)) weekShiftsMap.set(k, []);
+    weekShiftsMap.get(k).push(s);
+  });
+
   // If user is employee, they see all staff rosters, but cannot click to add or edit
   activeEmployees.forEach((emp, empIdx) => {
     const tr = document.createElement('tr');
@@ -2251,15 +2278,31 @@ function getEffectiveShiftHourlyRate(shift) {
 
     const maxH = emp.maxHours || 38;
     const otH = empWeekHours > maxH ? (empWeekHours - maxH) : 0;
-    const otBadge = otH > 0 ? ` <span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:9px; padding:1px 4px; font-weight:700;" title="Overtime: ${otH.toFixed(1)}h exceeding ${maxH}h ordinary limit">+${otH.toFixed(1)}h OT</span>` : '';
+    const otBadge = otH > 0 ? ` <span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:8px; padding:1px 3px; font-weight:700;" title="Overtime: ${otH.toFixed(1)}h exceeding ${maxH}h ordinary limit">+${otH.toFixed(1)}h OT</span>` : '';
+
+    const initials = (emp.name || '??').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const avatarColor = stringToHslColor(emp.name || 'Staff');
+    const pct = Math.min(100, Math.round((empWeekHours / (maxH || 38)) * 100));
+    const fillGradient = empWeekHours > maxH ? 'linear-gradient(90deg, #ef4444, #dc2626)' : 'linear-gradient(90deg, #3b82f6, #00e5ff)';
 
     tdProfile.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-        <span class="grid-emp-name" ${isManagerOrOwner ? `onclick="openEditEmployeeModal('${emp.id}')" style="cursor:pointer; text-decoration: underline;"` : ''}>${emp.name}</span>
-        ${reorderBtns}
+      <div style="display:flex; align-items:center; gap:8px; width:100%;">
+        <div class="emp-avatar" style="background:${avatarColor};">${initials}</div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="grid-emp-name" ${isManagerOrOwner ? `onclick="openEditEmployeeModal('${emp.id}')" style="cursor:pointer; text-decoration: underline;"` : ''} title="${emp.name}">${emp.name}</span>
+            ${reorderBtns}
+          </div>
+          <span class="grid-emp-role">${emp.role || 'Staff'}</span>
+        </div>
       </div>
-      <span class="grid-emp-role">${emp.role}</span>
-      <span class="grid-emp-hours"><i class="fa-solid fa-clock"></i> ${empWeekHours.toFixed(1)}h / ${maxH}h${otBadge}</span>
+      <div style="margin-top:6px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:7.5pt; margin-bottom:2px;">
+          <span class="grid-emp-hours"><i class="fa-solid fa-clock"></i> ${empWeekHours.toFixed(1)}h / ${maxH}h</span>
+          ${otBadge}
+        </div>
+        <div class="emp-hours-bar"><div class="bar-fill" style="width:${pct}%; background:${fillGradient};"></div></div>
+      </div>
     `;
     tr.appendChild(tdProfile);
 
@@ -2318,9 +2361,11 @@ function getEffectiveShiftHourlyRate(shift) {
           } else {
             // Move shift
             if (targetEmpId) {
-              // Leave check
-              if (checkLeaveStatus(targetEmpId, targetDate)) {
-                if (!confirm('This employee has an approved leave request on this date. Move shift anyway?')) {
+              // Leave check with partial-day awareness
+              if (isShiftConflictingWithLeave(targetEmpId, targetDate, shift.startTime, shift.endTime)) {
+                const lInfo = getLeaveInfo(targetEmpId, targetDate);
+                const lMsg = lInfo?.type === 'full_day' ? 'approved full-day leave' : `approved partial leave (${lInfo?.label})`;
+                if (!confirm(`This employee has ${lMsg} on this date that overlaps with this shift. Move shift anyway?`)) {
                   return;
                 }
               }
@@ -2365,103 +2410,151 @@ function getEffectiveShiftHourlyRate(shift) {
         });
       }
       
-      const cellShifts = state.shifts.filter(s => s.employeeId === emp.id && s.date === dateStr);
-      cellShifts.forEach(shift => {
-        const div = document.createElement('div');
-        div.className = 'shift-card';
-        const isMgr = hasManagerPermissions(state.currentUser);
-        if (isMgr) {
-          div.draggable = true;
-          div.style.cursor = 'pointer';
-          div.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', shift.id);
-            div.classList.add('dragging');
-          });
-          div.addEventListener('dragend', () => {
-            div.classList.remove('dragging');
-          });
-          div.addEventListener('click', (e) => {
-            if (e.target.closest('button')) return;
-            openEditShiftModal(shift);
-          });
+      const cellShifts = weekShiftsMap.get(`${emp.id}_${dateStr}`) || [];
+      cellShifts.sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+
+      const isMgr = hasManagerPermissions(state.currentUser);
+      const leaveInfo = checkLeaveStatus(emp.id, dateStr);
+
+      if (leaveInfo && leaveInfo.type === 'full_day') {
+        const leaveDiv = document.createElement('div');
+        leaveDiv.className = 'badge badge-danger';
+        leaveDiv.style.cssText = 'font-size:9px; width:100%; text-align:center; padding:6px 2px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2); margin-top:2px;';
+        leaveDiv.innerHTML = `🏖️ On Leave<br><span style="font-size:7.5pt; opacity:0.85;">${leaveInfo.reason || 'Approved'}</span>`;
+        tdDay.appendChild(leaveDiv);
+      } else {
+        const timelineContainer = document.createElement('div');
+        timelineContainer.className = 'shift-timeline-container';
+
+        const dayOfWeek = d.getDay();
+        const th = (state.settings && state.settings.tradingHours) ? state.settings.tradingHours[String(dayOfWeek)] : null;
+        let dayOpenStr = '08:30';
+        let dayCloseStr = '17:30';
+        if (th && !th.closed) {
+          dayOpenStr = th.open || '08:30';
+          dayCloseStr = th.close || '17:30';
+        } else if (dayOfWeek === 6) {
+          dayOpenStr = '09:00';
+          dayCloseStr = '13:00';
+        } else if (dayOfWeek === 0) {
+          dayOpenStr = '09:00';
+          dayCloseStr = '17:00';
         }
 
-        // Color coding style
-        const roleColor = state.roles.find(r => r.name.toLowerCase() === shift.role.toLowerCase())?.color || '#0284c7';
-        div.style.borderLeft = `4px solid ${roleColor}`;
-        div.style.background = `rgba(${hexToRgb(roleColor)}, 0.12)`;
+        const dayOpenMins = timeToMinutes(dayOpenStr);
+        const dayCloseMins = timeToMinutes(dayCloseStr);
+        const totalDayMins = Math.max(240, dayCloseMins - dayOpenMins);
 
-        const shiftDuration = calculateShiftHours(shift.startTime, shift.endTime, 0);
-        const breakEntitlement = getAwardBreakEntitlements(shiftDuration);
-        const unpaidMeal = (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null) ? shift.unpaidMealMins : breakEntitlement.unpaidMealMins;
-        
-        let breakBadgeHtml = '';
-        if (shiftDuration >= 4) {
-          const mealText = unpaidMeal > 0 ? `${unpaidMeal}m Lunch` : '';
-          const restText = '';
-          const combined = [mealText, restText].filter(Boolean).join(' | ');
-          if (combined) {
-            breakBadgeHtml = `<div class="shift-card-breaks" style="font-size: 7.5pt; color: var(--text-muted); margin-top: 2px;"><i class="fa-solid fa-mug-hot"></i> ${combined}</div>`;
+        // If partial leave, show striped overlay on unavailable time range
+        if (leaveInfo && leaveInfo.type !== 'full_day') {
+          const unavailStartMins = timeToMinutes(leaveInfo.unavailStart || '00:00');
+          const unavailEndMins = timeToMinutes(leaveInfo.unavailEnd || '23:59');
+
+          const clampedStart = Math.max(dayOpenMins, unavailStartMins);
+          const clampedEnd = Math.min(dayCloseMins, unavailEndMins);
+
+          if (clampedEnd > clampedStart) {
+            const lLeftPct = Math.max(0, Math.min(100, ((clampedStart - dayOpenMins) / totalDayMins) * 100));
+            const lWidthPct = Math.max(5, Math.min(100 - lLeftPct, ((clampedEnd - clampedStart) / totalDayMins) * 100));
+
+            const stripeDiv = document.createElement('div');
+            stripeDiv.className = 'leave-overlay-stripe';
+            stripeDiv.style.cssText = `position:absolute; top:0; left:${lLeftPct}%; width:${lWidthPct}%; height:100%; border:1px dashed rgba(239,68,68,0.4); border-radius:3px; z-index:1; pointer-events:none; display:flex; align-items:flex-end; justify-content:center;`;
+            stripeDiv.innerHTML = `<span style="font-size:7.5pt; color:#f87171; font-weight:700; background:rgba(0,0,0,0.6); border-radius:2px; padding:0 3px;">${leaveInfo.label}</span>`;
+            timelineContainer.appendChild(stripeDiv);
           }
         }
 
-        const delBtnHtml = isMgr ? `<button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>` : '';
-
-        div.innerHTML = `
-          <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}</span>
-            ${delBtnHtml}
-          </div>
-          <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} - ${formatTimeAmPm(shift.endTime)}</div>
-          ${breakBadgeHtml}
-          ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
-        `;
-        
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'flex gap-2 align-center';
-
-        if (hasManagerPermissions(state.currentUser)) {
-          const dupBtn = document.createElement('button');
-          dupBtn.className = 'btn-icon';
-          dupBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-          dupBtn.title = 'Copy Shift';
-          dupBtn.onclick = (e) => {
-            e.stopPropagation();
-            state.copiedShift = { ...shift };
-            showToast('Shift copied. Click "+" on any cell to paste!', 'success');
-            updatePasteButtonState();
-          };
-          btnGroup.appendChild(dupBtn);
-
-          const editBtn = document.createElement('button');
-          editBtn.className = 'btn-icon';
-          editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-          editBtn.onclick = (e) => { e.stopPropagation(); openEditShiftModal(shift); };
-          btnGroup.appendChild(editBtn);
-        }
-
-        div.appendChild(btnGroup);
-        tdDay.appendChild(div);
-      });
-
-      const isLeave = checkLeaveStatus(emp.id, dateStr);
-      if (isLeave) {
-        const leaveDiv = document.createElement('div');
-        leaveDiv.className = 'badge badge-danger';
-        leaveDiv.style.fontSize = '9px';
-        leaveDiv.style.width = '100%';
-        leaveDiv.style.textAlign = 'center';
-        leaveDiv.style.marginTop = '4px';
-        leaveDiv.textContent = '🏖️ On Leave';
-        tdDay.appendChild(leaveDiv);
-      } else if (hasManagerPermissions(state.currentUser)) {
-        const addBtn = document.createElement('div');
-        addBtn.className = 'cell-add-btn';
-        addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
-        addBtn.addEventListener('click', () => {
-          openAddShiftModal(emp.id, dateStr);
+        // Multi-track layout for contiguous / overlapping shifts
+        const tracks = [];
+        cellShifts.forEach(shift => {
+          const sStart = timeToMinutes(shift.startTime || '09:00');
+          const sEnd = timeToMinutes(shift.endTime || '17:00');
+          let trackIdx = -1;
+          for (let t = 0; t < tracks.length; t++) {
+            if (tracks[t] <= sStart) {
+              trackIdx = t;
+              tracks[t] = sEnd;
+              break;
+            }
+          }
+          if (trackIdx === -1) {
+            trackIdx = tracks.length;
+            tracks.push(sEnd);
+          }
+          shift._track = trackIdx;
         });
-        tdDay.appendChild(addBtn);
+
+        const totalTracks = Math.max(1, tracks.length);
+        timelineContainer.style.height = `${totalTracks * 26 + 4}px`;
+
+        // Render shift bars
+        cellShifts.forEach(shift => {
+          const sStartMins = timeToMinutes(shift.startTime || '09:00');
+          const sEndMins = timeToMinutes(shift.endTime || '17:00');
+          const leftPct = Math.max(0, Math.min(94, ((sStartMins - dayOpenMins) / totalDayMins) * 100));
+          const durationMins = Math.max(30, sEndMins - sStartMins);
+          const widthPct = Math.max(8, Math.min(100 - leftPct, (durationMins / totalDayMins) * 100));
+
+          const roleColor = state.roles.find(r => r.name.toLowerCase() === (shift.role || '').toLowerCase())?.color || '#0284c7';
+          const topPx = (shift._track || 0) * 26 + 2;
+
+          const bar = document.createElement('div');
+          bar.className = 'shift-timeline-bar';
+          bar.style.left = `${leftPct}%`;
+          bar.style.width = `${widthPct}%`;
+          bar.style.top = `${topPx}px`;
+          bar.style.backgroundColor = roleColor;
+          bar.style.borderLeft = `3px solid rgba(255,255,255,0.7)`;
+          bar.setAttribute('data-shift-id', shift.id);
+
+          const shiftDuration = calculateShiftHours(shift.startTime, shift.endTime, 0);
+          const breakEntitlement = getAwardBreakEntitlements(shiftDuration);
+          const unpaidMeal = (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null) ? shift.unpaidMealMins : breakEntitlement.unpaidMealMins;
+          const mealText = unpaidMeal > 0 ? `${unpaidMeal}m Lunch` : '';
+
+          if (isMgr) {
+            bar.draggable = true;
+            bar.addEventListener('dragstart', (e) => {
+              e.stopPropagation();
+              e.dataTransfer.setData('text/plain', shift.id);
+              bar.classList.add('dragging');
+            });
+            bar.addEventListener('dragend', () => {
+              bar.classList.remove('dragging');
+            });
+            bar.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openEditShiftModal(shift);
+            });
+          }
+
+          bar.innerHTML = `
+            <span class="bar-label">${shift.role}: ${formatTimeAmPm(shift.startTime)}~${formatTimeAmPm(shift.endTime)}</span>
+            <div class="bar-tooltip">
+              <strong style="color:${roleColor};">${shift.role}</strong> (${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)})
+              ${mealText ? `<div style="font-size:8pt; color:#64748b;"><i class="fa-solid fa-mug-hot"></i> ${mealText}</div>` : ''}
+              ${shift.notes ? `<div style="font-size:8pt; margin-top:2px; font-style:italic;">${shift.notes}</div>` : ''}
+              ${isMgr ? `<div style="font-size:7.5pt; color:#94a3b8; margin-top:3px;">Click to edit | Drag to move</div>` : ''}
+            </div>
+          `;
+
+          timelineContainer.appendChild(bar);
+        });
+
+        tdDay.appendChild(timelineContainer);
+
+        if (isMgr) {
+          const addBtn = document.createElement('div');
+          addBtn.className = 'cell-add-btn';
+          addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+          addBtn.title = 'Add Shift';
+          addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openAddShiftModal(emp.id, dateStr);
+          });
+          tdDay.appendChild(addBtn);
+        }
       }
 
       tr.appendChild(tdDay);
@@ -2548,63 +2641,50 @@ function getEffectiveShiftHourlyRate(shift) {
         });
       }
 
-      const cellShifts = state.shifts.filter(s => (s.employeeId === null || !state.employees.find(e => e.id === s.employeeId)?.active) && s.date === dateStr);
-      cellShifts.forEach(shift => {
-        const div = document.createElement('div');
-        div.className = 'shift-card unassigned';
-        if (hasManagerPermissions(state.currentUser)) {
-          div.draggable = true;
-          div.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', shift.id);
-            div.classList.add('dragging');
-          });
-          div.addEventListener('dragend', () => {
-            div.classList.remove('dragging');
-          });
-        }
+      const cellShifts = weekShiftsMap.get(`_${dateStr}`) || state.shifts.filter(s => (s.employeeId === null || !state.employees.find(e => e.id === s.employeeId)?.active) && s.date === dateStr);
+      
+      if (cellShifts.length > 0) {
+        const timelineContainer = document.createElement('div');
+        timelineContainer.className = 'shift-timeline-container';
+        timelineContainer.style.height = `${cellShifts.length * 26 + 4}px`;
 
-        // Color coding
-        const roleColor = state.roles.find(r => r.name.toLowerCase() === shift.role.toLowerCase())?.color || '#ef4444';
-        div.style.borderLeft = `4px solid ${roleColor}`;
-        div.style.background = `rgba(${hexToRgb(roleColor)}, 0.08)`;
+        cellShifts.forEach((shift, sIdx) => {
+          const roleColor = state.roles.find(r => r.name.toLowerCase() === (shift.role || '').toLowerCase())?.color || '#ef4444';
+          const bar = document.createElement('div');
+          bar.className = 'shift-timeline-bar';
+          bar.style.position = 'relative';
+          bar.style.top = '0px';
+          bar.style.left = '0px';
+          bar.style.width = '100%';
+          bar.style.marginBottom = '3px';
+          bar.style.background = 'rgba(231, 76, 60, 0.15)';
+          bar.style.border = '1px dashed var(--text-danger)';
+          bar.style.color = 'var(--text-danger)';
 
-        const isMgrUnassigned = hasManagerPermissions(state.currentUser);
-        const delBtnUnassigned = isMgrUnassigned ? `<button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:12px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>` : '';
+          if (hasManagerPermissions(state.currentUser)) {
+            bar.draggable = true;
+            bar.addEventListener('dragstart', (e) => {
+              e.dataTransfer.setData('text/plain', shift.id);
+              bar.classList.add('dragging');
+            });
+            bar.addEventListener('dragend', () => {
+              bar.classList.remove('dragging');
+            });
+            bar.addEventListener('click', (e) => {
+              if (e.target.closest('button')) return;
+              openEditShiftModal(shift);
+            });
+          }
 
-        div.innerHTML = `
-          <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>${shift.role}</span>
-            ${delBtnUnassigned}
-          </div>
-          <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} - ${formatTimeAmPm(shift.endTime)}</div>
-          ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
-        `;
+          bar.innerHTML = `
+            <span class="bar-label" style="color:var(--text-danger); font-weight:700;">${shift.role}: ${formatTimeAmPm(shift.startTime)}~${formatTimeAmPm(shift.endTime)}</span>
+            <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin-left:auto; font-size:11px; opacity:0.8;"><i class="fa-solid fa-trash"></i></button>
+          `;
+          timelineContainer.appendChild(bar);
+        });
 
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'flex gap-2 align-center';
-
-        if (hasManagerPermissions(state.currentUser)) {
-          const dupBtn = document.createElement('button');
-          dupBtn.className = 'btn-icon';
-          dupBtn.innerHTML = '<i class="fa-regular fa-copy"></i>';
-          dupBtn.title = 'Copy Shift';
-          dupBtn.onclick = (e) => {
-            e.stopPropagation();
-            state.copiedShift = { ...shift };
-            showToast('Shift copied. Click "+" on any cell to paste!', 'success');
-            updatePasteButtonState();
-          };
-          btnGroup.appendChild(dupBtn);
-
-          const editBtn = document.createElement('button');
-          editBtn.className = 'btn-icon';
-          editBtn.innerHTML = '<i class="fa-solid fa-pen"></i>';
-          editBtn.onclick = (e) => { e.stopPropagation(); openEditShiftModal(shift); };
-          btnGroup.appendChild(editBtn);
-        }
-        div.appendChild(btnGroup);
-        tdDay.appendChild(div);
-      });
+        tdDay.appendChild(timelineContainer);
+      }
 
       const addBtn = document.createElement('div');
       addBtn.className = 'cell-add-btn';
@@ -2635,6 +2715,24 @@ function getEffectiveShiftHourlyRate(shift) {
     }
     const headcountRow = `<tr class="summary-row"><td style="font-weight:600;"><i class="fa-solid fa-users" style="margin-right:4px; color:var(--accent-cyan);"></i>Staff Count</td>${headcountCells.join('')}</tr>`;
 
+    // Stacked Bar Chart for Role Distribution per day
+    const stackedBarCells = grandTotals.map((tot, i) => {
+      if (tot <= 0) return '<td style="text-align:center;"><span style="color:var(--text-muted); font-size:0.75rem;">-</span></td>';
+      const dPct = Math.round((dispTotals[i] / tot) * 100);
+      const fPct = Math.round((frontTotals[i] / tot) * 100);
+      const wPct = Math.round((websterTotals[i] / tot) * 100);
+      return `
+        <td>
+          <div class="stacked-bar-chart" title="Dispensary: ${dispTotals[i].toFixed(1)}h (${dPct}%) | Front: ${frontTotals[i].toFixed(1)}h (${fPct}%) | Webster: ${websterTotals[i].toFixed(1)}h (${wPct}%)" style="cursor:help;">
+            <div style="width:${dPct}%; background:#10b981;"></div>
+            <div style="width:${fPct}%; background:#f59e0b;"></div>
+            <div style="width:${wPct}%; background:#a855f7;"></div>
+          </div>
+        </td>
+      `;
+    }).join('');
+    const distributionRow = `<tr class="summary-row print-hide-wage"><td style="font-weight:600;"><i class="fa-solid fa-chart-column" style="margin-right:4px; color:#10b981;"></i>Role Mix (Disp/Front/Web)</td>${stackedBarCells}</tr>`;
+
     if (isManagerOrOwner) {
       const salesTargets = getDailySalesTargets();
       const wagePctCells = grandTotals.map((h, i) => {
@@ -2648,7 +2746,7 @@ function getEffectiveShiftHourlyRate(shift) {
         return `<td><span style="font-size:11px; font-weight:700; color:${health.color};">${pct.toFixed(1)}%</span><br><span style="font-size:9px; color:var(--text-muted);">$${sales.toLocaleString()}</span></td>`;
       }).join('');
 
-      tfoot.innerHTML = headcountRow + `
+      tfoot.innerHTML = headcountRow + distributionRow + `
         <tr class="summary-row">
           <td>Dispensary Hours <span class="wage-val print-hide-wage">(Labor Cost)</span></td>
           ${dispTotals.map((h, i) => `<td>${h > 0 ? `${h.toFixed(1)}h<span class="wage-val print-hide-wage"><br><span style="font-size:10px; color:#10b981; font-weight:600;">$${dispCosts[i].toFixed(0)}</span></span>` : '-'}</td>`).join('')}
@@ -2671,7 +2769,7 @@ function getEffectiveShiftHourlyRate(shift) {
         </tr>
       `;
     } else {
-      tfoot.innerHTML = headcountRow + `
+      tfoot.innerHTML = headcountRow + distributionRow + `
         <tr class="summary-row">
           <td>Dispensary Hours</td>
           ${dispTotals.map(h => `<td>${h > 0 ? h.toFixed(1) + 'h' : '-'}</td>`).join('')}
@@ -2811,11 +2909,12 @@ function getEffectiveShiftHourlyRate(shift) {
       let leaveHtml = '';
       state.employees.forEach(emp => {
         if (!emp.active) return;
-        const isLeave = checkLeaveStatus(emp.id, dateStr);
-        if (isLeave) {
+        const leaveInfo = checkLeaveStatus(emp.id, dateStr);
+        if (leaveInfo) {
+          const leaveText = leaveInfo.type === 'full_day' ? `🌴 ${emp.name} (On Leave)` : `🌴 ${emp.name} (${leaveInfo.label})`;
           leaveHtml += `
             <div class="badge" style="margin-top: 6px; display: inline-block; font-size: 10px; padding: 4px 8px; background: rgba(168, 85, 247, 0.12); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 4px; font-weight: 500;">
-              🌴 ${emp.name} (On Leave)
+              ${leaveText}
             </div>
           `;
         }
@@ -2965,19 +3064,269 @@ function calculateEmployeeWeekHours(employeeId, weekStart) {
   return Math.round((total + Number.EPSILON) * 100) / 100;
 }
 
-function checkLeaveStatus(employeeId, dateStr) {
+function timeToMinutes(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const [h, m] = timeStr.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+window.timeToMinutes = timeToMinutes;
+
+function stringToHslColor(str) {
+  if (!str) return 'hsl(210, 65%, 45%)';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const h = Math.abs(hash % 360);
+  return `hsl(${h}, 65%, 45%)`;
+}
+window.stringToHslColor = stringToHslColor;
+
+function getLeaveInfo(employeeId, dateStr) {
+  if (!employeeId || !dateStr) return null;
   const date = new Date(dateStr + 'T00:00:00');
   date.setHours(0,0,0,0);
 
-  return state.leaveRequests.some(req => {
-    if (req.employeeId !== employeeId || req.status !== 'Approved') return false;
-    const start = new Date(req.startDate + 'T00:00:00');
-    const end = new Date(req.endDate + 'T00:00:00');
+  const req = state.leaveRequests.find(r => {
+    if (r.employeeId !== employeeId || r.status !== 'Approved' || !r.startDate || !r.endDate) return false;
+    const start = new Date(r.startDate + 'T00:00:00');
+    const end = new Date(r.endDate + 'T00:00:00');
     start.setHours(0,0,0,0);
     end.setHours(0,0,0,0);
     return date >= start && date <= end;
   });
+
+  if (!req) return null;
+
+  const durationType = req.leaveDurationType || 'full_day';
+  let unavailStart = '00:00';
+  let unavailEnd = '23:59';
+  let label = '🏖️ On Leave';
+
+  if (durationType === 'half_am') {
+    unavailStart = '00:00';
+    unavailEnd = '13:00';
+    label = '🏖️ AM Off (Avail PM)';
+  } else if (durationType === 'half_pm') {
+    unavailStart = '13:00';
+    unavailEnd = '23:59';
+    label = '🏖️ PM Off (Avail AM)';
+  } else if (durationType === 'custom') {
+    unavailStart = (req.unavailableFrom || '00:00').substring(0, 5);
+    unavailEnd = (req.unavailableUntil || '23:59').substring(0, 5);
+    label = `🏖️ Off ${formatTimeAmPm(unavailStart)}–${formatTimeAmPm(unavailEnd)}`;
+  }
+
+  return {
+    onLeave: true,
+    type: durationType,
+    unavailStart,
+    unavailEnd,
+    label,
+    reason: req.reason,
+    id: req.id
+  };
 }
+window.getLeaveInfo = getLeaveInfo;
+
+function checkLeaveStatus(employeeId, dateStr) {
+  return getLeaveInfo(employeeId, dateStr);
+}
+window.checkLeaveStatus = checkLeaveStatus;
+
+function isShiftConflictingWithLeave(employeeId, dateStr, shiftStart, shiftEnd) {
+  const leave = getLeaveInfo(employeeId, dateStr);
+  if (!leave) return false;
+  if (leave.type === 'full_day') return true;
+
+  const sStart = (shiftStart || '00:00').substring(0, 5);
+  const sEnd = (shiftEnd || '00:00').substring(0, 5);
+  return sStart < leave.unavailEnd && sEnd > leave.unavailStart;
+}
+window.isShiftConflictingWithLeave = isShiftConflictingWithLeave;
+
+function toggleLeaveTimeFields() {
+  const type = document.getElementById('leave-duration-type')?.value;
+  const customFields = document.getElementById('leave-custom-time-fields');
+  if (customFields) {
+    customFields.style.display = type === 'custom' ? 'flex' : 'none';
+  }
+}
+window.toggleLeaveTimeFields = toggleLeaveTimeFields;
+
+/* ==========================================================================
+   ROLE SPLIT MANAGEMENT (MULTI-ROLE PER DAY)
+   ========================================================================== */
+let roleSplitSegments = [];
+
+function addRoleSplitSegment() {
+  const currentEnd = document.getElementById('shift-end')?.value || '17:00';
+  const currentRole = document.getElementById('shift-role')?.value;
+  const splitSection = document.getElementById('role-split-segments');
+  const splitList = document.getElementById('role-split-list');
+  if (!splitSection || !splitList) return;
+
+  splitSection.style.display = 'block';
+
+  // If this is the first split segment, adjust shift-end to a sensible midpoint
+  const currentStart = document.getElementById('shift-start')?.value || '09:00';
+  if (roleSplitSegments.length === 0) {
+    if (currentStart < '13:00' && currentEnd > '13:00') {
+      document.getElementById('shift-end').value = '13:00';
+      if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
+    }
+  }
+
+  const segmentStart = document.getElementById('shift-end')?.value || '13:00';
+  const segmentId = 'seg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+
+  const roles = (state.roles && state.roles.length > 0) ? state.roles : (typeof DEFAULT_ROLES !== 'undefined' ? DEFAULT_ROLES : []);
+  const otherRole = roles.find(r => r.name !== currentRole)?.name || 'Floor';
+
+  const segObj = {
+    id: segmentId,
+    role: otherRole,
+    startTime: segmentStart,
+    endTime: currentEnd > segmentStart ? currentEnd : '17:30'
+  };
+  roleSplitSegments.push(segObj);
+
+  renderRoleSplitList();
+}
+window.addRoleSplitSegment = addRoleSplitSegment;
+
+function removeRoleSplitSegment(id) {
+  roleSplitSegments = roleSplitSegments.filter(s => s.id !== id);
+  if (roleSplitSegments.length === 0) {
+    clearRoleSplitSegments();
+  } else {
+    renderRoleSplitList();
+  }
+}
+window.removeRoleSplitSegment = removeRoleSplitSegment;
+
+function clearRoleSplitSegments() {
+  roleSplitSegments = [];
+  const splitSection = document.getElementById('role-split-segments');
+  const splitList = document.getElementById('role-split-list');
+  if (splitSection) splitSection.style.display = 'none';
+  if (splitList) splitList.innerHTML = '';
+}
+window.clearRoleSplitSegments = clearRoleSplitSegments;
+
+function updateRoleSplitSegment(id, field, value) {
+  const seg = roleSplitSegments.find(s => s.id === id);
+  if (seg) seg[field] = value;
+}
+window.updateRoleSplitSegment = updateRoleSplitSegment;
+
+function renderRoleSplitList() {
+  const splitList = document.getElementById('role-split-list');
+  if (!splitList) return;
+  const roles = (state.roles && state.roles.length > 0) ? state.roles : [];
+
+  splitList.innerHTML = roleSplitSegments.map((seg, idx) => `
+    <div class="glass-card" style="padding:8px; border:1px solid rgba(168,85,247,0.3); border-radius:4px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;" id="${seg.id}">
+      <span style="font-weight:700; font-size:0.75rem; color:#a855f7; min-width:55px;">Part ${idx + 2}:</span>
+      <select class="form-control" style="flex:1; min-width:110px; height:32px; font-size:0.8rem;" onchange="updateRoleSplitSegment('${seg.id}', 'role', this.value)">
+        ${roles.map(r => `<option value="${r.name}" ${r.name === seg.role ? 'selected' : ''}>${r.name}</option>`).join('')}
+      </select>
+      <input type="time" class="form-control" style="width:85px; height:32px; font-size:0.8rem;" value="${seg.startTime}" onchange="updateRoleSplitSegment('${seg.id}', 'startTime', this.value)">
+      <span style="color:var(--text-muted); font-size:0.8rem;">~</span>
+      <input type="time" class="form-control" style="width:85px; height:32px; font-size:0.8rem;" value="${seg.endTime}" onchange="updateRoleSplitSegment('${seg.id}', 'endTime', this.value)">
+      <button type="button" class="btn btn-icon text-danger" style="padding:2px 6px;" onclick="removeRoleSplitSegment('${seg.id}')" title="Remove Segment"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+window.renderRoleSplitList = renderRoleSplitList;
+
+/* ==========================================================================
+   SUPABASE REALTIME PRESENCE (CONCURRENT EDITING AWARENESS)
+   ========================================================================== */
+let presenceChannel = null;
+let activePresences = {};
+
+function initPresenceTracking() {
+  if (typeof supabase === 'undefined' || !supabase || !state.currentUser) return;
+  try {
+    if (presenceChannel) {
+      presenceChannel.unsubscribe();
+    }
+    const myKey = (state.currentUser.email || 'user_' + Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
+    presenceChannel = supabase.channel('brisk-presence', {
+      config: { presence: { key: myKey } }
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = presenceChannel.presenceState();
+        updateActivePresences(presenceState);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            email: state.currentUser.email,
+            name: state.currentUser.name || state.currentUser.email,
+            editingCell: null,
+            editingShiftId: null,
+            onlineAt: new Date().toISOString()
+          });
+        }
+      });
+  } catch (err) {
+    console.warn('[Presence] Tracking init notice:', err);
+  }
+}
+window.initPresenceTracking = initPresenceTracking;
+
+function updateActivePresences(presenceState) {
+  activePresences = {};
+  const myEmail = String(state.currentUser?.email || '').toLowerCase();
+  for (const key in presenceState) {
+    const presences = presenceState[key];
+    if (Array.isArray(presences)) {
+      presences.forEach(p => {
+        if (String(p.email || '').toLowerCase() !== myEmail && p.editingCell) {
+          activePresences[p.editingCell] = p;
+        }
+      });
+    }
+  }
+  renderPresenceIndicators();
+}
+
+function trackEditingCell(cellKey, shiftId) {
+  if (presenceChannel && state.currentUser) {
+    presenceChannel.track({
+      email: state.currentUser.email,
+      name: state.currentUser.name || state.currentUser.email,
+      editingCell: cellKey,
+      editingShiftId: shiftId,
+      onlineAt: new Date().toISOString()
+    }).catch(() => {});
+  }
+}
+window.trackEditingCell = trackEditingCell;
+
+function clearEditingCell() {
+  trackEditingCell(null, null);
+}
+window.clearEditingCell = clearEditingCell;
+
+function renderPresenceIndicators() {
+  document.querySelectorAll('.presence-indicator').forEach(el => el.remove());
+  for (const cellKey in activePresences) {
+    const presence = activePresences[cellKey];
+    const [empId, dateStr] = cellKey.split('_');
+    const cell = document.querySelector(`.calendar-grid-cell[data-employee-id="${empId}"][data-date="${dateStr}"]`);
+    if (cell) {
+      const dot = document.createElement('div');
+      dot.className = 'presence-indicator';
+      dot.style.background = '#f59e0b';
+      dot.title = `Currently being edited by ${presence.name || presence.email}`;
+      cell.appendChild(dot);
+    }
+  }
+}
+window.renderPresenceIndicators = renderPresenceIndicators;
 
 /* ==========================================================================
    MODAL: SHIFT ADD/EDIT FORM
@@ -2988,14 +3337,38 @@ function openAddShiftModal(employeeId = '', dateStr = '') {
     showToast('Permission denied: Only Owners and Managers can add or edit shifts.', 'warning');
     return;
   }
+  clearRoleSplitSegments();
+  clearEditingCell();
+
   document.getElementById('shift-modal-title').textContent = 'Add New Shift';
   document.getElementById('shift-id').value = '';
   document.getElementById('shift-notes').value = '';
   document.getElementById('btn-delete-shift').classList.add('hide');
 
-  document.getElementById('shift-date').value = dateStr || formatDateISO(new Date());
+  const targetDate = dateStr || formatDateISO(new Date());
+  document.getElementById('shift-date').value = targetDate;
   document.getElementById('shift-start').value = '09:00';
   document.getElementById('shift-end').value = '17:00';
+
+  // If partial leave on this date, default hours to available window
+  if (employeeId && targetDate) {
+    const leaveInfo = getLeaveInfo(employeeId, targetDate);
+    if (leaveInfo && leaveInfo.type !== 'full_day') {
+      if (leaveInfo.type === 'half_am') {
+        document.getElementById('shift-start').value = '13:00';
+        document.getElementById('shift-end').value = '17:30';
+      } else if (leaveInfo.type === 'half_pm') {
+        document.getElementById('shift-start').value = '08:30';
+        document.getElementById('shift-end').value = '13:00';
+      } else if (leaveInfo.type === 'custom') {
+        if (leaveInfo.unavailStart <= '09:00') {
+          document.getElementById('shift-start').value = leaveInfo.unavailEnd || '13:00';
+        } else {
+          document.getElementById('shift-end').value = leaveInfo.unavailStart || '13:00';
+        }
+      }
+    }
+  }
 
   // Comprehensive Roles select
   const roleSelect = document.getElementById('shift-role');
@@ -3058,6 +3431,16 @@ function openEditShiftModal(shift) {
     showToast('Permission denied: Only Owners and Managers can add or edit shifts.', 'warning');
     return;
   }
+  clearRoleSplitSegments();
+
+  const cellKey = `${shift.employeeId || ''}_${shift.date}`;
+  trackEditingCell(cellKey, shift.id);
+
+  if (activePresences && activePresences[cellKey]) {
+    const editor = activePresences[cellKey].name || activePresences[cellKey].email;
+    showToast(`⚠️ Notice: ${editor} is also currently viewing/editing this cell slot.`, 'warning');
+  }
+
   document.getElementById('shift-modal-title').textContent = 'Edit Shift';
   document.getElementById('shift-id').value = shift.id;
   document.getElementById('shift-date').value = shift.date;
@@ -3125,6 +3508,8 @@ function openEditShiftModal(shift) {
 }
 
 function closeShiftModal() {
+  clearRoleSplitSegments();
+  clearEditingCell();
   const modal = document.getElementById('modal-shift');
   if (modal) {
     if (typeof window.closeModal === 'function') {
@@ -3233,8 +3618,10 @@ async function handleShiftSubmit(event) {
       }
     }
 
-    if (empId && checkLeaveStatus(empId, date)) {
-      if (!confirm('This employee has an approved leave request on this date. Force schedule this shift anyway?')) {
+    if (empId && isShiftConflictingWithLeave(empId, date, start, end)) {
+      const leaveInfo = getLeaveInfo(empId, date);
+      const leaveMsg = leaveInfo?.type === 'full_day' ? 'an approved full-day leave' : `an approved partial leave (${leaveInfo?.label})`;
+      if (!confirm(`This employee has ${leaveMsg} on this date that overlaps with this shift (${start}–${end}). Force schedule this shift anyway?`)) {
         return;
       }
     }
@@ -3383,14 +3770,39 @@ async function handleShiftSubmit(event) {
       if (typeof BriskDB.logAudit === 'function') {
         BriskDB.logAudit('SHIFT_UPDATE', `Updated shift for ${empName} on ${date} (${start}-${end}, ${role}${unpaidMealVal === 'crib_paid' ? ', Paid Crib' : ''})`, id);
       }
-      showToast('Shift updated successfully.', 'success');
     } else {
       const created = await BriskDB.addShift(shiftData);
       if (typeof BriskDB.logAudit === 'function') {
         BriskDB.logAudit('SHIFT_CREATE', `Created shift for ${empName} on ${date} (${start}-${end}, ${role}${unpaidMealVal === 'crib_paid' ? ', Paid Crib' : ''})`, created ? created.id : null);
       }
-      showToast('Shift added successfully.', 'success');
     }
+
+    // Save extra split-role segments if present
+    if (roleSplitSegments && roleSplitSegments.length > 0) {
+      for (const seg of roleSplitSegments) {
+        if (seg.startTime && seg.endTime && seg.role) {
+          const segDuration = calculateShiftHours(seg.startTime, seg.endTime, 0);
+          const segBreaks = getAwardBreakEntitlements(segDuration);
+          const segShift = {
+            employeeId: empId,
+            role: seg.role,
+            date: date,
+            startTime: seg.startTime,
+            endTime: seg.endTime,
+            unpaidMealMins: segBreaks.unpaidMealMins,
+            notes: notes ? `[Split Role] ${notes}` : '[Split Role]'
+          };
+          await BriskDB.addShift(segShift);
+        }
+      }
+      showToast(`Saved multi-role shifts (${1 + roleSplitSegments.length} parts) successfully.`, 'success');
+    } else {
+      showToast(id ? 'Shift updated successfully.' : 'Shift added successfully.', 'success');
+    }
+
+    clearRoleSplitSegments();
+    clearEditingCell();
+
     loadDataFromState();
     renderScheduler();
     calculateLaborCostForecast();
@@ -4586,11 +4998,24 @@ function renderTimeOffPanel() {
 
     const certBadge = req.medicalCertSighted ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; margin-top:4px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-medical"></i> Cert Sighted</span>` : '';
 
+    let durationBadge = '';
+    const dType = req.leaveDurationType || 'full_day';
+    if (dType === 'half_am') {
+      durationBadge = '<span class="badge" style="background:rgba(0,229,255,0.15); color:var(--accent-cyan); font-size:9px; margin-top:2px; display:inline-block;">Morning Off (Avail PM)</span>';
+    } else if (dType === 'half_pm') {
+      durationBadge = '<span class="badge" style="background:rgba(168,85,247,0.15); color:#a855f7; font-size:9px; margin-top:2px; display:inline-block;">Afternoon Off (Avail AM)</span>';
+    } else if (dType === 'custom') {
+      durationBadge = `<span class="badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; font-size:9px; margin-top:2px; display:inline-block;">Off ${formatTimeAmPm(req.unavailableFrom || '00:00')}–${formatTimeAmPm(req.unavailableUntil || '23:59')}</span>`;
+    }
+
     const tr = document.createElement('tr');
     tr.className = 'leave-request-row';
     tr.innerHTML = `
       <td data-label="Staff Name"><strong style="color:var(--text-primary); font-size:0.95rem;">${empName}</strong></td>
-      <td data-label="Period"><span style="color:var(--accent-gold); font-weight:600;">${req.startDate} ~ ${req.endDate}</span></td>
+      <td data-label="Period">
+        <span style="color:var(--accent-gold); font-weight:600;">${req.startDate} ~ ${req.endDate}</span>
+        ${durationBadge ? `<br>${durationBadge}` : ''}
+      </td>
       <td data-label="Reason" style="max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: normal;">
         <div style="font-size:0.88rem; color:var(--text-secondary);">${req.reason || 'No reason provided'}</div>
         ${certBadge}
@@ -4617,6 +5042,9 @@ async function handleLeaveSubmit(event) {
   const end = document.getElementById('leave-end-date').value;
   const reason = document.getElementById('leave-reason').value;
   const medCertSighted = document.getElementById('leave-med-cert') ? document.getElementById('leave-med-cert').checked : false;
+  const durationType = document.getElementById('leave-duration-type')?.value || 'full_day';
+  const unavailStart = document.getElementById('leave-off-start')?.value || '08:30';
+  const unavailEnd = document.getElementById('leave-off-end')?.value || '17:30';
 
   if (start > end) {
     showToast('End date cannot be earlier than start date.', 'error');
@@ -4646,11 +5074,17 @@ async function handleLeaveSubmit(event) {
   const freshShifts = (typeof BriskDB !== 'undefined' && BriskDB.getShifts) ? BriskDB.getShifts() : (state.shifts || []);
   const hasConflictingShifts = freshShifts.some(s => {
     if (s.employeeId !== empId) return false;
-    return s.date >= start && s.date <= end;
+    if (s.date < start || s.date > end) return false;
+    if (durationType === 'full_day') return true;
+    const sStart = (s.startTime || '00:00').substring(0, 5);
+    const sEnd = (s.endTime || '00:00').substring(0, 5);
+    const uStart = durationType === 'half_am' ? '00:00' : (durationType === 'half_pm' ? '13:00' : unavailStart);
+    const uEnd = durationType === 'half_am' ? '13:00' : (durationType === 'half_pm' ? '23:59' : unavailEnd);
+    return sStart < uEnd && sEnd > uStart;
   });
 
   if (hasConflictingShifts) {
-    const proceed = confirm('⚠️ Warning: You have scheduled shifts within this date range.\n\nSubmit leave request anyway? The manager can reassign affected shifts later.');
+    const proceed = confirm('⚠️ Warning: You have scheduled shifts that overlap with this requested leave time.\n\nSubmit leave request anyway? The manager can reassign affected shifts upon approval.');
     if (!proceed) return;
   }
 
@@ -4659,17 +5093,21 @@ async function handleLeaveSubmit(event) {
     startDate: start,
     endDate: end,
     reason: reason,
-    medicalCertSighted: !!medCertSighted
+    medicalCertSighted: !!medCertSighted,
+    leaveDurationType: durationType,
+    unavailableFrom: durationType === 'custom' ? unavailStart : (durationType === 'half_am' ? '00:00' : (durationType === 'half_pm' ? '13:00' : null)),
+    unavailableUntil: durationType === 'custom' ? unavailEnd : (durationType === 'half_am' ? '13:00' : (durationType === 'half_pm' ? '23:59' : null))
   };
 
   try {
     const addedReq = await BriskDB.addLeaveRequest(req);
     const targetEmp = state.employees.find(e => e.id === empId);
     if (typeof BriskDB.logAudit === 'function') {
-      BriskDB.logAudit('LEAVE_REQUEST', `Submitted leave for ${targetEmp ? targetEmp.name : empId} (${start} ~ ${end}, Reason: ${reason}, Med Cert: ${medCertSighted ? 'Yes' : 'No'})`, addedReq ? addedReq.id : null);
+      BriskDB.logAudit('LEAVE_REQUEST', `Submitted leave for ${targetEmp ? targetEmp.name : empId} (${start} ~ ${end}, ${durationType}, Reason: ${reason})`, addedReq ? addedReq.id : null);
     }
     showToast('Leave request submitted successfully!', 'success');
     document.getElementById('leave-request-form').reset();
+    if (typeof toggleLeaveTimeFields === 'function') toggleLeaveTimeFields();
     
     // Auto-close the timeoff modal
     const modal = document.getElementById('modal-timeoff');
@@ -4718,11 +5156,29 @@ async function decideLeaveRequest(reqId, decision) {
       start.setHours(0,0,0,0);
       end.setHours(23,59,59,999);
 
+      const durationType = req.leaveDurationType || 'full_day';
+      let unavailStart = '00:00';
+      let unavailEnd = '23:59';
+      if (durationType === 'half_am') {
+        unavailStart = '00:00';
+        unavailEnd = '13:00';
+      } else if (durationType === 'half_pm') {
+        unavailStart = '13:00';
+        unavailEnd = '23:59';
+      } else if (durationType === 'custom') {
+        unavailStart = (req.unavailableFrom || '00:00').substring(0, 5);
+        unavailEnd = (req.unavailableUntil || '23:59').substring(0, 5);
+      }
+
       const conflictingShifts = state.shifts.filter(s => {
         if (s.employeeId !== req.employeeId) return false;
         const sDate = new Date(s.date + 'T00:00:00');
         sDate.setHours(0,0,0,0);
-        return sDate >= start && sDate <= end;
+        if (sDate < start || sDate > end) return false;
+        if (durationType === 'full_day') return true;
+        const sStart = (s.startTime || '00:00').substring(0, 5);
+        const sEnd = (s.endTime || '00:00').substring(0, 5);
+        return sStart < unavailEnd && sEnd > unavailStart;
       });
 
       if (conflictingShifts.length > 0) {
@@ -5412,6 +5868,20 @@ window.copyInviteUrl = copyInviteUrl;
 window.exportDatabaseFile = exportDatabaseFile;
 window.saveCompanySetting = saveCompanySetting;
 window.toggleAvailTimeInputs = toggleAvailTimeInputs;
+window.toggleLeaveTimeFields = toggleLeaveTimeFields;
+window.addRoleSplitSegment = addRoleSplitSegment;
+window.removeRoleSplitSegment = removeRoleSplitSegment;
+window.clearRoleSplitSegments = clearRoleSplitSegments;
+window.updateRoleSplitSegment = updateRoleSplitSegment;
+window.renderRoleSplitList = renderRoleSplitList;
+window.initPresenceTracking = initPresenceTracking;
+window.trackEditingCell = trackEditingCell;
+window.clearEditingCell = clearEditingCell;
+window.renderPresenceIndicators = renderPresenceIndicators;
+window.timeToMinutes = timeToMinutes;
+window.stringToHslColor = stringToHslColor;
+window.getLeaveInfo = getLeaveInfo;
+window.isShiftConflictingWithLeave = isShiftConflictingWithLeave;
 window.toggleTheme = toggleTheme;
 window.updateTerminalStatus = updateTerminalStatus;
 window.renderEmployeesList = renderEmployeesList;

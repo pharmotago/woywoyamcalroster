@@ -15,6 +15,21 @@ const BriskDB = (function() {
   let _historicalTimecards = [];
   let _leaveRequests = [];
   let _historicalLeaveRequests = [];
+  
+  let _employeeById = new Map();
+  let _shiftsByDate = new Map();
+
+  function rebuildIndexes() {
+    _employeeById = new Map();
+    _employees.forEach(e => _employeeById.set(e.id, e));
+    
+    _shiftsByDate = new Map();
+    _shifts.forEach(s => {
+      if (!_shiftsByDate.has(s.date)) _shiftsByDate.set(s.date, []);
+      _shiftsByDate.get(s.date).push(s);
+    });
+  }
+
   const DEFAULT_TRADING_HOURS = {
     "1": { "open": "08:30", "close": "17:30", "closed": false },
     "2": { "open": "08:30", "close": "17:30", "closed": false },
@@ -241,7 +256,10 @@ const BriskDB = (function() {
       start_date: lr.startDate,
       end_date: lr.endDate,
       reason: lr.reason,
-      status: lr.status
+      status: lr.status,
+      leave_duration_type: lr.leaveDurationType || 'full_day',
+      unavailable_from: lr.unavailableFrom || null,
+      unavailable_until: lr.unavailableUntil || null
     };
     if (lr.id) obj.id = lr.id;
     return obj;
@@ -249,13 +267,32 @@ const BriskDB = (function() {
 
   function mapLeaveRequestFromDb(lr) {
     if (!lr) return null;
+    let durationType = lr.leave_duration_type || 'full_day';
+    let unavailFrom = lr.unavailable_from || null;
+    let unavailUntil = lr.unavailable_until || null;
+    let reasonText = lr.reason || '';
+
+    // If database column does not exist yet, decode from reason prefix: [leave_type:half_am:08:30-13:00]
+    if ((!lr.leave_duration_type || lr.leave_duration_type === 'full_day') && reasonText.startsWith('[leave_type:')) {
+      const match = reasonText.match(/^\[leave_type:([^:]+):([^\]-]*)?-?([^\]]*)?\]\s*(.*)$/);
+      if (match) {
+        durationType = match[1] || 'full_day';
+        unavailFrom = match[2] || null;
+        unavailUntil = match[3] || null;
+        reasonText = match[4] || '';
+      }
+    }
+
     return {
       id: lr.id,
       employeeId: lr.employee_id,
       startDate: lr.start_date,
       endDate: lr.end_date,
-      reason: lr.reason,
-      status: lr.status
+      reason: reasonText,
+      status: lr.status,
+      leaveDurationType: durationType,
+      unavailableFrom: unavailFrom,
+      unavailableUntil: unavailUntil
     };
   }
 
@@ -724,6 +761,7 @@ const BriskDB = (function() {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'all' } }));
           }
+          rebuildIndexes();
           try { setupListeners(); } catch (slErr) { console.warn('[BriskDB] setupListeners note:', slErr); }
           return true;
         }
@@ -778,6 +816,7 @@ const BriskDB = (function() {
         _settings = mapSettingsFromDb(sets);
       }
 
+      rebuildIndexes();
       try { setupListeners(); } catch (slErr) { console.warn('[BriskDB] setupListeners note:', slErr); }
       return true;
     } catch (directErr) {
@@ -1246,6 +1285,8 @@ const BriskDB = (function() {
     apiRegister,
     apiGenerateInvite,
     apiSendRosterEmail,
+    getEmployeeById: function(id) { return _employeeById.get(id) || null; },
+    getShiftsByDate: function(dateStr) { return _shiftsByDate.get(dateStr) || []; },
 
     getEmployees: () => _employees,
     getShifts: () => [..._shifts, ..._historicalShifts],
@@ -1336,7 +1377,7 @@ const BriskDB = (function() {
             const idx = _employees.findIndex(e => e.id === mapped.id);
             if (idx !== -1) _employees[idx] = mapped;
             else _employees.push(mapped);
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+            rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
             return mapped;
           }
         }
@@ -1359,7 +1400,7 @@ const BriskDB = (function() {
       const idx = _employees.findIndex(e => e.id === mapped.id);
       if (idx !== -1) _employees[idx] = mapped;
       else _employees.push(mapped);
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
       return mapped;
     },
     updateEmployee: async function(updated) {
@@ -1394,7 +1435,7 @@ const BriskDB = (function() {
             const curIdx = _employees.findIndex(e => e.id === mapped.id);
             if (curIdx !== -1) _employees[curIdx] = { ..._employees[curIdx], ...mapped };
             else _employees.push(mapped);
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+            rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
             return _employees[curIdx !== -1 ? curIdx : _employees.length - 1];
           }
         }
@@ -1412,7 +1453,7 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
     },
     deleteEmployee: async function(id) {
       const idx = _employees.findIndex(e => e.id === id);
@@ -1435,7 +1476,7 @@ const BriskDB = (function() {
         });
 
         if (res.ok) {
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+          rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
           return;
         }
       } catch (apiErr) {
@@ -1446,7 +1487,7 @@ const BriskDB = (function() {
       assertManagerPermissionForFallback();
       const { error } = await supabase.from('brisk_employees').update({ active: false }).eq('id', id);
       if (error) throw error;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
     },
 
     addShift: async function(shift) {
@@ -1478,7 +1519,7 @@ const BriskDB = (function() {
             const existing = _shifts.findIndex(s => s.id === mapped.id);
             if (existing !== -1) _shifts[existing] = mapped;
             else _shifts.push(mapped);
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
             return mapped;
           }
         }
@@ -1502,7 +1543,7 @@ const BriskDB = (function() {
       const existing = _shifts.findIndex(s => s.id === mapped.id);
       if (existing !== -1) _shifts[existing] = mapped;
       else _shifts.push(mapped);
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return mapped;
     },
     addShiftsBatch: async function(shiftsArray) {
@@ -1537,7 +1578,7 @@ const BriskDB = (function() {
               if (existing !== -1) _shifts[existing] = mapped;
               else _shifts.push(mapped);
             });
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
             return inserted;
           }
         }
@@ -1578,7 +1619,7 @@ const BriskDB = (function() {
         if (existing !== -1) _shifts[existing] = mapped;
         else _shifts.push(mapped);
       });
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return inserted;
     },
     updateShift: async function(updated) {
@@ -1612,7 +1653,7 @@ const BriskDB = (function() {
           if (data && data.success && data.shift) {
             const mapped = mapShiftFromDb(data.shift);
             if (idx !== -1) _shifts[idx] = mapped;
-            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+            rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
             return mapped;
           }
         }
@@ -1631,7 +1672,7 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
       return updated;
     },
     deleteShift: async function(id) {
@@ -1657,7 +1698,7 @@ const BriskDB = (function() {
         });
 
         if (res.ok) {
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+          rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
           return;
         }
       } catch (apiErr) {
@@ -1668,7 +1709,7 @@ const BriskDB = (function() {
       assertManagerPermissionForFallback();
       const { error } = await supabase.from('brisk_shifts').delete().eq('id', id);
       if (error) throw error;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
     },
     batchUpdateShifts: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return;
@@ -1702,7 +1743,7 @@ const BriskDB = (function() {
         });
 
         if (res.ok) {
-          if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+          rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
           return;
         }
       } catch (apiErr) {
@@ -1722,7 +1763,7 @@ const BriskDB = (function() {
         error = retry.error;
       }
       if (error) throw error;
-      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
+      rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
     },
 
     addTimecard: async function(tc) {
@@ -1864,9 +1905,30 @@ const BriskDB = (function() {
       if (!isManager && (!myEmpId || newLr.employeeId !== myEmpId)) {
         throw new Error('Permission denied: Employees can only submit leave requests for themselves.');
       }
+      let insertData = null;
       const { data, error } = await supabase.from('brisk_leave_requests').insert(mapLeaveRequestToDb(newLr)).select().maybeSingle();
-      if (error) throw error;
-      const mapped = mapLeaveRequestFromDb(data || newLr);
+      if (error) {
+        if (error.message && (error.message.includes('leave_duration_type') || error.message.includes('column'))) {
+          const fbObj = {
+            id: newLr.id,
+            employee_id: newLr.employeeId,
+            start_date: newLr.startDate,
+            end_date: newLr.endDate,
+            reason: newLr.leaveDurationType && newLr.leaveDurationType !== 'full_day'
+              ? `[leave_type:${newLr.leaveDurationType}:${newLr.unavailableFrom || ''}-${newLr.unavailableUntil || ''}] ${newLr.reason || ''}`
+              : (newLr.reason || ''),
+            status: newLr.status || 'Pending'
+          };
+          const { data: fbData, error: fbErr } = await supabase.from('brisk_leave_requests').insert(fbObj).select().maybeSingle();
+          if (fbErr) throw fbErr;
+          insertData = fbData;
+        } else {
+          throw error;
+        }
+      } else {
+        insertData = data;
+      }
+      const mapped = mapLeaveRequestFromDb(insertData || newLr);
       const existing = _leaveRequests.findIndex(r => r.id === mapped.id);
       if (existing !== -1) _leaveRequests[existing] = mapped;
       else _leaveRequests.push(mapped);
@@ -1908,8 +1970,22 @@ const BriskDB = (function() {
 
       // 2. Direct Supabase Client fallback
       assertManagerPermissionForFallback();
-      const { error } = await supabase.from('brisk_leave_requests').update(mapLeaveRequestToDb(updated)).eq('id', updated.id);
-      if (error) throw error;
+      const updatePayload = mapLeaveRequestToDb(updated);
+      const { error } = await supabase.from('brisk_leave_requests').update(updatePayload).eq('id', updated.id);
+      if (error) {
+        if (error.message && (error.message.includes('leave_duration_type') || error.message.includes('column'))) {
+          delete updatePayload.leave_duration_type;
+          delete updatePayload.unavailable_from;
+          delete updatePayload.unavailable_until;
+          if (updated.leaveDurationType && updated.leaveDurationType !== 'full_day') {
+            updatePayload.reason = `[leave_type:${updated.leaveDurationType}:${updated.unavailableFrom || ''}-${updated.unavailableUntil || ''}] ${updated.reason || ''}`;
+          }
+          const { error: fbErr } = await supabase.from('brisk_leave_requests').update(updatePayload).eq('id', updated.id);
+          if (fbErr) throw fbErr;
+        } else {
+          throw error;
+        }
+      }
     },
 
     saveSettings: async function(settings) {

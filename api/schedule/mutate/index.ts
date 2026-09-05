@@ -281,13 +281,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const empId = updatedLr.employee_id;
             const startDate = updatedLr.start_date;
             const endDate = updatedLr.end_date;
+            const durationType = updatedLr.leave_duration_type || 'full_day';
+
             if (empId && startDate && endDate) {
-              await supabaseAdmin
-                .from('brisk_shifts')
-                .update({ employee_id: null })
-                .eq('employee_id', empId)
-                .gte('date', startDate)
-                .lte('date', endDate);
+              if (durationType === 'full_day') {
+                await supabaseAdmin
+                  .from('brisk_shifts')
+                  .update({ employee_id: null })
+                  .eq('employee_id', empId)
+                  .gte('date', startDate)
+                  .lte('date', endDate);
+              } else {
+                // Partial leave: only unassign shifts that overlap with unavailable hours
+                const { data: existingShifts } = await supabaseAdmin
+                  .from('brisk_shifts')
+                  .select('id, start_time, end_time')
+                  .eq('employee_id', empId)
+                  .gte('date', startDate)
+                  .lte('date', endDate);
+
+                if (existingShifts && existingShifts.length > 0) {
+                  let unavailStart = '00:00';
+                  let unavailEnd = '23:59';
+                  if (durationType === 'half_am') {
+                    unavailStart = '00:00';
+                    unavailEnd = '13:00';
+                  } else if (durationType === 'half_pm') {
+                    unavailStart = '13:00';
+                    unavailEnd = '23:59';
+                  } else if (durationType === 'custom') {
+                    unavailStart = (updatedLr.unavailable_from || '00:00').substring(0, 5);
+                    unavailEnd = (updatedLr.unavailable_until || '23:59').substring(0, 5);
+                  }
+
+                  const overlappingIds = existingShifts.filter((s: any) => {
+                    const sStart = (s.start_time || '00:00').substring(0, 5);
+                    const sEnd = (s.end_time || '00:00').substring(0, 5);
+                    return sStart < unavailEnd && sEnd > unavailStart;
+                  }).map((s: any) => s.id);
+
+                  if (overlappingIds.length > 0) {
+                    await supabaseAdmin
+                      .from('brisk_shifts')
+                      .update({ employee_id: null })
+                      .in('id', overlappingIds);
+                  }
+                }
+              }
             }
           } catch (shiftErr) {
             console.warn('[MutateAPI] Leave shift unassignment note:', shiftErr);
@@ -312,17 +352,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           start_date: lrData.start_date || lrData.startDate,
           end_date: lrData.end_date || lrData.endDate,
           reason: lrData.reason || '',
-          status: isManagerOrOwner ? (lrData.status || 'Pending') : 'Pending' // Employees cannot auto-approve
+          status: isManagerOrOwner ? (lrData.status || 'Pending') : 'Pending', // Employees cannot auto-approve
+          leave_duration_type: body.leave?.leaveDurationType || body.leave?.leave_duration_type || 'full_day',
+          unavailable_from: body.leave?.unavailableFrom || body.leave?.unavailable_from || null,
+          unavailable_until: body.leave?.unavailableUntil || body.leave?.unavailable_until || null
         };
 
+        let insertedRecord = null;
         const { data: inserted, error: insertErr } = await supabaseAdmin
           .from('brisk_leave_requests')
           .insert([newObj])
           .select()
           .maybeSingle();
 
-        if (insertErr) throw insertErr;
-        return jsonRes(res, { success: true, leaveRequest: inserted }, 200);
+        if (insertErr) {
+          // Defensive fallback: if column leave_duration_type is not yet added in Supabase schema
+          if (insertErr.message && (insertErr.message.includes('leave_duration_type') || insertErr.message.includes('column'))) {
+            console.warn('[MutateAPI] Schema column missing, using encoded fallback in reason:', insertErr.message);
+            const encodedReason = newObj.leave_duration_type && newObj.leave_duration_type !== 'full_day'
+              ? `[leave_type:${newObj.leave_duration_type}:${newObj.unavailable_from || ''}-${newObj.unavailable_until || ''}] ${newObj.reason}`
+              : newObj.reason;
+            const fallbackObj = {
+              id: newObj.id,
+              employee_id: newObj.employee_id,
+              start_date: newObj.start_date,
+              end_date: newObj.end_date,
+              reason: encodedReason,
+              status: newObj.status
+            };
+            const { data: fbData, error: fbErr } = await supabaseAdmin
+              .from('brisk_leave_requests')
+              .insert([fallbackObj])
+              .select()
+              .maybeSingle();
+            if (fbErr) throw fbErr;
+            insertedRecord = {
+              ...fbData,
+              leave_duration_type: newObj.leave_duration_type,
+              unavailable_from: newObj.unavailable_from,
+              unavailable_until: newObj.unavailable_until
+            };
+          } else {
+            throw insertErr;
+          }
+        } else {
+          insertedRecord = inserted;
+        }
+
+        return jsonRes(res, { success: true, leaveRequest: insertedRecord }, 200);
       }
     }
 

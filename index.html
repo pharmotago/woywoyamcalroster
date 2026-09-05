@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=9.3.2">
+  <link rel="stylesheet" href="css/styles.css?v=10.0.0">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v9.3.2)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.0.0)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -800,6 +800,25 @@
                 <div class="form-group">
                   <label for="leave-end-date">End Date</label>
                   <input type="date" id="leave-end-date" class="form-control" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="leave-duration-type">Leave Duration Type</label>
+                <select id="leave-duration-type" class="form-control" onchange="toggleLeaveTimeFields()">
+                  <option value="full_day">Full Day(s) Off</option>
+                  <option value="half_am">Half Day — Morning Off (Available PM)</option>
+                  <option value="half_pm">Half Day — Afternoon Off (Available AM only)</option>
+                  <option value="custom">Custom Hours Off</option>
+                </select>
+              </div>
+              <div id="leave-custom-time-fields" class="form-row" style="display:none;">
+                <div class="form-group">
+                  <label for="leave-off-start">Unavailable From</label>
+                  <input type="time" id="leave-off-start" class="form-control" value="08:30">
+                </div>
+                <div class="form-group">
+                  <label for="leave-off-end">Unavailable Until</label>
+                  <input type="time" id="leave-off-end" class="form-control" value="17:30">
                 </div>
               </div>
               <div class="form-group">
@@ -1531,6 +1550,23 @@
           <span id="shift-weekly-ot-text" style="color: var(--text-secondary);"><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-cyan);"></i> Weekly Hours Progress: Select employee & times</span>
           <span id="shift-weekly-ot-badge" class="badge" style="display:none; font-size: 10px;">--</span>
         </div>
+        <div id="shift-split-role-section" style="margin-bottom: 10px;">
+          <button type="button" id="btn-split-role" class="btn btn-outline" onclick="addRoleSplitSegment()" style="width:100%; border-color: rgba(168, 85, 247, 0.35); color: #a855f7; font-size: 0.82rem; padding: 7px 12px;">
+            <i class="fa-solid fa-scissors"></i> Split into Multiple Roles (e.g., Dispensary AM → Floor PM)
+          </button>
+          <div id="role-split-segments" style="display:none; margin-top: 10px; padding: 12px; background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: var(--radius-sm);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+              <strong style="font-size: 0.82rem; color: #a855f7;"><i class="fa-solid fa-layer-group"></i> Role Segments</strong>
+              <button type="button" class="btn btn-icon" style="padding:0; font-size:0.8rem; color:var(--text-muted);" onclick="clearRoleSplitSegments()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="role-split-list" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Dynamically populated role segments -->
+            </div>
+            <button type="button" class="btn btn-outline" onclick="addRoleSplitSegment()" style="margin-top: 8px; font-size: 0.78rem; padding: 4px 10px; width: 100%; border-color: rgba(168, 85, 247, 0.3); color: #a855f7;">
+              <i class="fa-solid fa-plus"></i> Add Another Segment
+            </button>
+          </div>
+        </div>
         <div class="form-group">
           <label for="shift-notes">Manager Notes</label>
           <textarea id="shift-notes" class="form-control" rows="2" placeholder="Specific duties or briefings..."></textarea>
@@ -2050,18 +2086,36 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v9.3.2)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.0.0)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v9.3.2 -->
+        <!-- v10.0.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v9.3.2 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.0.0 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Visual Horizontal Grid, Split Roles, Partial-Day Leave & Realtime Presence</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">05 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Horizontal Visual Timeline:</strong> Transformed number-heavy shift cells into intuitive horizontal colored bars reflecting actual store trading hours and shift durations.</li>
+            <li><strong>Split Roles Per Day:</strong> Added split-shift functionality enabling managers to allocate multiple roles per person throughout the day (e.g. Dispensary AM → Floor PM).</li>
+            <li><strong>Partial-Day Leave Management:</strong> Support for morning-off, afternoon-off, or custom-hours leave with visual striped overlays, allowing managers to schedule shifts in remaining available hours.</li>
+            <li><strong>Realtime Presence & Concurrency:</strong> Live Supabase Presence alerts when multiple managers view or edit the same schedule slot simultaneously.</li>
+            <li><strong>Performance & Fast Indexing:</strong> Reduced boot payload, added 30-day cache headers, and implemented O(1) in-memory employee and shift lookup maps.</li>
+          </ul>
+        </div>
+
+        <!-- v9.3.2 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v9.3.2</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Team Email Roster Broadcast & Shift Save Engine</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">30 Aug 2026</span>
@@ -2167,13 +2221,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=9.3.2"></script>
+  <script type="module" src="js/app.js?v=10.0.0"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=9.3.2')
+        navigator.serviceWorker.register('sw.js?v=10.0.0')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load

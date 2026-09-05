@@ -68,10 +68,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '';
   const isManager = await resolveIsManager(token);
 
+  res.setHeader('Cache-Control', 'private, max-age=30');
+
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const windowStr = thirtyDaysAgo.toISOString().split('T')[0];
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const windowStr = fourteenDaysAgo.toISOString().split('T')[0];
 
     const [empRes, shiftRes, tcRes, leaveRes, settingsRes] = await Promise.all([
       supabaseAdmin.from('brisk_employees').select('*'),
