@@ -3245,13 +3245,14 @@ let presenceChannel = null;
 let activePresences = {};
 
 function initPresenceTracking() {
-  if (typeof supabase === 'undefined' || !supabase || !state.currentUser) return;
+  const sb = (typeof BriskDB !== 'undefined' && BriskDB.supabase) ? BriskDB.supabase : null;
+  if (!sb || typeof sb.channel !== 'function' || !state.currentUser) return;
   try {
     if (presenceChannel) {
       presenceChannel.unsubscribe();
     }
     const myKey = (state.currentUser.email || 'user_' + Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
-    presenceChannel = supabase.channel('brisk-presence', {
+    presenceChannel = sb.channel('brisk-presence', {
       config: { presence: { key: myKey } }
     });
 

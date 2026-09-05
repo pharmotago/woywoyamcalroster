@@ -4,7 +4,7 @@ export const SwapDB = {
   getSwaps: async () => {
     const { data, error } = await supabase.from('brisk_shift_swaps').select('*');
     if (error) {
-      console.error('Error fetching swaps', error);
+      if (error.code !== 'PGRST205') console.error('Error fetching swaps', error);
       return [];
     }
     return (data || []).map(s => ({
