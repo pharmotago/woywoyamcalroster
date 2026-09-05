@@ -653,6 +653,109 @@ function setDailyDateToday() {
 }
 window.setDailyDateToday = setDailyDateToday;
 
+function triggerDailyDatePicker() {
+  const picker = document.getElementById('daily-date-picker');
+  if (picker) {
+    if (typeof picker.showPicker === 'function') {
+      picker.showPicker();
+    } else {
+      picker.focus();
+    }
+  }
+}
+window.triggerDailyDatePicker = triggerDailyDatePicker;
+
+function onDailyDatePickerChange(dateVal) {
+  if (!dateVal) return;
+  const [y, m, d] = dateVal.split('-').map(Number);
+  state.dailyDate = new Date(y, m - 1, d);
+  renderDailyPanel();
+}
+window.onDailyDatePickerChange = onDailyDatePickerChange;
+
+function setDailySpecificDate(dateStr) {
+  if (!dateStr) return;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  state.dailyDate = new Date(y, m - 1, d);
+  renderDailyPanel();
+}
+window.setDailySpecificDate = setDailySpecificDate;
+
+function openDailyAddShiftModal() {
+  const dateStr = (typeof formatDateISO === 'function' && state.dailyDate) 
+    ? formatDateISO(state.dailyDate) 
+    : (state.dailyDate ? state.dailyDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+  if (typeof openAddShiftModal === 'function') {
+    openAddShiftModal('', dateStr);
+  } else {
+    if (typeof switchTab === 'function') switchTab('scheduler');
+    setTimeout(() => {
+      if (typeof openAddShiftModal === 'function') openAddShiftModal('', dateStr);
+    }, 100);
+  }
+}
+window.openDailyAddShiftModal = openDailyAddShiftModal;
+
+async function deleteShiftDaily(shiftId) {
+  if (!confirm('Are you sure you want to delete this shift?')) return;
+  try {
+    if (typeof BriskDB !== 'undefined' && typeof BriskDB.deleteShift === 'function') {
+      await BriskDB.deleteShift(shiftId);
+    }
+    if (typeof showToast === 'function') showToast('Shift deleted successfully.', 'success');
+    if (typeof loadDataFromState === 'function') loadDataFromState();
+    renderDailyPanel();
+    if (typeof renderScheduler === 'function') renderScheduler();
+  } catch (err) {
+    console.error('Delete Daily Shift Error:', err);
+    if (typeof showToast === 'function') showToast('Failed to delete shift.', 'error');
+  }
+}
+window.deleteShiftDaily = deleteShiftDaily;
+
+function renderDailyDayStrip() {
+  const strip = document.getElementById('daily-weekday-strip');
+  if (!strip) return;
+  strip.innerHTML = '';
+
+  const activeDate = state.dailyDate || new Date();
+  const mon = (typeof getMondayOfCurrentWeek === 'function') 
+    ? getMondayOfCurrentWeek(activeDate) 
+    : new Date(activeDate);
+
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const activeDateStr = (typeof formatDateISO === 'function') ? formatDateISO(activeDate) : activeDate.toISOString().split('T')[0];
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    const dateStr = (typeof formatDateISO === 'function') ? formatDateISO(d) : d.toISOString().split('T')[0];
+    const isActive = (dateStr === activeDateStr);
+    const dayName = dayNames[i];
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+
+    // Count shifts for this day
+    const shifts = (state && state.shifts) ? state.shifts : [];
+    const dayShiftCount = shifts.filter(s => s.date === dateStr).length;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `daily-weekday-btn ${isActive ? 'active' : ''}`;
+    btn.onclick = () => setDailySpecificDate(dateStr);
+    btn.title = `${dayName} ${dd}/${mm}: ${dayShiftCount} shift(s)`;
+    btn.innerHTML = `
+      <div style="font-weight:700; font-size:0.75rem; letter-spacing:0.02em;">${dayName}</div>
+      <div style="font-size:0.82rem; font-weight:600; opacity:${isActive ? '1' : '0.85'};">${dd}/${mm}</div>
+      <div style="font-size:0.68rem; margin-top:2px; color:${dayShiftCount > 0 ? (isActive ? 'var(--accent-cyan)' : '#10b981') : 'var(--text-muted)'}; font-weight:600;">
+        ${dayShiftCount > 0 ? `${dayShiftCount} shift${dayShiftCount > 1 ? 's' : ''}` : 'No shifts'}
+      </div>
+    `;
+    strip.appendChild(btn);
+  }
+}
+window.renderDailyDayStrip = renderDailyDayStrip;
+
 function renderDailyPanel() {
   if (!window.state) window.state = {};
   if (!window.state.dailyDate || isNaN(new Date(window.state.dailyDate).getTime())) {
@@ -690,6 +793,10 @@ function renderDailyPanel() {
   }
   
   const dateStr = (typeof formatDateISO === 'function') ? formatDateISO(window.state.dailyDate) : window.state.dailyDate.toISOString().split('T')[0];
+  const datePicker = document.getElementById('daily-date-picker');
+  if (datePicker && dateStr) datePicker.value = dateStr;
+  renderDailyDayStrip();
+
   const shifts = (window.state && window.state.shifts) ? window.state.shifts : [];
   const dayShifts = shifts.filter(s => s.date === dateStr);
   
@@ -871,9 +978,9 @@ function renderDailyPanel() {
       const closeHour = th ? timeToDecimal(th.close) : 17.5;
       const timelineStart = Math.floor(openHour - 0.5);
       const timelineEnd = Math.ceil(closeHour + 0.5);
-      const span = timelineEnd - timelineStart;
+      const span = Math.max(1, timelineEnd - timelineStart);
       
-      // Render hours markers/labels
+      // 1. Render hours markers/labels
       for (let h = timelineStart; h <= timelineEnd; h++) {
         const spanLabel = document.createElement('span');
         const hour12 = h % 12 === 0 ? 12 : h % 12;
@@ -881,8 +988,45 @@ function renderDailyPanel() {
         spanLabel.textContent = `${hour12}${ampm}`;
         timelineLabels.appendChild(spanLabel);
       }
+
+      // 2. Render vertical background hour guidelines
+      for (let h = timelineStart; h <= timelineEnd; h++) {
+        const lineLeft = Math.max(0, Math.min(100, ((h - timelineStart) / span) * 100));
+        const gridLine = document.createElement('div');
+        gridLine.className = 'daily-timeline-grid-line';
+        if (h === 12 || h === 13) gridLine.classList.add('midday');
+        gridLine.style.left = `${lineLeft}%`;
+        timelineVisual.appendChild(gridLine);
+      }
+
+      // 3. Manager empty-space click to add shift at clicked hour
+      const isMgr = (typeof hasManagerPermissions === 'function' && hasManagerPermissions(state.currentUser));
+      if (isMgr) {
+        timelineVisual.style.cursor = 'crosshair';
+        timelineVisual.title = 'Click empty space to add a shift at this hour';
+        timelineVisual.onclick = (e) => {
+          if (e.target.closest('.timeline-bar')) return;
+          const rect = timelineVisual.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const clickPct = Math.max(0, Math.min(1, clickX / rect.width));
+          const clickedHour = timelineStart + clickPct * span;
+          const startH = Math.floor(clickedHour);
+          const startM = Math.floor((clickedHour % 1) * 60) >= 30 ? '30' : '00';
+          const startTimeStr = `${String(startH).padStart(2, '0')}:${startM}`;
+          if (typeof openAddShiftModal === 'function') {
+            openAddShiftModal('', dateStr);
+            setTimeout(() => {
+              const startInp = document.getElementById('shift-start');
+              if (startInp) {
+                startInp.value = startTimeStr;
+                if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
+              }
+            }, 50);
+          }
+        };
+      }
       
-      // Render visual timeline bars stacked vertically to handle overlap
+      // 4. Render visual timeline bars stacked vertically to handle overlap
       let rowCount = 0;
       dayShifts.forEach((s, idx) => {
         const emp = state.employees.find(e => e.id === s.employeeId);
@@ -903,7 +1047,7 @@ function renderDailyPanel() {
         bar.style.top = `${rowTop}px`;
         bar.style.height = '22px';
         bar.style.background = roleColor;
-        bar.style.opacity = '0.9';
+        bar.style.opacity = '0.92';
         bar.style.borderRadius = 'var(--radius-sm)';
         bar.style.fontSize = '0.75rem';
         bar.style.color = '#fff';
@@ -913,6 +1057,8 @@ function renderDailyPanel() {
         bar.style.textOverflow = 'ellipsis';
         bar.style.lineHeight = '22px';
         bar.style.fontWeight = '500';
+        bar.style.zIndex = '2';
+        
         const grossHours = calculateShiftHours(s.startTime, s.endTime, 0);
         const breakEntitlement = getAwardBreakEntitlements(grossHours);
         const unpaidMeal = (s.unpaidMealMins !== undefined && s.unpaidMealMins !== null) ? s.unpaidMealMins : breakEntitlement.unpaidMealMins;
@@ -921,13 +1067,32 @@ function renderDailyPanel() {
         if (grossHours >= 4) {
           const parts = [];
           if (unpaidMeal > 0) parts.push(`${unpaidMeal}m Lunch`);
-          
           breakSummary = parts.join(' + ');
         }
 
-        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role}) | ${breakEntitlement.description}`;
+        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role}) | ${breakEntitlement.description}${isMgr ? ' (Click to edit)' : ''}`;
         bar.innerHTML = `<span style="font-weight:600;">${empName} (${s.role})</span>${breakSummary ? ` <span style="font-size:0.68rem; opacity:0.95; background:rgba(0,0,0,0.38); padding:1px 6px; border-radius:4px; margin-left:6px; display:inline-flex; align-items:center; gap:4px; vertical-align:middle;"><i class="fa-solid fa-mug-hot" style="font-size:0.65rem; color:#0ea5e9;"></i> ${breakSummary}</span>` : ''}`;
         
+        // Make timeline bar interactive for managers
+        if (isMgr) {
+          bar.style.cursor = 'pointer';
+          bar.style.transition = 'all 0.15s ease';
+          bar.addEventListener('mouseenter', () => {
+            bar.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.7)';
+            bar.style.transform = 'translateY(-1px)';
+          });
+          bar.addEventListener('mouseleave', () => {
+            bar.style.boxShadow = 'none';
+            bar.style.transform = 'none';
+          });
+          bar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof openEditShiftModal === 'function') {
+              openEditShiftModal(s);
+            }
+          });
+        }
+
         timelineVisual.appendChild(bar);
       });
       
@@ -935,7 +1100,6 @@ function renderDailyPanel() {
       timelineVisual.style.height = `${Math.max(60, rowCount * 28 + 20)}px`;
 
       // === Coverage Gap Warning (Clean & Deduplicated) ===
-      // Remove any previously appended gap warnings to avoid duplicate stacking
       if (timelineVisual && timelineVisual.parentElement) {
         timelineVisual.parentElement.querySelectorAll('.daily-gap-container').forEach(el => el.remove());
       }
@@ -970,23 +1134,23 @@ function renderDailyPanel() {
             const h = Math.floor(slotStart);
             const m = (slotStart % 1) * 60;
             const timeLabel = formatTimeAmPm(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-            gapWarnings.push({ type: 'pharmacist', time: timeLabel, detail: 'No Pharmacist' });
+            gapWarnings.push({ type: 'no-pharm', time: timeLabel, detail: 'No Pharmacist' });
           }
         }
 
-        if (gapWarnings.length > 0) {
+        const pharmacistGapCount = gapWarnings.filter(w => w.type === 'no-pharm').length;
+        const lowStaffCount = gapWarnings.filter(w => w.type === 'low').length;
+        const hasCriticalGap = pharmacistGapCount > 0;
+        const hasLowStaff = lowStaffCount > 0;
+
+        if (hasCriticalGap || hasLowStaff) {
           const gapContainer = document.createElement('div');
           gapContainer.className = 'daily-gap-container';
-          gapContainer.style.cssText = 'margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;';
+          gapContainer.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;';
 
-          const hasLowStaff = gapWarnings.some(g => g.type === 'low');
-          const hasNoPharmacist = gapWarnings.some(g => g.type === 'pharmacist');
-          const pharmacistGapCount = gapWarnings.filter(g => g.type === 'pharmacist').length;
-          const lowStaffCount = gapWarnings.filter(g => g.type === 'low').length;
-
-          if (hasNoPharmacist) {
+          if (hasCriticalGap) {
             const badge = document.createElement('span');
-            badge.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; border-radius:6px; font-size:0.78rem; font-weight:600;';
+            badge.style.cssText = 'display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#f87171; border-radius:6px; font-size:0.78rem; font-weight:700;';
             badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> No Pharmacist coverage in ${pharmacistGapCount} time slot${pharmacistGapCount > 1 ? 's' : ''}`;
             gapContainer.appendChild(badge);
           }
@@ -1011,12 +1175,13 @@ function renderDailyPanel() {
     if (dayShifts.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5" class="text-muted" style="text-align: center; padding: 24px;">
+          <td colspan="6" class="text-muted" style="text-align: center; padding: 24px;">
             No shifts scheduled for this date.
           </td>
         </tr>
       `;
     } else {
+      const isMgr = (typeof hasManagerPermissions === 'function' && hasManagerPermissions(state.currentUser));
       dayShifts.forEach(s => {
         const emp = state.employees.find(e => e.id === s.employeeId);
         const empName = emp ? emp.name : '<span style="color:var(--text-danger);"><i class="fa-solid fa-triangle-exclamation"></i> Unassigned</span>';
@@ -1030,11 +1195,35 @@ function renderDailyPanel() {
         let breakHtml = '<span style="color:var(--text-muted); font-size:0.78rem;">No breaks (<4h)</span>';
         if (grossHours >= 4) {
           const mealBadge = unpaidMeal > 0 ? `<span class="badge" style="background:rgba(16, 185, 129, 0.12); color:#10b981; border:1px solid rgba(16, 185, 129, 0.25); font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-utensils"></i> ${unpaidMeal}m Lunch</span>` : '';
-          const restBadge = '';
-          breakHtml = `<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">${mealBadge} ${restBadge}</div>`;
+          breakHtml = `<div style="display:flex; flex-direction:column; align-items:center; gap:4px;">${mealBadge}</div>`;
+        }
+
+        let actionsHtml = '';
+        if (isMgr) {
+          actionsHtml = `
+            <div style="display:flex; justify-content:center; gap:6px; align-items:center;">
+              <button type="button" class="btn btn-outline" style="padding: 2px 8px; font-size: 11px; height: 26px; display:inline-flex; align-items:center; gap:4px;" onclick="event.stopPropagation(); if (typeof openEditShiftModalById === 'function') openEditShiftModalById('${s.id}');" title="Edit Shift">
+                <i class="fa-solid fa-pen text-cyan" style="font-size:10px;"></i> Edit
+              </button>
+              <button type="button" class="btn btn-icon text-danger" style="padding: 2px 6px; font-size: 11px; height: 26px;" onclick="event.stopPropagation(); deleteShiftDaily('${s.id}')" title="Delete Shift">
+                <i class="fa-solid fa-trash" style="font-size:10px;"></i>
+              </button>
+            </div>
+          `;
+        } else {
+          actionsHtml = '<span style="color:var(--text-muted); font-size:0.75rem;">-</span>';
         }
 
         const tr = document.createElement('tr');
+        if (isMgr) {
+          tr.style.cursor = 'pointer';
+          tr.title = 'Click to edit shift';
+          tr.onclick = (e) => {
+            if (!e.target.closest('button')) {
+              if (typeof openEditShiftModal === 'function') openEditShiftModal(s);
+            }
+          };
+        }
         tr.innerHTML = `
           <td style="padding-left: 16px; font-weight: 500;">
             <div>${empName}</div>
@@ -1053,6 +1242,9 @@ function renderDailyPanel() {
           </td>
           <td style="padding-left: 16px; font-size: 0.85rem; color: var(--text-muted); font-style: ${s.notes ? 'normal' : 'italic'};">
             ${s.notes ? s.notes : 'No special notes/instructions for this shift.'}
+          </td>
+          <td style="text-align: center; padding: 6px 4px;">
+            ${actionsHtml}
           </td>
         `;
         tbody.appendChild(tr);

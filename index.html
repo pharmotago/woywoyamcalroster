@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.0.0)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.1.0)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -453,8 +453,8 @@
               <button class="btn btn-outline btn-block" onclick="switchTab('scheduler'); openAddShiftModal();">
                 <i class="fa-solid fa-calendar-plus"></i> Add Shift
               </button>
-              <button class="btn btn-outline btn-block" onclick="switchTab('scheduler'); copyCurrentWeekToNextWeek();">
-                <i class="fa-solid fa-copy text-cyan"></i> Copy Roster to Next Week
+              <button class="btn btn-outline btn-block" onclick="switchTab('scheduler'); openCopyWeekModal();">
+                <i class="fa-solid fa-copy text-cyan"></i> Copy Roster to Desired Week
               </button>
               <button class="btn btn-outline btn-block" onclick="switchTab('timeclock')">
                 <i class="fa-solid fa-stopwatch"></i> Terminal
@@ -526,8 +526,8 @@
             <button class="btn btn-outline" onclick="window.print()" title="Print weekly roster to PDF">
               <i class="fa-solid fa-print text-gold"></i> Print Roster
             </button>
-            <button class="btn btn-outline" id="btn-copy-week" onclick="copyCurrentWeekToNextWeek()" title="Copy entire current week's roster to next week">
-              <i class="fa-solid fa-copy text-cyan"></i> Copy to Next Week
+            <button class="btn btn-outline" id="btn-copy-week" onclick="openCopyWeekModal()" title="Copy entire current week's roster to desired target week">
+              <i class="fa-solid fa-copy text-cyan"></i> Copy Week Roster
             </button>
             <button class="btn btn-danger" id="btn-clear-week" title="Clear this week's shifts">
               <i class="fa-solid fa-trash-can"></i> Clear Week
@@ -584,15 +584,22 @@
       <!-- ===================================== -->
       <section id="panel-daily" class="tab-panel">
         <div class="action-bar glass-card">
-          <div class="week-picker">
+          <div class="week-picker" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
             <button class="btn btn-icon" onclick="adjustDailyDate(-1)" aria-label="Previous Day" title="Previous Day"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="daily-date-display" class="week-range-text"></span>
+            <div style="position:relative; display:inline-flex; align-items:center; cursor:pointer;" onclick="triggerDailyDatePicker()" title="Click to pick any date from calendar">
+              <span id="daily-date-display" class="week-range-text" style="cursor:pointer; text-decoration:underline; text-decoration-style:dotted; text-underline-offset:4px;"></span>
+              <i class="fa-regular fa-calendar-days text-cyan" style="margin-left:8px; font-size:1.05rem;"></i>
+              <input type="date" id="daily-date-picker" style="position:absolute; opacity:0; width:100%; height:100%; top:0; left:0; cursor:pointer;" onchange="onDailyDatePickerChange(this.value)">
+            </div>
             <button class="btn btn-icon" onclick="adjustDailyDate(1)" aria-label="Next Day" title="Next Day"><i class="fa-solid fa-chevron-right"></i></button>
-            <button class="btn btn-outline" onclick="setDailyDateToday()" style="margin-left: 12px; height: 38px; display: inline-flex; align-items: center; gap: 8px;">
+            <button class="btn btn-outline" onclick="setDailyDateToday()" style="margin-left: 6px; height: 38px; display: inline-flex; align-items: center; gap: 8px;">
               Today
             </button>
           </div>
           <div class="scheduler-controls">
+            <button class="btn btn-neon" id="btn-daily-add-shift" onclick="openDailyAddShiftModal()" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;" title="Add new shift for this day">
+              <i class="fa-solid fa-plus"></i> Add Shift
+            </button>
             <button class="btn btn-outline" onclick="exportRosterIcs(null, true)" style="height: 38px; display: inline-flex; align-items: center; gap: 6px;" title="Export day schedule to iCal">
               <i class="fa-solid fa-calendar-arrow-down text-cyan"></i> Day iCal
             </button>
@@ -600,6 +607,11 @@
               <i class="fa-solid fa-print"></i> Print Daily Roster
             </button>
           </div>
+        </div>
+
+        <!-- 7-Day Weekday Quick-Nav Strip -->
+        <div id="daily-weekday-strip" style="display:flex; gap:6px; margin: 0 0 16px 0; overflow-x:auto; padding: 2px 2px 6px 2px;">
+          <!-- Populated dynamically via renderDailyDayStrip() -->
         </div>
 
         <!-- Daily Roster Workspace -->
@@ -673,6 +685,7 @@
                   <th style="width: 130px;">Role / Task</th>
                   <th style="width: 160px; text-align: center;">Breaks (Award)</th>
                   <th style="text-align: left; padding-left: 16px;">Notes / Instructions</th>
+                  <th style="width: 120px; text-align: center;">Actions</th>
                 </tr>
               </thead>
               <tbody id="daily-shifts-tbody">
@@ -1799,6 +1812,65 @@
     </div>
   </div>
 
+  <!-- ===================================== -->
+  <!-- MODAL: COPY ROSTER TO DESIRED WEEK -->
+  <!-- ===================================== -->
+  <div id="modal-copy-week" class="modal" onclick="if(event.target === this) closeCopyWeekModal()">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-copy text-cyan"></i> Copy Roster to Desired Week</h3>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeCopyWeekModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- Source Week Box -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px;">Source Roster Week</div>
+          <div style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center;">
+            <span id="copy-modal-source-range">...</span>
+            <span id="copy-modal-source-count" class="badge badge-success" style="font-size: 0.78rem;">0 shifts</span>
+          </div>
+        </div>
+
+        <!-- Target Week Selector -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="copy-target-date-input" style="font-weight: 600; font-size: 0.88rem;">Select Target Week (Pick any date in target week):</label>
+          <input type="date" id="copy-target-date-input" class="form-control" style="height: 38px; margin-top: 6px;" onchange="onCopyTargetDateChange(this.value)">
+        </div>
+
+        <!-- Quick Preset Week Buttons -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Quick Week Shortcuts:</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem;" onclick="setCopyTargetPreset(1)">+1 Wk (Next Wk)</button>
+            <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem;" onclick="setCopyTargetPreset(2)">+2 Wks</button>
+            <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem;" onclick="setCopyTargetPreset(3)">+3 Wks</button>
+            <button type="button" class="btn btn-outline" style="padding: 4px 10px; font-size: 0.78rem;" onclick="setCopyTargetPreset(4)">+4 Wks (Next Month)</button>
+          </div>
+        </div>
+
+        <!-- Target Week Preview & Warnings -->
+        <div id="copy-target-preview-box" style="background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: 4px;">Target Week Preview</div>
+          <div style="font-size: 0.95rem; font-weight: 700; color: #fff;" id="copy-modal-target-range">Select a target week...</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;" id="copy-modal-target-status">Calculating shifts...</div>
+        </div>
+
+        <!-- Optional Overwrite Checkbox -->
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 8px 10px; background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius-sm);">
+          <input type="checkbox" id="copy-modal-overwrite-checkbox" style="width: 16px; height: 16px; cursor: pointer;">
+          <label for="copy-modal-overwrite-checkbox" style="margin: 0; font-size: 0.82rem; cursor: pointer; color: #fca5a5;">
+            Overwrite / replace existing shifts in target week
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button class="btn btn-outline" onclick="closeCopyWeekModal()">Cancel</button>
+        <button class="btn btn-neon" id="btn-execute-copy-week" onclick="executeCopyWeekToTarget()">
+          <i class="fa-solid fa-copy"></i> Copy Roster to Target Week
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================================== -->
   <!-- MODAL: TIMECARD EDIT -->
@@ -2086,18 +2158,35 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.0.0)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.1.0)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v10.0.0 -->
+        <!-- v10.1.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.0.0 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.1.0 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Daily View Roster Editing, Timeline Guidelines, Quick Calendar & Target-Week Copy</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Daily View Shift Adjustments:</strong> Full roster editing now supported directly in Daily View with interactive clickable timeline bars, empty-space click-to-add, and an Actions column (Edit/Delete).</li>
+            <li><strong>Timeline Background Hour Guidelines:</strong> Added subtle vertical hour divider rules across both Daily View and Weekly Scheduler cells to easily scan shift start and finish times.</li>
+            <li><strong>Enhanced Calendar Navigation:</strong> Direct date picker integration plus a 7-day weekday quick-strip (Mon–Sun) with headcount badges for 1-click day switching.</li>
+            <li><strong>Copy Roster to Any Desired Week:</strong> Brand new modal enabling weekly rosters to be copied to any target week with date picker, +1/+2/+3/+4 week presets, shift previews, and optional overwrite.</li>
+          </ul>
+        </div>
+
+        <!-- v10.0.0 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.0.0</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Visual Horizontal Grid, Split Roles, Partial-Day Leave & Realtime Presence</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">05 Sep 2026</span>

@@ -3844,7 +3844,16 @@ async function handleShiftDelete() {
   }
 }
 
-async function copyCurrentWeekToNextWeek() {
+/* ==========================================================================
+   COPY WEEK ROSTER TO DESIRED TARGET WEEK (FLEXIBLE WEEK COPY)
+   ========================================================================== */
+
+function openCopyWeekModal() {
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only Owners and Managers can copy rosters.', 'warning');
+    return;
+  }
+
   const mon = getMondayOfCurrentWeek(state.currentWeekStart || new Date());
   const sun = new Date(mon);
   sun.setDate(mon.getDate() + 6);
@@ -3852,55 +3861,156 @@ async function copyCurrentWeekToNextWeek() {
   const monStr = formatDateISO(mon);
   const sunStr = formatDateISO(sun);
 
-  // Find all shifts in the currently selected week
-  const currentWeekShifts = state.shifts.filter(s => {
-    return s && s.date && s.date >= monStr && s.date <= sunStr;
-  });
-
+  const currentWeekShifts = state.shifts.filter(s => s && s.date && s.date >= monStr && s.date <= sunStr);
   if (currentWeekShifts.length === 0) {
     showToast('No shifts found in the current week to copy.', 'warning');
     return;
   }
 
-  // Calculate next week's Monday & Sunday
-  const nextMon = new Date(mon);
-  nextMon.setDate(mon.getDate() + 7);
-  const nextSun = new Date(nextMon);
-  nextSun.setDate(nextMon.getDate() + 6);
+  const sourceRangeEl = document.getElementById('copy-modal-source-range');
+  const sourceCountEl = document.getElementById('copy-modal-source-count');
+  if (sourceRangeEl) sourceRangeEl.textContent = getWeekRangeText(mon);
+  if (sourceCountEl) sourceCountEl.textContent = `${currentWeekShifts.length} shifts`;
 
-  const nextMonStr = formatDateISO(nextMon);
-  const nextSunStr = formatDateISO(nextSun);
+  // Default target date: +1 week (Next week Monday)
+  setCopyTargetPreset(1);
 
-  const currentWeekRange = getWeekRangeText(mon);
-  const nextWeekRange = getWeekRangeText(nextMon);
+  const modal = document.getElementById('modal-copy-week');
+  if (modal) modal.classList.add('active');
+}
+window.openCopyWeekModal = openCopyWeekModal;
 
-  const existingNextWeekShifts = state.shifts.filter(s => s && s.date && s.date >= nextMonStr && s.date <= nextSunStr);
-  if (existingNextWeekShifts.length > 0) {
-    if (!confirm(`Warning: Next week (${nextWeekRange}) already has ${existingNextWeekShifts.length} scheduled shift(s).\n\nDo you want to proceed and copy ${currentWeekShifts.length} shift(s) into next week?`)) {
-      return;
+function closeCopyWeekModal() {
+  const modal = document.getElementById('modal-copy-week');
+  if (modal) modal.classList.remove('active');
+}
+window.closeCopyWeekModal = closeCopyWeekModal;
+
+function onCopyTargetDateChange(val) {
+  if (!val) return;
+  updateCopyTargetWeekPreview();
+}
+window.onCopyTargetDateChange = onCopyTargetDateChange;
+
+function setCopyTargetPreset(weeksAhead) {
+  const mon = getMondayOfCurrentWeek(state.currentWeekStart || new Date());
+  const targetMon = new Date(mon);
+  targetMon.setDate(mon.getDate() + (weeksAhead * 7));
+  const targetMonStr = formatDateISO(targetMon);
+
+  const input = document.getElementById('copy-target-date-input');
+  if (input) input.value = targetMonStr;
+
+  updateCopyTargetWeekPreview();
+}
+window.setCopyTargetPreset = setCopyTargetPreset;
+
+function updateCopyTargetWeekPreview() {
+  const input = document.getElementById('copy-target-date-input');
+  if (!input || !input.value) return;
+
+  const [y, m, d] = input.value.split('-').map(Number);
+  const pickedDate = new Date(y, m - 1, d);
+  const targetMon = getMondayOfCurrentWeek(pickedDate);
+  const targetSun = new Date(targetMon);
+  targetSun.setDate(targetMon.getDate() + 6);
+
+  const targetMonStr = formatDateISO(targetMon);
+  const targetSunStr = formatDateISO(targetSun);
+
+  const targetRangeText = getWeekRangeText(targetMon);
+  const targetRangeEl = document.getElementById('copy-modal-target-range');
+  const targetStatusEl = document.getElementById('copy-modal-target-status');
+
+  if (targetRangeEl) targetRangeEl.textContent = targetRangeText;
+
+  // Check how many shifts currently exist in the target week
+  const existingShifts = state.shifts.filter(s => s && s.date && s.date >= targetMonStr && s.date <= targetSunStr);
+  const sourceMon = getMondayOfCurrentWeek(state.currentWeekStart || new Date());
+  const isSameWeek = formatDateISO(sourceMon) === targetMonStr;
+
+  if (targetStatusEl) {
+    if (isSameWeek) {
+      targetStatusEl.innerHTML = `<span style="color:#ef4444; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> Same as source week. Please select a different target week.</span>`;
+    } else if (existingShifts.length > 0) {
+      targetStatusEl.innerHTML = `<span style="color:#f59e0b; font-weight:600;"><i class="fa-solid fa-triangle-exclamation"></i> ${existingShifts.length} shift(s) already scheduled in target week. Check 'Overwrite' below to replace them.</span>`;
+    } else {
+      targetStatusEl.innerHTML = `<span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Clean target week: 0 existing shifts scheduled.</span>`;
     }
-  } else {
-    const confirmMsg = `Copy all ${currentWeekShifts.length} shift(s) from current week (${currentWeekRange}) to next week (${nextWeekRange})?`;
-    if (!confirm(confirmMsg)) return;
+  }
+}
+window.updateCopyTargetWeekPreview = updateCopyTargetWeekPreview;
+
+async function executeCopyWeekToTarget() {
+  const input = document.getElementById('copy-target-date-input');
+  if (!input || !input.value) {
+    showToast('Please select a target week.', 'warning');
+    return;
   }
 
-  const btn = document.getElementById('btn-copy-week');
-  const origBtnHtml = btn ? btn.innerHTML : '<i class="fa-solid fa-copy text-cyan"></i> Copy to Next Week';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Copying...';
+  const [ty, tm, td] = input.value.split('-').map(Number);
+  const targetMon = getMondayOfCurrentWeek(new Date(ty, tm - 1, td));
+  const targetSun = new Date(targetMon);
+  targetSun.setDate(targetMon.getDate() + 6);
+
+  const targetMonStr = formatDateISO(targetMon);
+  const targetSunStr = formatDateISO(targetSun);
+
+  const sourceMon = getMondayOfCurrentWeek(state.currentWeekStart || new Date());
+  const sourceSun = new Date(sourceMon);
+  sourceSun.setDate(sourceMon.getDate() + 6);
+
+  const sourceMonStr = formatDateISO(sourceMon);
+  const sourceSunStr = formatDateISO(sourceSun);
+
+  if (sourceMonStr === targetMonStr) {
+    showToast('Cannot copy roster to the exact same week. Choose a different target week.', 'warning');
+    return;
+  }
+
+  const currentWeekShifts = state.shifts.filter(s => s && s.date && s.date >= sourceMonStr && s.date <= sourceSunStr);
+  if (currentWeekShifts.length === 0) {
+    showToast('No shifts found in the source week to copy.', 'warning');
+    return;
+  }
+
+  const overwriteCheckbox = document.getElementById('copy-modal-overwrite-checkbox');
+  const shouldOverwrite = overwriteCheckbox ? overwriteCheckbox.checked : false;
+
+  const existingTargetShifts = state.shifts.filter(s => s && s.date && s.date >= targetMonStr && s.date <= targetSunStr);
+  if (existingTargetShifts.length > 0 && !shouldOverwrite) {
+    if (!confirm(`Notice: Target week (${getWeekRangeText(targetMon)}) already has ${existingTargetShifts.length} scheduled shift(s).\n\nDo you want to add ${currentWeekShifts.length} shift(s) to the existing shifts?`)) {
+      return;
+    }
+  }
+
+  const executeBtn = document.getElementById('btn-execute-copy-week');
+  const origBtnHtml = executeBtn ? executeBtn.innerHTML : '<i class="fa-solid fa-copy"></i> Copy Roster to Target Week';
+  if (executeBtn) {
+    executeBtn.disabled = true;
+    executeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Copying shifts...';
   }
 
   try {
+    // 1. If overwrite requested, delete existing shifts in target week first
+    if (shouldOverwrite && existingTargetShifts.length > 0) {
+      for (const s of existingTargetShifts) {
+        await BriskDB.deleteShift(s.id);
+      }
+    }
+
+    // 2. Compute date difference in days between source Monday and target Monday
+    const dayDiff = Math.round((targetMon.getTime() - sourceMon.getTime()) / (1000 * 60 * 60 * 24));
+
     let leaveConflictCount = 0;
     const duplicatedShifts = currentWeekShifts.map(shift => {
-      const [y, m, d] = shift.date.split('-').map(Number);
-      const targetDate = new Date(Date.UTC(y, m - 1, d + 7));
-      const targetDateStr = targetDate.toISOString().split('T')[0];
+      const [sy, sm, sd] = shift.date.split('-').map(Number);
+      const shiftTargetDate = new Date(Date.UTC(sy, sm - 1, sd + dayDiff));
+      const shiftTargetDateStr = shiftTargetDate.toISOString().split('T')[0];
 
       let empId = null;
       if (shift.employeeId && state.employees.some(e => e.id === shift.employeeId)) {
-        if (checkLeaveStatus(shift.employeeId, targetDateStr)) {
+        if (checkLeaveStatus(shift.employeeId, shiftTargetDateStr)) {
           empId = null; // Auto unassign to protect approved leave!
           leaveConflictCount++;
         } else {
@@ -3911,7 +4021,7 @@ async function copyCurrentWeekToNextWeek() {
       const newShift = {
         employeeId: empId,
         role: shift.role || 'Floor',
-        date: targetDateStr,
+        date: shiftTargetDateStr,
         startTime: (shift.startTime || '09:00').substring(0, 5),
         endTime: (shift.endTime || '17:00').substring(0, 5),
         notes: shift.notes || ''
@@ -3933,25 +4043,32 @@ async function copyCurrentWeekToNextWeek() {
       }
     }
 
-    // Switch view to next week automatically
-    state.currentWeekStart = nextMon;
+    // Switch view to target week automatically
+    state.currentWeekStart = targetMon;
     
     // Refresh local state and UI
     loadDataFromState();
     renderScheduler();
     calculateLaborCostForecast();
+    closeCopyWeekModal();
 
     const leaveNote = leaveConflictCount > 0 ? `\n(⚠️ ${leaveConflictCount} shift(s) moved to Unassigned due to approved leave)` : '';
-    showToast(`Successfully copied ${createdCount} shift(s) to next week! (${nextWeekRange})${leaveNote}`, 'success');
+    showToast(`Successfully copied ${createdCount} shift(s) to ${getWeekRangeText(targetMon)}!${leaveNote}`, 'success');
   } catch (err) {
-    console.error('Copy Week Error:', err);
+    console.error('Copy Roster Error:', err);
     showToast('Failed to copy roster: ' + (err.message || 'Unknown error'), 'error');
   } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origBtnHtml;
+    if (executeBtn) {
+      executeBtn.disabled = false;
+      executeBtn.innerHTML = origBtnHtml;
     }
   }
+}
+window.executeCopyWeekToTarget = executeCopyWeekToTarget;
+
+// Legacy alias to open the copy modal
+function copyCurrentWeekToNextWeek() {
+  openCopyWeekModal();
 }
 window.copyCurrentWeekToNextWeek = copyCurrentWeekToNextWeek;
 

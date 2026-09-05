@@ -859,9 +859,62 @@ body.theme-light {
   width: 100%;
   min-height: 28px;
   padding: 2px 0;
+  /* Thin vertical hour guidelines in the background */
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent calc(25% - 1px),
+    rgba(255, 255, 255, 0.06) calc(25% - 1px),
+    rgba(255, 255, 255, 0.06) 25%
+  );
 }
 .shift-timeline-ruler {
   background: repeating-linear-gradient(to right, transparent, transparent 19px, #e2e8f0 20px);
+}
+.daily-timeline-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+  z-index: 1;
+}
+.daily-timeline-grid-line.midday {
+  background: rgba(0, 229, 255, 0.22);
+  width: 1.5px;
+}
+.daily-timeline-grid-line.quarter {
+  background: rgba(255, 255, 255, 0.12);
+}
+.daily-weekday-btn {
+  flex: 1;
+  min-width: 75px;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.daily-weekday-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.daily-weekday-btn.active {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.25);
+  font-weight: 700;
 }
 .shift-timeline-bar {
   position: absolute;
