@@ -374,10 +374,21 @@ function calculateLaborCostForecast() {
     const wageRatio = totalSalesTarget > 0 ? (totalLaborCost / totalSalesTarget) * 100 : 0;
     const health = getWageKpiHealth(wageRatio);
 
-    if (costValEl) costValEl.textContent = `${Math.round(totalLaborCost).toLocaleString('en-AU')}`;
+    if (costValEl) costValEl.textContent = `$${Math.round(totalLaborCost).toLocaleString('en-AU')}`;
     if (wageValEl) {
       wageValEl.textContent = `${wageRatio.toFixed(1)}%`;
       wageValEl.style.color = health.color;
+    }
+    if (wageBadge) {
+      wageBadge.style.borderColor = health.color;
+      wageBadge.style.background = health.color === '#10b981' 
+        ? 'rgba(16, 185, 129, 0.15)' 
+        : (health.color === '#fbbf24' 
+          ? 'rgba(251, 191, 36, 0.18)' 
+          : (health.color === '#f87171' 
+            ? 'rgba(248, 113, 113, 0.22)' 
+            : 'rgba(0, 229, 255, 0.15)'));
+      wageBadge.title = `Rostering Wage KPI: ${wageRatio.toFixed(1)}% (${health.label}) — Click to adjust weekly sales budget`;
     }
   } catch (e) {
     console.warn('calculateLaborCostForecast error:', e);
@@ -1735,8 +1746,6 @@ function renderDashboard() {
   // Calculate employee personal weekly summary
   if (state.currentUser && !hasManagerPermissions(state.currentUser)) {
     const empRecord = state.employees.find(e => e.id === state.currentUser.employeeId);
-    const hourlyRate = empRecord ? Number(empRecord.hourlyRate || 0) : 0;
-    
     // Filter shifts for this specific employee this week
     const myWeekShifts = weekShifts.filter(s => s.employeeId === state.currentUser.employeeId);
     
@@ -1746,14 +1755,12 @@ function renderDashboard() {
       totalHours += netHours;
     });
 
-    const estEarnings = totalHours * hourlyRate;
-    
     const summaryHoursEl = document.getElementById('personal-summary-hours');
-    const summaryPayEl = document.getElementById('personal-summary-pay');
+    const summaryShiftsEl = document.getElementById('personal-summary-shifts');
     const summaryRangeEl = document.getElementById('personal-summary-week-range');
     
     if (summaryHoursEl) summaryHoursEl.textContent = `${totalHours.toFixed(1)}h`;
-    if (summaryPayEl) summaryPayEl.textContent = `$${estEarnings.toFixed(2)}`;
+    if (summaryShiftsEl) summaryShiftsEl.textContent = `${myWeekShifts.length} Shift${myWeekShifts.length !== 1 ? 's' : ''}`;
     if (summaryRangeEl) {
       const formatDateShort = (d) => {
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -2097,6 +2104,238 @@ async function moveEmployeeOrder(empId, direction) {
 window.getOrderedActiveEmployees = getOrderedActiveEmployees;
 window.moveEmployeeOrder = moveEmployeeOrder;
 
+/* ==========================================================================
+   DEPARTMENT FILTERING ENGINE (v10.3.0)
+   ========================================================================== */
+
+function getEmployeeDepartment(emp) {
+  if (!emp) return 'retail';
+  const role = (emp.role || emp.position || '').toLowerCase();
+  if (role.includes('pharmacist') || role.includes('pic') || role.includes('locum') || role.includes('technician') || role.includes('dispensary') || role.includes('manager') || role.includes('owner') || role.includes('partner')) {
+    return 'dispensary';
+  }
+  if (role.includes('webster')) {
+    return 'webster';
+  }
+  return 'retail';
+}
+window.getEmployeeDepartment = getEmployeeDepartment;
+
+function updateDepartmentCounts() {
+  const activeEmployees = (typeof getOrderedActiveEmployees === 'function') ? getOrderedActiveEmployees() : (state.employees || []).filter(e => e.active);
+  let counts = { all: activeEmployees.length, dispensary: 0, retail: 0, webster: 0 };
+  activeEmployees.forEach(e => {
+    const d = getEmployeeDepartment(e);
+    if (counts[d] !== undefined) counts[d]++;
+  });
+  const elAll = document.getElementById('dept-count-all');
+  const elDisp = document.getElementById('dept-count-dispensary');
+  const elRet = document.getElementById('dept-count-retail');
+  const elWeb = document.getElementById('dept-count-webster');
+  if (elAll) elAll.textContent = counts.all;
+  if (elDisp) elDisp.textContent = counts.dispensary;
+  if (elRet) elRet.textContent = counts.retail;
+  if (elWeb) elWeb.textContent = counts.webster;
+}
+window.updateDepartmentCounts = updateDepartmentCounts;
+
+function setDepartmentFilter(dept) {
+  state.activeDeptFilter = dept;
+  document.querySelectorAll('.btn-dept-filter').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-dept') === dept);
+  });
+  const rows = document.querySelectorAll('#scheduler-grid-body tr');
+  rows.forEach(tr => {
+    const rowDept = tr.getAttribute('data-dept');
+    if (!rowDept || dept === 'all' || rowDept === dept) {
+      tr.style.display = '';
+    } else {
+      tr.style.display = 'none';
+    }
+  });
+}
+window.setDepartmentFilter = setDepartmentFilter;
+
+/* ==========================================================================
+   ROSTER ACTION HISTORY & UNDO / REDO STACK (v10.3.0)
+   ========================================================================== */
+
+let _rosterUndoStack = [];
+let _rosterRedoStack = [];
+const MAX_ROSTER_HISTORY = 25;
+
+function recordRosterAction(action) {
+  if (!action || !action.type) return;
+  _rosterUndoStack.push(action);
+  if (_rosterUndoStack.length > MAX_ROSTER_HISTORY) {
+    _rosterUndoStack.shift();
+  }
+  _rosterRedoStack = [];
+  updateUndoRedoButtons();
+}
+window.recordRosterAction = recordRosterAction;
+
+function updateUndoRedoButtons() {
+  const btnUndo = document.getElementById('btn-roster-undo');
+  const btnRedo = document.getElementById('btn-roster-redo');
+  if (btnUndo) {
+    btnUndo.disabled = _rosterUndoStack.length === 0;
+    btnUndo.title = _rosterUndoStack.length > 0 
+      ? `Undo last change (Ctrl+Z) - ${_rosterUndoStack.length} action(s) available` 
+      : 'Undo last change (Ctrl+Z)';
+  }
+  if (btnRedo) {
+    btnRedo.disabled = _rosterRedoStack.length === 0;
+    btnRedo.title = _rosterRedoStack.length > 0 
+      ? `Redo change (Ctrl+Y) - ${_rosterRedoStack.length} action(s) available` 
+      : 'Redo change (Ctrl+Y)';
+  }
+}
+window.updateUndoRedoButtons = updateUndoRedoButtons;
+
+async function rosterUndo() {
+  if (_rosterUndoStack.length === 0) return;
+  const action = _rosterUndoStack.pop();
+  try {
+    if (action.type === 'MOVE') {
+      const s = state.shifts.find(sh => sh.id === action.shiftId);
+      if (s) {
+        s.employeeId = action.from.employeeId;
+        s.date = action.from.date;
+        await BriskDB.updateShift(s);
+      }
+    } else if (action.type === 'UPDATE') {
+      const s = state.shifts.find(sh => sh.id === action.shiftId);
+      if (s) {
+        Object.assign(s, action.from);
+        await BriskDB.updateShift(s);
+      }
+    } else if (action.type === 'CREATE') {
+      await BriskDB.deleteShift(action.shiftId);
+    } else if (action.type === 'DELETE') {
+      const restored = await BriskDB.addShift(action.shiftData);
+      if (restored) action.shiftId = restored.id;
+    }
+    _rosterRedoStack.push(action);
+    updateUndoRedoButtons();
+    loadDataFromState();
+    renderScheduler();
+    if (typeof renderDailyPanel === 'function') renderDailyPanel();
+    showToast(`↩ Undid ${action.description || 'change'}`, 'info');
+  } catch (err) {
+    console.error('rosterUndo error:', err);
+    showToast('Failed to undo change.', 'error');
+  }
+}
+window.rosterUndo = rosterUndo;
+
+async function rosterRedo() {
+  if (_rosterRedoStack.length === 0) return;
+  const action = _rosterRedoStack.pop();
+  try {
+    if (action.type === 'MOVE') {
+      const s = state.shifts.find(sh => sh.id === action.shiftId);
+      if (s) {
+        s.employeeId = action.to.employeeId;
+        s.date = action.to.date;
+        await BriskDB.updateShift(s);
+      }
+    } else if (action.type === 'UPDATE') {
+      const s = state.shifts.find(sh => sh.id === action.shiftId);
+      if (s) {
+        Object.assign(s, action.to);
+        await BriskDB.updateShift(s);
+      }
+    } else if (action.type === 'CREATE') {
+      await BriskDB.addShift(action.shiftData);
+    } else if (action.type === 'DELETE') {
+      await BriskDB.deleteShift(action.shiftId);
+    }
+    _rosterUndoStack.push(action);
+    updateUndoRedoButtons();
+    loadDataFromState();
+    renderScheduler();
+    if (typeof renderDailyPanel === 'function') renderDailyPanel();
+    showToast(`↪ Redid ${action.description || 'change'}`, 'info');
+  } catch (err) {
+    console.error('rosterRedo error:', err);
+    showToast('Failed to redo change.', 'error');
+  }
+}
+window.rosterRedo = rosterRedo;
+
+// Global Undo / Redo keyboard listener
+if (typeof window !== 'undefined' && !window._rosterKeyListenersBound) {
+  window._rosterKeyListenersBound = true;
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      rosterUndo();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      rosterRedo();
+    } else if (e.key === 'Escape' && window._activeStencilPreset) {
+      selectShiftStencil(null);
+    }
+  });
+}
+
+/* ==========================================================================
+   1-CLICK SHIFT STENCILS (QUICK-STAMP PRESETS) (v10.3.0)
+   ========================================================================== */
+
+const SHIFT_STENCIL_PRESETS = {
+  disp_full: { role: 'Dispensary', startTime: '08:30', endTime: '17:00', unpaidMealMins: 30, label: '🌿 Dispensary (8:30am–5:00pm)' },
+  pharm_am: { role: 'Pharmacist 1', startTime: '08:00', endTime: '16:30', unpaidMealMins: 30, label: '💊 Pharmacist AM (8:00am–4:30pm)' },
+  pharm_pm: { role: 'Pharmacist 2', startTime: '10:00', endTime: '18:30', unpaidMealMins: 30, label: '💊 Pharmacist PM (10:00am–6:30pm)' },
+  floor_std: { role: 'Floor', startTime: '09:00', endTime: '17:30', unpaidMealMins: 30, label: '🛒 Floor & Tills (9:00am–5:30pm)' },
+  webster_std: { role: 'Webster', startTime: '09:00', endTime: '14:00', unpaidMealMins: 30, label: '📦 Webster AM (9:00am–2:00pm)' },
+  junior_close: { role: 'Floor', startTime: '16:00', endTime: '19:30', unpaidMealMins: 0, label: '🌙 Junior Close (4:00pm–7:30pm)' }
+};
+
+window._activeStencilKey = null;
+window._activeStencilPreset = null;
+
+function toggleStencilBar(forceOpen) {
+  const bar = document.getElementById('scheduler-stencil-bar');
+  if (!bar) return;
+  const isHidden = (bar.style.display === 'none' || !bar.style.display);
+  const isOpen = (typeof forceOpen === 'boolean') ? forceOpen : isHidden;
+  bar.style.display = isOpen ? 'block' : 'none';
+  if (!isOpen) {
+    selectShiftStencil(null);
+  }
+}
+window.toggleStencilBar = toggleStencilBar;
+
+function selectShiftStencil(stencilKey) {
+  if (!stencilKey || window._activeStencilKey === stencilKey) {
+    window._activeStencilKey = null;
+    window._activeStencilPreset = null;
+    document.body.classList.remove('stamp-mode-active');
+    document.querySelectorAll('.stencil-chip').forEach(c => c.classList.remove('active'));
+    const hint = document.getElementById('stencil-status-hint');
+    if (hint) hint.textContent = 'Click a shift preset below, then click any cell to instantly stamp that shift!';
+    return;
+  }
+
+  const preset = SHIFT_STENCIL_PRESETS[stencilKey];
+  if (!preset) return;
+
+  window._activeStencilKey = stencilKey;
+  window._activeStencilPreset = preset;
+  document.body.classList.add('stamp-mode-active');
+  document.querySelectorAll('.stencil-chip').forEach(c => {
+    c.classList.toggle('active', c.getAttribute('data-stencil') === stencilKey);
+  });
+  const hint = document.getElementById('stencil-status-hint');
+  if (hint) {
+    hint.innerHTML = `<strong style="color:var(--accent-cyan);"><i class="fa-solid fa-stamp"></i> STAMP ACTIVE:</strong> Click any day cell to assign <strong>${preset.label}</strong> (click stencil again or press Esc to cancel).`;
+  }
+}
+window.selectShiftStencil = selectShiftStencil;
+
 function renderScheduler() {
   const weekRange = getWeekRangeText(state.currentWeekStart);
   const weekRangeEl = document.getElementById('scheduler-week-range');
@@ -2257,6 +2496,11 @@ function getEffectiveShiftHourlyRate(shift) {
   // If user is employee, they see all staff rosters, but cannot click to add or edit
   activeEmployees.forEach((emp, empIdx) => {
     const tr = document.createElement('tr');
+    const empDept = getEmployeeDepartment(emp);
+    tr.setAttribute('data-dept', empDept);
+    if (state.activeDeptFilter && state.activeDeptFilter !== 'all' && empDept !== state.activeDeptFilter) {
+      tr.style.display = 'none';
+    }
     
     const tdProfile = document.createElement('td');
     tdProfile.className = 'grid-employee-cell';
@@ -2351,7 +2595,15 @@ function getEffectiveShiftHourlyRate(shift) {
               notes: shift.notes
             };
             try {
-              await BriskDB.addShift(duplicated);
+              const created = await BriskDB.addShift(duplicated);
+              if (typeof recordRosterAction === 'function') {
+                recordRosterAction({
+                  type: 'CREATE',
+                  shiftId: created ? created.id : null,
+                  shiftData: created || duplicated,
+                  description: `Duplicated shift to ${targetDate}`
+                });
+              }
               showToast('Shift duplicated successfully.', 'success');
               loadDataFromState();
               renderScheduler();
@@ -2396,10 +2648,21 @@ function getEffectiveShiftHourlyRate(shift) {
                 }
               }
             }
+            const prevEmpId = shift.employeeId;
+            const prevDate = shift.date;
             try {
               shift.employeeId = targetEmpId;
               shift.date = targetDate;
               await BriskDB.updateShift(shift);
+              if (typeof recordRosterAction === 'function') {
+                recordRosterAction({
+                  type: 'MOVE',
+                  shiftId: shift.id,
+                  from: { employeeId: prevEmpId, date: prevDate },
+                  to: { employeeId: targetEmpId, date: targetDate },
+                  description: `Moved shift to ${targetDate}`
+                });
+              }
               showToast('Shift moved successfully.', 'success');
               loadDataFromState();
               renderScheduler();
@@ -2545,6 +2808,41 @@ function getEffectiveShiftHourlyRate(shift) {
         tdDay.appendChild(timelineContainer);
 
         if (isMgr) {
+          tdDay.addEventListener('click', async (e) => {
+            if (e.target.closest('.shift-timeline-bar') || e.target.closest('.cell-add-btn')) return;
+            
+            // 1-Click Shift Stencil Stamp handler
+            if (window._activeStencilPreset) {
+              const preset = window._activeStencilPreset;
+              const newShiftData = {
+                employeeId: emp.id,
+                date: dateStr,
+                startTime: preset.startTime,
+                endTime: preset.endTime,
+                role: preset.role,
+                unpaidMealMins: preset.unpaidMealMins,
+                notes: ''
+              };
+              try {
+                const created = await BriskDB.addShift(newShiftData);
+                if (typeof recordRosterAction === 'function') {
+                  recordRosterAction({
+                    type: 'CREATE',
+                    shiftId: created ? created.id : null,
+                    shiftData: created || newShiftData,
+                    description: `Stamped ${preset.role} shift for ${emp.name} on ${dateStr}`
+                  });
+                }
+                showToast(`✓ Stamped ${preset.role} (${emp.name})`, 'success');
+                loadDataFromState();
+                renderScheduler();
+              } catch (err) {
+                console.error('Failed to stamp shift:', err);
+                showToast('Failed to stamp shift.', 'error');
+              }
+            }
+          });
+
           const addBtn = document.createElement('div');
           addBtn.className = 'cell-add-btn';
           addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
@@ -2981,6 +3279,8 @@ function getEffectiveShiftHourlyRate(shift) {
   }
 
   calculateLaborCostForecast();
+  if (typeof updateDepartmentCounts === 'function') updateDepartmentCounts();
+  if (typeof updateUndoRedoButtons === 'function') updateUndoRedoButtons();
 }
 
 window.openEditShiftModalById = function(id) {
@@ -3766,13 +4066,32 @@ async function handleShiftSubmit(event) {
     };
 
     if (id) {
+      const oldShift = state.shifts.find(s => String(s.id) === String(id));
+      const prevData = oldShift ? { ...oldShift } : null;
       shiftData.id = id;
       await BriskDB.updateShift(shiftData);
+      if (prevData && typeof recordRosterAction === 'function') {
+        recordRosterAction({
+          type: 'UPDATE',
+          shiftId: id,
+          from: prevData,
+          to: { ...shiftData },
+          description: `Updated shift for ${empName} on ${date}`
+        });
+      }
       if (typeof BriskDB.logAudit === 'function') {
         BriskDB.logAudit('SHIFT_UPDATE', `Updated shift for ${empName} on ${date} (${start}-${end}, ${role}${unpaidMealVal === 'crib_paid' ? ', Paid Crib' : ''})`, id);
       }
     } else {
       const created = await BriskDB.addShift(shiftData);
+      if (created && typeof recordRosterAction === 'function') {
+        recordRosterAction({
+          type: 'CREATE',
+          shiftId: created.id,
+          shiftData: created,
+          description: `Created shift for ${empName} on ${date}`
+        });
+      }
       if (typeof BriskDB.logAudit === 'function') {
         BriskDB.logAudit('SHIFT_CREATE', `Created shift for ${empName} on ${date} (${start}-${end}, ${role}${unpaidMealVal === 'crib_paid' ? ', Paid Crib' : ''})`, created ? created.id : null);
       }

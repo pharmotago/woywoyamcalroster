@@ -3096,3 +3096,83 @@ body.timeline-dragging-resize * {
 body.timeline-dragging .timeline-bar:not(.dragging) {
   pointer-events: none;
 }
+
+/* ==========================================================================
+   DEPARTMENT FILTER PILLS & SHIFT STENCILS (v10.3.0)
+   ========================================================================== */
+
+/* Department Filter Pills */
+.btn-dept-filter {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-dept-filter:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.btn-dept-filter.active {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+.dept-count-badge {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.btn-dept-filter.active .dept-count-badge {
+  background: rgba(0, 229, 255, 0.25);
+  color: #fff;
+}
+
+/* Shift Stencil Chips */
+.stencil-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-glass);
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.stencil-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+.stencil-chip.active {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+  color: #fff;
+}
+
+/* Stamp Mode Active State */
+body.stamp-mode-active .calendar-grid-cell {
+  cursor: crosshair !important;
+}
+body.stamp-mode-active .calendar-grid-cell:hover {
+  background: rgba(0, 229, 255, 0.12) !important;
+  outline: 1px dashed var(--accent-cyan);
+}

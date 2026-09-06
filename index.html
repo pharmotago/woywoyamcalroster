@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.2.0)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.3.0)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -377,7 +377,7 @@
             <!-- Personal Weekly Summary Card (Visible only to employees) -->
             <div class="glass-card hide" id="dash-personal-summary-card" style="margin: 0 1.25rem 1.25rem 1.25rem; background: linear-gradient(135deg, rgba(0, 229, 255, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%); border: 1px solid rgba(0, 229, 255, 0.25);">
               <div class="card-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-                <h3><i class="fa-solid fa-wallet text-neon"></i> My Weekly Summary</h3>
+                <h3><i class="fa-solid fa-calendar-week text-neon"></i> My Weekly Schedule</h3>
                 <span class="text-muted" style="font-size: 11px;" id="personal-summary-week-range">This Week</span>
               </div>
               <div class="flex-row" style="justify-content: space-around; gap: 1rem; padding: 0.5rem 0;">
@@ -387,8 +387,8 @@
                 </div>
                 <div style="width: 1px; background: rgba(255, 255, 255, 0.1); height: 40px; align-self: center;"></div>
                 <div class="text-center" style="flex: 1;">
-                  <div class="text-muted" style="font-size: 0.78rem; margin-bottom: 4px;">Estimated Earnings</div>
-                  <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;" id="personal-summary-pay" class="text-neon">$0.00</div>
+                  <div class="text-muted" style="font-size: 0.78rem; margin-bottom: 4px;">Scheduled Shifts</div>
+                  <div style="font-size: 1.4rem; font-weight: 700; color: #10b981;" id="personal-summary-shifts">0 Shifts</div>
                 </div>
               </div>
             </div>
@@ -531,6 +531,78 @@
             </button>
             <button class="btn btn-danger" id="btn-clear-week" title="Clear this week's shifts">
               <i class="fa-solid fa-trash-can"></i> Clear Week
+            </button>
+          </div>
+        </div>
+
+        <!-- Scheduler Quick Toolbar: Department Filters & Undo/Redo & Stencil Bar -->
+        <div class="scheduler-filter-bar glass-card flex-row" style="margin-bottom: 0.75rem; padding: 8px 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <!-- Department Filter Pills -->
+          <div class="dept-filter-group flex-row" style="gap: 6px; align-items: center; flex-wrap: wrap;" id="dept-filter-container">
+            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px;">Department:</span>
+            <button type="button" class="btn-dept-filter active" data-dept="all" onclick="setDepartmentFilter('all')">
+              All Staff <span class="dept-count-badge" id="dept-count-all">0</span>
+            </button>
+            <button type="button" class="btn-dept-filter" data-dept="dispensary" onclick="setDepartmentFilter('dispensary')">
+              🌿 Dispensary <span class="dept-count-badge" id="dept-count-dispensary">0</span>
+            </button>
+            <button type="button" class="btn-dept-filter" data-dept="retail" onclick="setDepartmentFilter('retail')">
+              🛒 Floor &amp; Tills <span class="dept-count-badge" id="dept-count-retail">0</span>
+            </button>
+            <button type="button" class="btn-dept-filter" data-dept="webster" onclick="setDepartmentFilter('webster')">
+              📦 Webster Care <span class="dept-count-badge" id="dept-count-webster">0</span>
+            </button>
+          </div>
+
+          <!-- History & Stencil Toggle Controls (Managers Only) -->
+          <div class="flex-row manager-only" style="gap: 8px; align-items: center;">
+            <button type="button" id="btn-roster-undo" class="btn btn-outline" onclick="rosterUndo()" disabled title="Undo last change (Ctrl+Z)" style="height: 30px; padding: 0 10px; font-size: 0.78rem;">
+              <i class="fa-solid fa-rotate-left"></i> Undo
+            </button>
+            <button type="button" id="btn-roster-redo" class="btn btn-outline" onclick="rosterRedo()" disabled title="Redo change (Ctrl+Y)" style="height: 30px; padding: 0 10px; font-size: 0.78rem;">
+              <i class="fa-solid fa-rotate-right"></i> Redo
+            </button>
+            <button type="button" id="btn-toggle-stencils" class="btn btn-outline" onclick="toggleStencilBar()" title="Toggle 1-Click Shift Stencil Stamp Bar" style="height: 30px; padding: 0 10px; font-size: 0.78rem; border-color: rgba(0, 229, 255, 0.35);">
+              <i class="fa-solid fa-stamp text-cyan"></i> Shift Stencils
+            </button>
+          </div>
+        </div>
+
+        <!-- 1-Click Shift Stencils / Stamp Bar (Manager Only, Collapsible) -->
+        <div id="scheduler-stencil-bar" class="glass-card manager-only" style="display: none; margin-bottom: 0.75rem; padding: 10px 16px; background: rgba(0, 229, 255, 0.03); border: 1px dashed rgba(0, 229, 255, 0.3); border-radius: var(--radius-md);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 700; color: var(--accent-cyan); display: inline-flex; align-items: center; gap: 5px;">
+                <i class="fa-solid fa-stamp"></i> Quick Shift Stamp:
+              </span>
+              <span style="font-size: 0.74rem; color: var(--text-muted);" id="stencil-status-hint">Click a shift preset below, then click any cell to instantly stamp that shift!</span>
+            </div>
+            <button type="button" class="btn btn-icon" style="height: 22px; width: 22px; font-size: 11px;" onclick="toggleStencilBar(false)" title="Close Stencil Bar"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="stencil-chips-container" id="stencil-chips-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <button type="button" class="stencil-chip" data-stencil="disp_full" onclick="selectShiftStencil('disp_full')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+              <strong>🌿 Dispensary:</strong> 8:30 AM – 5:00 PM (30m lunch)
+            </button>
+            <button type="button" class="stencil-chip" data-stencil="pharm_am" onclick="selectShiftStencil('pharm_am')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #00e5ff; display: inline-block;"></span>
+              <strong>💊 Pharmacist AM:</strong> 8:00 AM – 4:30 PM (30m lunch)
+            </button>
+            <button type="button" class="stencil-chip" data-stencil="pharm_pm" onclick="selectShiftStencil('pharm_pm')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7; display: inline-block;"></span>
+              <strong>💊 Pharmacist PM:</strong> 10:00 AM – 6:30 PM (30m lunch)
+            </button>
+            <button type="button" class="stencil-chip" data-stencil="floor_std" onclick="selectShiftStencil('floor_std')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; display: inline-block;"></span>
+              <strong>🛒 Floor &amp; Tills:</strong> 9:00 AM – 5:30 PM (30m lunch)
+            </button>
+            <button type="button" class="stencil-chip" data-stencil="webster_std" onclick="selectShiftStencil('webster_std')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #a855f7; display: inline-block;"></span>
+              <strong>📦 Webster AM:</strong> 9:00 AM – 2:00 PM (30m lunch)
+            </button>
+            <button type="button" class="stencil-chip" data-stencil="junior_close" onclick="selectShiftStencil('junior_close')">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #ec4899; display: inline-block;"></span>
+              <strong>🌙 Junior Close:</strong> 4:00 PM – 7:30 PM (No lunch)
             </button>
           </div>
         </div>
@@ -683,7 +755,7 @@
                   <th style="width: 180px; text-align: left; padding-left: 16px;">Employee</th>
                   <th style="width: 130px;">Time</th>
                   <th style="width: 130px;">Role / Task</th>
-                  <th style="width: 160px; text-align: center;">Breaks (Award)</th>
+                  <th style="width: 140px; text-align: center;">Lunch Break</th>
                   <th style="text-align: left; padding-left: 16px;">Notes / Instructions</th>
                   <th style="width: 120px; text-align: center;">Actions</th>
                 </tr>
@@ -2158,18 +2230,36 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.2.0)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.3.0)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v10.2.0 -->
+        <!-- v10.3.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.2.0 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.0 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Department Filters, Global Undo/Redo, 1-Click Stencils & Staff Privacy Guard</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Staff Privacy & Cleanliness:</strong> Completely removed estimated earnings and wage figures from the employee view. Normal staff now see an uncluttered schedule showing shift times, role, and lunch break.</li>
+            <li><strong>Department Filter Tabs:</strong> Instant pill filters directly above the weekly grid (All Staff, Dispensary, Floor &amp; Tills, Webster Care) to focus on specific department teams with zero visual noise.</li>
+            <li><strong>Global Undo / Redo (Ctrl+Z / Ctrl+Y):</strong> Full 25-action safety history stack. Revert or re-apply shift moves, adjustments, creations, or deletions instantly from toolbar buttons or keyboard shortcuts.</li>
+            <li><strong>1-Click Shift Stencil Stamp:</strong> Collapsible stencil bar with standard Amcal shifts (Dispensary 8:30–5:00, Pharmacist AM/PM, Floor, Webster, Junior). Click a stencil preset and stamp empty cells in 1 click!</li>
+            <li><strong>Wage KPI Traffic Light Polish:</strong> Dynamically color-coded manager KPI badge (Green optimal, Amber caution, Coral over-budget) with one-click sales budget adjustment.</li>
+          </ul>
+        </div>
+
+        <!-- v10.2.0 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.2.0</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Inline Drag-to-Adjust Shift Bars in Daily View</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>

@@ -699,8 +699,17 @@ window.openDailyAddShiftModal = openDailyAddShiftModal;
 async function deleteShiftDaily(shiftId) {
   if (!confirm('Are you sure you want to delete this shift?')) return;
   try {
+    const shiftToDelete = (window.state?.shifts || []).find(s => String(s.id) === String(shiftId));
     if (typeof BriskDB !== 'undefined' && typeof BriskDB.deleteShift === 'function') {
       await BriskDB.deleteShift(shiftId);
+      if (shiftToDelete && typeof recordRosterAction === 'function') {
+        recordRosterAction({
+          type: 'DELETE',
+          shiftId: shiftToDelete.id,
+          shiftData: { ...shiftToDelete },
+          description: `Deleted shift on ${shiftToDelete.date}`
+        });
+      }
     }
     if (typeof showToast === 'function') showToast('Shift deleted successfully.', 'success');
     if (typeof loadDataFromState === 'function') loadDataFromState();
@@ -924,6 +933,15 @@ function initBarDragBehavior(bar, shift, leftHandle, rightHandle, container, tim
 
         if (typeof BriskDB !== 'undefined' && typeof BriskDB.updateShift === 'function') {
           await BriskDB.updateShift(updatedShift);
+          if (typeof recordRosterAction === 'function') {
+            recordRosterAction({
+              type: 'UPDATE',
+              shiftId: shift.id,
+              from: { startTime: decimalToTimeStr(origStartDec), endTime: decimalToTimeStr(origEndDec), unpaidMealMins: shift.unpaidMealMins },
+              to: { startTime: newStartStr, endTime: newEndStr, unpaidMealMins: newBreaks.unpaidMealMins },
+              description: `Adjusted shift time to ${formatTimeAmPm(newStartStr)} – ${formatTimeAmPm(newEndStr)}`
+            });
+          }
         }
 
         // Update local state
@@ -1309,7 +1327,7 @@ function renderDailyPanel() {
           breakSummary = parts.join(' + ');
         }
 
-        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role}) | ${breakEntitlement.description}${isMgr ? ' (Drag edges to resize, drag center to slide, click for full edit)' : ''}`;
+        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role})${breakSummary ? ` | ${breakSummary}` : ''}${isMgr ? ' (Drag edges to resize, drag center to slide, click for full edit)' : ''}`;
         bar.innerHTML = `<span style="font-weight:600;">${empName} (${s.role})</span>${breakSummary ? ` <span style="font-size:0.68rem; opacity:0.95; background:rgba(0,0,0,0.38); padding:1px 6px; border-radius:4px; margin-left:6px; display:inline-flex; align-items:center; gap:4px; vertical-align:middle;"><i class="fa-solid fa-mug-hot" style="font-size:0.65rem; color:#0ea5e9;"></i> ${breakSummary}</span>` : ''}`;
         
         // Make timeline bar interactive for managers — unified drag + click
