@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.3.5">
+  <link rel="stylesheet" href="css/styles.css?v=10.3.6">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -2475,13 +2475,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.0.0"></script>
+  <script type="module" src="js/app.js?v=10.3.6"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=10.0.0')
+        navigator.serviceWorker.register('sw.js?v=10.3.6')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load

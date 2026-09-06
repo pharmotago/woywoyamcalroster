@@ -775,21 +775,25 @@ body.theme-light {
 
 /* Shift Card Widget styling */
 .shift-card {
-  background: linear-gradient(135deg, rgba(0, 97, 171, 0.25), rgba(30, 36, 46, 0.95));
-  border: 1px solid var(--accent-amber);
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-sm);
-  padding: 8px;
-  font-size: 0.75rem;
+  padding: 6px 8px;
+  font-size: 0.74rem;
   color: var(--text-primary);
   cursor: pointer;
-  transition: var(--transition-fast);
-  margin-bottom: 4px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  margin-bottom: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  position: relative;
+  text-align: left;
 }
 .shift-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0, 97, 171, 0.35);
-  border-color: var(--accent-gold);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 .shift-card.unassigned {
   background: rgba(231, 76, 60, 0.1);

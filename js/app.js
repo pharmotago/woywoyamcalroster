@@ -2750,130 +2750,74 @@ function getEffectiveShiftHourlyRate(shift) {
         leaveDiv.innerHTML = `🏖️ On Leave<br><span style="font-size:7.5pt; opacity:0.85;">${leaveInfo.reason || 'Approved'}</span>`;
         tdDay.appendChild(leaveDiv);
       } else {
-        const timelineContainer = document.createElement('div');
-        timelineContainer.className = 'shift-timeline-container';
-
-        const dayOfWeek = d.getDay();
-        const th = (state.settings && state.settings.tradingHours) ? state.settings.tradingHours[String(dayOfWeek)] : null;
-        let dayOpenStr = '08:30';
-        let dayCloseStr = '17:30';
-        if (th && !th.closed) {
-          dayOpenStr = th.open || '08:30';
-          dayCloseStr = th.close || '17:30';
-        } else if (dayOfWeek === 6) {
-          dayOpenStr = '09:00';
-          dayCloseStr = '13:00';
-        } else if (dayOfWeek === 0) {
-          dayOpenStr = '09:00';
-          dayCloseStr = '17:00';
-        }
-
-        const dayOpenMins = timeToMinutes(dayOpenStr);
-        const dayCloseMins = timeToMinutes(dayCloseStr);
-        const totalDayMins = Math.max(240, dayCloseMins - dayOpenMins);
-
-        // If partial leave, show striped overlay on unavailable time range
+        // If partial leave, show warning badge at top of cell
         if (leaveInfo && leaveInfo.type !== 'full_day') {
-          const unavailStartMins = timeToMinutes(leaveInfo.unavailStart || '00:00');
-          const unavailEndMins = timeToMinutes(leaveInfo.unavailEnd || '23:59');
-
-          const clampedStart = Math.max(dayOpenMins, unavailStartMins);
-          const clampedEnd = Math.min(dayCloseMins, unavailEndMins);
-
-          if (clampedEnd > clampedStart) {
-            const lLeftPct = Math.max(0, Math.min(100, ((clampedStart - dayOpenMins) / totalDayMins) * 100));
-            const lWidthPct = Math.max(5, Math.min(100 - lLeftPct, ((clampedEnd - clampedStart) / totalDayMins) * 100));
-
-            const stripeDiv = document.createElement('div');
-            stripeDiv.className = 'leave-overlay-stripe';
-            stripeDiv.style.cssText = `position:absolute; top:0; left:${lLeftPct}%; width:${lWidthPct}%; height:100%; border:1px dashed rgba(239,68,68,0.4); border-radius:3px; z-index:1; pointer-events:none; display:flex; align-items:flex-end; justify-content:center;`;
-            stripeDiv.innerHTML = `<span style="font-size:7.5pt; color:#f87171; font-weight:700; background:rgba(0,0,0,0.6); border-radius:2px; padding:0 3px;">${leaveInfo.label}</span>`;
-            timelineContainer.appendChild(stripeDiv);
-          }
+          const pLeaveDiv = document.createElement('div');
+          pLeaveDiv.className = 'badge';
+          pLeaveDiv.style.cssText = 'background:rgba(239,68,68,0.15); color:#f87171; border:1px dashed rgba(239,68,68,0.5); font-size:7.5pt; width:100%; text-align:center; padding:3px 2px; border-radius:4px; margin-bottom:4px;';
+          pLeaveDiv.innerHTML = `⚠️ Leave (${leaveInfo.label || leaveInfo.reason || 'Partial'})`;
+          tdDay.appendChild(pLeaveDiv);
         }
 
-        // Multi-track layout for contiguous / overlapping shifts
-        const tracks = [];
         cellShifts.forEach(shift => {
-          const sStart = timeToMinutes(shift.startTime || '09:00');
-          const sEnd = timeToMinutes(shift.endTime || '17:00');
-          let trackIdx = -1;
-          for (let t = 0; t < tracks.length; t++) {
-            if (tracks[t] <= sStart) {
-              trackIdx = t;
-              tracks[t] = sEnd;
-              break;
-            }
-          }
-          if (trackIdx === -1) {
-            trackIdx = tracks.length;
-            tracks.push(sEnd);
-          }
-          shift._track = trackIdx;
-        });
-
-        const totalTracks = Math.max(1, tracks.length);
-        timelineContainer.style.height = `${totalTracks * 26 + 4}px`;
-
-        // Render shift bars
-        cellShifts.forEach(shift => {
-          const sStartMins = timeToMinutes(shift.startTime || '09:00');
-          const sEndMins = timeToMinutes(shift.endTime || '17:00');
-          const leftPct = Math.max(0, Math.min(94, ((sStartMins - dayOpenMins) / totalDayMins) * 100));
-          const durationMins = Math.max(30, sEndMins - sStartMins);
-          const widthPct = Math.max(8, Math.min(100 - leftPct, (durationMins / totalDayMins) * 100));
+          const div = document.createElement('div');
+          div.className = 'shift-card';
+          div.setAttribute('data-shift-id', shift.id);
 
           const roleColor = state.roles.find(r => r.name.toLowerCase() === (shift.role || '').toLowerCase())?.color || '#0284c7';
-          const topPx = (shift._track || 0) * 26 + 2;
-
-          const bar = document.createElement('div');
-          bar.className = 'shift-timeline-bar';
-          bar.style.left = `${leftPct}%`;
-          bar.style.width = `${widthPct}%`;
-          bar.style.top = `${topPx}px`;
-          bar.style.backgroundColor = roleColor;
-          bar.style.borderLeft = `3px solid rgba(255,255,255,0.7)`;
-          bar.setAttribute('data-shift-id', shift.id);
+          div.style.borderLeft = `4px solid ${roleColor}`;
+          div.style.background = `rgba(${hexToRgb(roleColor)}, 0.12)`;
 
           const shiftDuration = calculateShiftHours(shift.startTime, shift.endTime, 0);
           const breakEntitlement = getAwardBreakEntitlements(shiftDuration);
           const unpaidMeal = (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null) ? shift.unpaidMealMins : breakEntitlement.unpaidMealMins;
-          const mealText = unpaidMeal > 0 ? `${unpaidMeal}m Lunch` : '';
+
+          let breakBadgeHtml = '';
+          if (shiftDuration >= 4 && unpaidMeal > 0) {
+            breakBadgeHtml = `<div class="shift-card-breaks" style="font-size: 7.5pt; color: var(--text-muted); margin-top: 2px;"><i class="fa-solid fa-mug-hot"></i> ${unpaidMeal}m Lunch</div>`;
+          }
 
           if (isMgr) {
-            bar.draggable = true;
-            bar.addEventListener('dragstart', (e) => {
+            div.draggable = true;
+            div.style.cursor = 'pointer';
+            div.addEventListener('dragstart', (e) => {
               e.stopPropagation();
               e.dataTransfer.setData('text/plain', shift.id);
-              bar.classList.add('dragging');
+              div.classList.add('dragging');
             });
-            bar.addEventListener('dragend', () => {
-              bar.classList.remove('dragging');
+            div.addEventListener('dragend', () => {
+              div.classList.remove('dragging');
             });
-            bar.addEventListener('click', (e) => {
+            div.addEventListener('click', (e) => {
               e.stopPropagation();
+              if (e.target.closest('button')) return;
               openEditShiftModal(shift);
             });
           }
 
-          bar.innerHTML = `
-            <span class="bar-label">${shift.role}: ${formatTimeAmPm(shift.startTime)}~${formatTimeAmPm(shift.endTime)}</span>
-            <div class="bar-tooltip">
-              <strong style="color:${roleColor};">${shift.role}</strong> (${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)})
-              ${mealText ? `<div style="font-size:8pt; color:#64748b;"><i class="fa-solid fa-mug-hot"></i> ${mealText}</div>` : ''}
-              ${shift.notes ? `<div style="font-size:8pt; margin-top:2px; font-style:italic;">${shift.notes}</div>` : ''}
-              ${isMgr ? `<div style="font-size:7.5pt; color:#94a3b8; margin-top:3px;">Click to edit | Drag to move</div>` : ''}
+          const delBtnHtml = isMgr ? `<button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:11px; opacity:0.6;"><i class="fa-solid fa-trash"></i></button>` : '';
+
+          const copyBtnHtml = isMgr ? `<button class="btn-icon" onclick="copyShiftQuick('${shift.id}', event)" title="Copy Shift" style="padding:0; margin:0; font-size:11px; opacity:0.6;"><i class="fa-regular fa-copy"></i></button>` : '';
+
+          div.innerHTML = `
+            <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}</span>
+              <div class="shift-card-actions print-hide" style="display:flex; gap:4px; align-items:center;">
+                ${copyBtnHtml}
+                ${delBtnHtml}
+              </div>
             </div>
+            <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)} <span style="font-size:7.5pt; opacity:0.85;">(${shiftDuration.toFixed(1)}h)</span></div>
+            ${breakBadgeHtml}
+            ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
           `;
 
-          timelineContainer.appendChild(bar);
+          tdDay.appendChild(div);
         });
-
-        tdDay.appendChild(timelineContainer);
 
         if (isMgr) {
           tdDay.addEventListener('click', async (e) => {
-            if (e.target.closest('.shift-timeline-bar') || e.target.closest('.cell-add-btn')) return;
+            if (e.target.closest('.shift-card') || e.target.closest('.shift-timeline-bar') || e.target.closest('.cell-add-btn')) return;
             
             // 1-Click Shift Stencil Stamp handler
             if (window._activeStencilPreset) {
@@ -3006,46 +2950,44 @@ function getEffectiveShiftHourlyRate(shift) {
       const cellShifts = weekShiftsMap.get(`_${dateStr}`) || state.shifts.filter(s => (s.employeeId === null || !state.employees.find(e => e.id === s.employeeId)?.active) && s.date === dateStr);
       
       if (cellShifts.length > 0) {
-        const timelineContainer = document.createElement('div');
-        timelineContainer.className = 'shift-timeline-container';
-        timelineContainer.style.height = `${cellShifts.length * 26 + 4}px`;
+        cellShifts.forEach((shift) => {
+          const div = document.createElement('div');
+          div.className = 'shift-card unassigned';
+          div.setAttribute('data-shift-id', shift.id);
 
-        cellShifts.forEach((shift, sIdx) => {
           const roleColor = state.roles.find(r => r.name.toLowerCase() === (shift.role || '').toLowerCase())?.color || '#ef4444';
-          const bar = document.createElement('div');
-          bar.className = 'shift-timeline-bar';
-          bar.style.position = 'relative';
-          bar.style.top = '0px';
-          bar.style.left = '0px';
-          bar.style.width = '100%';
-          bar.style.marginBottom = '3px';
-          bar.style.background = 'rgba(231, 76, 60, 0.15)';
-          bar.style.border = '1px dashed var(--text-danger)';
-          bar.style.color = 'var(--text-danger)';
+          div.style.borderLeft = `4px solid ${roleColor}`;
+
+          const shiftDuration = calculateShiftHours(shift.startTime, shift.endTime, 0);
 
           if (hasManagerPermissions(state.currentUser)) {
-            bar.draggable = true;
-            bar.addEventListener('dragstart', (e) => {
+            div.draggable = true;
+            div.style.cursor = 'pointer';
+            div.addEventListener('dragstart', (e) => {
+              e.stopPropagation();
               e.dataTransfer.setData('text/plain', shift.id);
-              bar.classList.add('dragging');
+              div.classList.add('dragging');
             });
-            bar.addEventListener('dragend', () => {
-              bar.classList.remove('dragging');
+            div.addEventListener('dragend', () => {
+              div.classList.remove('dragging');
             });
-            bar.addEventListener('click', (e) => {
+            div.addEventListener('click', (e) => {
+              e.stopPropagation();
               if (e.target.closest('button')) return;
               openEditShiftModal(shift);
             });
           }
 
-          bar.innerHTML = `
-            <span class="bar-label" style="color:var(--text-danger); font-weight:700;">${shift.role}: ${formatTimeAmPm(shift.startTime)}~${formatTimeAmPm(shift.endTime)}</span>
-            <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin-left:auto; font-size:11px; opacity:0.8;"><i class="fa-solid fa-trash"></i></button>
+          div.innerHTML = `
+            <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="shift-role-title" style="color:var(--text-danger); font-weight:700;">${shift.role}</span>
+              <button class="btn-icon text-danger" onclick="deleteShiftRapid('${shift.id}', event)" title="Delete Shift" style="padding:0; margin:0; font-size:11px; opacity:0.8;"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <div class="shift-card-time" style="color:#f87171;"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)} <span style="font-size:7.5pt; opacity:0.85;">(${shiftDuration.toFixed(1)}h)</span></div>
+            ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
           `;
-          timelineContainer.appendChild(bar);
+          tdDay.appendChild(div);
         });
-
-        tdDay.appendChild(timelineContainer);
       }
 
       const addBtn = document.createElement('div');
@@ -3354,6 +3296,16 @@ window.openEditShiftModalById = function(id) {
 
 window.openEditShiftModal = openEditShiftModal;
 window.openAddShiftModal = openAddShiftModal;
+
+window.copyShiftQuick = function(id, event) {
+  if (event) event.stopPropagation();
+  if (!hasManagerPermissions(state.currentUser)) return;
+  const shift = state.shifts.find(s => String(s.id) === String(id));
+  if (!shift) return;
+  state.copiedShift = { ...shift };
+  showToast(`Copied ${shift.role} (${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)}). Click "+" on any cell to paste!`, 'success');
+  if (typeof updatePasteButtonState === 'function') updatePasteButtonState();
+};
 
 window.deleteShiftRapid = async function(id, event) {
   if (event) event.stopPropagation();
