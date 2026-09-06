@@ -735,7 +735,8 @@ const BriskDB = (function() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': session.token ? ('Bearer ' + session.token) : ''
+          'Authorization': session.token ? ('Bearer ' + session.token) : '',
+          'x-user-email': session.email || ''
         },
         body: JSON.stringify({ email: session.email || '' })
       });
@@ -1380,11 +1381,13 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'x-user-email': (getSession()?.email || '')
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'create',
+            callerEmail: (getSession()?.email || ''),
             employee: dbObj
           })
         });
@@ -1449,11 +1452,13 @@ const BriskDB = (function() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': token ? ('Bearer ' + token) : ''
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'x-user-email': (getSession()?.email || '')
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'update',
+            callerEmail: (getSession()?.email || ''),
             employee: dbObj
           })
         });

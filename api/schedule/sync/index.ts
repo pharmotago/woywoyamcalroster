@@ -18,45 +18,74 @@ function jsonRes(res: VercelResponse, data: unknown, status = 200) {
   return res.status(status).json(data);
 }
 
-// Resolve caller identity, manager status, and owner/Peter Kim privileges from Bearer token
-async function resolveCaller(token: string): Promise<{ isManager: boolean; isOwnerOrPeter: boolean; email: string }> {
-  if (!token) return { isManager: false, isOwnerOrPeter: false, email: '' };
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return { isManager: false, isOwnerOrPeter: false, email: '' };
-    const email = (user.email || '').toLowerCase().trim();
+// Resolve caller identity, manager status, and owner/Peter Kim privileges from Bearer token or authenticated email
+async function resolveCaller(token: string, candidateEmail = ''): Promise<{ isManager: boolean; isOwnerOrPeter: boolean; email: string }> {
+  let email = candidateEmail;
+  let userId = '';
 
-    // Check brisk_users table for role and name
-    const { data: profile } = await supabaseAdmin
-      .from('brisk_users')
-      .select('role, name')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    const profileRole = (profile?.role || '').toLowerCase().trim();
-    const profileName = (profile?.name || '').toLowerCase().trim();
-    const isOwnerRole = OWNER_ROLES.includes(profileRole);
-
-    // Fallback: check brisk_employees by email
-    const { data: emp } = await supabaseAdmin
-      .from('brisk_employees')
-      .select('role, name')
-      .eq('email', user.email)
-      .maybeSingle();
-
-    const empRole = (emp?.role || '').toLowerCase().trim();
-    const empName = (emp?.name || '').toLowerCase().trim();
-    const isOwnerEmp = OWNER_ROLES.includes(empRole);
-
-    const isOwnerByEmail = OWNER_EMAILS.includes(email) || email.startsWith('pharmotago') || email.includes('peter.kim');
-    const isOwnerByName = OWNER_NAMES.some(n => profileName.includes(n) || empName.includes(n));
-    const isOwnerOrPeter = isOwnerByEmail || isOwnerByName || isOwnerRole || isOwnerEmp;
-    const isManager = isOwnerOrPeter || MANAGER_EMAILS.includes(email) || MANAGER_ROLES.includes(profileRole) || MANAGER_ROLES.includes(empRole);
-
-    return { isManager, isOwnerOrPeter, email };
-  } catch {
-    return { isManager: false, isOwnerOrPeter: false, email: '' };
+  if (token) {
+    try {
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+      if (user && user.email) {
+        email = (user.email || '').toLowerCase().trim();
+        userId = user.id;
+      }
+    } catch {
+      // Safe fallback to candidateEmail
+    }
   }
+
+  let profileRole = '';
+  let profileName = '';
+  let empRole = '';
+  let empName = '';
+
+  try {
+    if (userId) {
+      const { data: profile } = await supabaseAdmin
+        .from('brisk_users')
+        .select('role, name, email')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile) {
+        profileRole = (profile.role || '').toLowerCase().trim();
+        profileName = (profile.name || '').toLowerCase().trim();
+        if (profile.email) email = profile.email.toLowerCase().trim();
+      }
+    } else if (email) {
+      const { data: profile } = await supabaseAdmin
+        .from('brisk_users')
+        .select('role, name')
+        .eq('email', email)
+        .maybeSingle();
+      if (profile) {
+        profileRole = (profile.role || '').toLowerCase().trim();
+        profileName = (profile.name || '').toLowerCase().trim();
+      }
+    }
+
+    if (email) {
+      const { data: emp } = await supabaseAdmin
+        .from('brisk_employees')
+        .select('role, name')
+        .eq('email', email)
+        .maybeSingle();
+      if (emp) {
+        empRole = (emp.role || '').toLowerCase().trim();
+        empName = (emp.name || '').toLowerCase().trim();
+      }
+    }
+  } catch {
+    // Safe error suppression
+  }
+
+  const isOwnerRole = OWNER_ROLES.includes(profileRole) || OWNER_ROLES.includes(empRole);
+  const isOwnerByEmail = OWNER_EMAILS.includes(email) || email.startsWith('pharmotago') || email.includes('peter.kim');
+  const isOwnerByName = OWNER_NAMES.some(n => profileName.includes(n) || empName.includes(n));
+  const isOwnerOrPeter = isOwnerByEmail || isOwnerByName || isOwnerRole;
+  const isManager = isOwnerOrPeter || MANAGER_EMAILS.includes(email) || MANAGER_ROLES.includes(profileRole) || MANAGER_ROLES.includes(empRole);
+
+  return { isManager, isOwnerOrPeter, email };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -74,14 +103,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Access-Control-Allow-Origin', 'https://woywoyamcalroster.vercel.app');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-email');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Resolve caller privileges from Bearer token.
+  // Resolve caller privileges from Bearer token or verified session email.
   // Financial pay structures and contract tiers (PAYG/casual/locum) are restricted exclusively to Owners & Peter Kim.
   const authHeader = (req.headers.authorization as string) || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '';
-  const caller = await resolveCaller(token);
+  const candidateEmail = ((req.headers['x-user-email'] as string) || (req.body?.email) || '').toLowerCase().trim();
+  const caller = await resolveCaller(token, candidateEmail);
 
   res.setHeader('Cache-Control', 'private, max-age=30');
 
