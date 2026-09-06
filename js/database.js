@@ -146,18 +146,37 @@ const BriskDB = (function() {
     const avail = { ...(emp.availability || {}) };
     if (emp.dob) avail.dob = emp.dob;
     if (Array.isArray(emp.certificates)) avail.certificates = emp.certificates;
+    
+    // Look up existing in-memory employee if updating
+    const existing = (emp.id && typeof _employees !== 'undefined') ? _employees.find(e => e.id === emp.id) : null;
+
+    const empType = emp.employmentType || emp.employment_type || (emp.id && existing ? existing.employmentType : null) || avail.employment_type || 'permanent';
+    const awdLevel = emp.awardLevel || emp.award_level || (emp.id && existing ? existing.awardLevel : null) || avail.award_level || 'custom';
+    
+    if (empType) avail.employment_type = empType;
+    if (awdLevel) avail.award_level = awdLevel;
+
     const obj = {
       name: emp.name,
       email: emp.email,
       role: emp.role,
       phone: emp.phone || null,
-      hourly_rate: (emp.hourlyRate != null && !isNaN(emp.hourlyRate)) ? emp.hourlyRate : 0,
-      max_hours: (emp.maxHours != null && !isNaN(emp.maxHours)) ? emp.maxHours : 38,
+      max_hours: (emp.maxHours != null && !isNaN(emp.maxHours)) ? emp.maxHours : (emp.max_hours || 38),
       availability: avail,
-      active: emp.active
+      active: emp.active !== undefined ? emp.active : true,
+      employment_type: empType,
+      award_level: awdLevel
     };
-    if (emp.awardLevel) obj.award_level = emp.awardLevel;
-    if (emp.employmentType) obj.employment_type = emp.employmentType;
+    
+    // Only include hourly_rate if explicitly provided or fallback to existing
+    if (emp.hourlyRate !== undefined && !isNaN(emp.hourlyRate)) {
+      obj.hourly_rate = emp.hourlyRate;
+    } else if (emp.hourly_rate !== undefined && !isNaN(emp.hourly_rate)) {
+      obj.hourly_rate = emp.hourly_rate;
+    } else if (existing && existing.hourlyRate !== undefined && existing.hourlyRate !== null) {
+      obj.hourly_rate = existing.hourlyRate;
+    }
+
     if (emp.id) obj.id = emp.id;
     return obj;
   }
@@ -173,8 +192,8 @@ const BriskDB = (function() {
       phone: emp.phone,
       hourlyRate: (!isNaN(parseFloat(emp.hourly_rate)) && emp.hourly_rate != null) ? parseFloat(emp.hourly_rate) : 0,
       maxHours: parseInt(emp.max_hours || 38) || 38,
-      awardLevel: emp.award_level || emp.awardLevel || 'custom',
-      employmentType: emp.employment_type || emp.employmentType || 'permanent',
+      awardLevel: emp.award_level || avail.award_level || emp.awardLevel || 'custom',
+      employmentType: emp.employment_type || avail.employment_type || emp.employmentType || 'permanent',
       dob: avail.dob || emp.dob || null,
       certificates: Array.isArray(avail.certificates) ? avail.certificates : (Array.isArray(emp.certificates) ? emp.certificates : []),
       availability: avail,
@@ -1404,10 +1423,21 @@ const BriskDB = (function() {
       return mapped;
     },
     updateEmployee: async function(updated) {
+      const existing = _employees.find(e => e.id === updated.id);
       const dbObj = mapEmployeeToDb(updated);
 
-      // Optimistic in-memory update
+      // Optimistic in-memory update - preserve existing values if caller omitted them
       const mappedLocal = mapEmployeeFromDb({ ...dbObj, id: updated.id });
+      if (updated.hourlyRate === undefined && existing && existing.hourlyRate !== undefined) {
+        mappedLocal.hourlyRate = existing.hourlyRate;
+      }
+      if (updated.awardLevel === undefined && existing && existing.awardLevel !== undefined) {
+        mappedLocal.awardLevel = existing.awardLevel;
+      }
+      if (updated.employmentType === undefined && existing && existing.employmentType !== undefined) {
+        mappedLocal.employmentType = existing.employmentType;
+      }
+
       const idx = _employees.findIndex(e => e.id === updated.id);
       if (idx !== -1) _employees[idx] = { ..._employees[idx], ...mappedLocal };
       else _employees.push(mappedLocal);

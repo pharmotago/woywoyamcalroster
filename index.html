@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.3.1">
+  <link rel="stylesheet" href="css/styles.css?v=10.3.2">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -351,7 +351,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.3.1)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.3.2)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -1007,7 +1007,7 @@
             <button class="btn btn-outline" onclick="openSalesTargetsModal()" style="color: var(--accent-cyan); border-color: rgba(0, 229, 255, 0.4);">
               <i class="fa-solid fa-chart-pie"></i> Sales & Wage KPI
             </button>
-            <button class="btn btn-outline" onclick="exportToXeroCsv()" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
+            <button class="btn btn-outline" id="btn-export-payroll" onclick="exportToXeroCsv()" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4);">
               <i class="fa-solid fa-file-csv"></i> Export Xero / MYOB (STP2)
             </button>
             <button class="btn btn-primary" onclick="window.print()">
@@ -1763,7 +1763,7 @@
         </div>
 
         <!-- Fair Work Pharmacy Industry Award 2026 [MA000084] Rate Selector -->
-        <div style="background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md); padding: 12px; margin-bottom: 15px;">
+        <div id="emp-award-pay-section" style="background: rgba(0, 229, 255, 0.04); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md); padding: 12px; margin-bottom: 15px;">
           <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-cyan); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
             <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-scale-balanced"></i> Fair Work Award & Pharmacist Invoicing Classification</span>
             <span id="locum-indicator-badge" class="badge" style="display:none; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); font-size: 10px;">Contractor / Locum</span>
@@ -1823,7 +1823,7 @@
             </div>
             <div class="form-group" style="flex: 1;" id="emp-rate-group">
               <label for="emp-rate" style="font-size: 0.78rem;">Base Rate ($/h)</label>
-              <input type="number" id="emp-rate" class="form-control" step="0.01" min="0" placeholder="28.45" required>
+              <input type="number" id="emp-rate" class="form-control" step="0.01" min="0" placeholder="28.45">
             </div>
           </div>
           <div id="locum-details-note" class="hide" style="margin-top: 8px; padding: 6px 10px; background: rgba(168, 85, 247, 0.08); border-radius: 4px; font-size: 0.76rem; color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.2);">

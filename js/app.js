@@ -330,7 +330,8 @@ function calculateLaborCostForecast() {
       return;
     }
 
-    if (costBadge) costBadge.style.display = 'flex';
+    const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+    if (costBadge) costBadge.style.display = isOwnerOrPeter ? 'flex' : 'none';
     if (wageBadge) wageBadge.style.display = 'flex';
     const repKpiCard = document.getElementById('rep-wage-kpi-card');
     if (repKpiCard) repKpiCard.style.display = 'flex';
@@ -732,6 +733,53 @@ function hasManagerPermissions(user = state.currentUser) {
 }
 window.hasManagerPermissions = hasManagerPermissions;
 
+function hasOwnerOrPeterPermissions(user = state.currentUser) {
+  if (!user) return false;
+  const name = String(user.name || '').toLowerCase().trim();
+  const email = String(user.email || '').toLowerCase().trim();
+  const role = String(user.role || '').toLowerCase().trim();
+
+  // 1. Explicitly check for Owners: Glen Kanawati, Katherine Nguyen, and Peter Kim
+  const cleanName = name.replace(/^(dr\.|mr\.|mrs\.|ms\.)\s+/i, '').replace(/\s*\([^)]*\)/g, '').trim();
+  const KNOWN_OWNER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com'];
+  const KNOWN_OWNER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen'];
+
+  if (
+    KNOWN_OWNER_EMAILS.includes(email) ||
+    email.startsWith('pharmotago') ||
+    email.includes('peter.kim') ||
+    KNOWN_OWNER_NAMES.some(ownerName => cleanName.includes(ownerName) || name.includes(ownerName))
+  ) {
+    return true;
+  }
+
+  // 2. Explicitly check for Owner / Co-owner / Partner roles
+  const VALID_OWNER_ROLES = ['owner', 'co-owner', 'partner', 'superadmin'];
+  if (VALID_OWNER_ROLES.includes(role)) {
+    return true;
+  }
+
+  // 3. Match against employee profile in state.employees
+  if (user.employeeId && state.employees && state.employees.length > 0) {
+    const emp = state.employees.find(e => e.id === user.employeeId);
+    if (emp) {
+      const empRole = (emp.role || '').toLowerCase().trim();
+      const empEmail = (emp.email || '').toLowerCase().trim();
+      const empName = (emp.name || '').toLowerCase().trim();
+      if (
+        VALID_OWNER_ROLES.includes(empRole) ||
+        KNOWN_OWNER_EMAILS.includes(empEmail) ||
+        KNOWN_OWNER_NAMES.some(ownerName => empName.includes(ownerName))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+window.hasOwnerOrPeterPermissions = hasOwnerOrPeterPermissions;
+
 // Robust Auth Session Resolver: checks localStorage and Supabase Auth client storage
 async function resolveAndRestoreAuthSession() {
   // 1. Check local session
@@ -1120,18 +1168,34 @@ function loadDataFromState() {
     }
   }
 
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(user);
+
   if (isManager) {
-    state.employees = rawEmployees;
+    if (isOwnerOrPeter) {
+      state.employees = rawEmployees;
+    } else {
+      // Non-owner managers: can manage rosters & shifts, but colleagues' payment & tax structures are protected
+      state.employees = rawEmployees.map(e => {
+        if (myEmpId && e.id === myEmpId) return { ...e };
+        return {
+          ...e,
+          hourlyRate: 0,
+          awardLevel: '',
+          employmentType: 'permanent'
+        };
+      });
+    }
     state.leaveRequests = BriskDB.getLeaveRequests();
     state.timecards = BriskDB.getTimecards();
   } else {
-    // C-4 & M-1 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone)
+    // C-4 & M-1 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone, tax structure)
     state.employees = rawEmployees.map(e => {
       if (myEmpId && e.id === myEmpId) return { ...e };
       return {
         ...e,
         hourlyRate: 0,
         awardLevel: '',
+        employmentType: 'permanent',
         dob: undefined,
         phone: undefined,
         availability: { ...(e.availability || {}) }
@@ -4493,7 +4557,7 @@ function renderEmployeesList() {
       <div class="employee-card-meta">
         <span>Email: <strong>${emp.email}</strong></span>
         <span>Limit: <strong>Max ${emp.maxHours}h / week</strong></span>
-        ${isManagerOrOwner ? `
+        ${hasOwnerOrPeterPermissions() ? `
           <span style="grid-column: 1/-1; color: var(--accent-cyan);">
             Pay Structure: <strong>$${(emp.hourlyRate || 0).toFixed(2)}/h</strong> 
             <span class="badge" style="font-size:10px; margin-left:4px; ${emp.employmentType && emp.employmentType.startsWith('locum') ? 'background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);' : 'background:rgba(0,229,255,0.1); color:var(--accent-cyan);'}">
@@ -4645,6 +4709,12 @@ function openAddEmployeeModal() {
   document.getElementById('emp-rate').value = '';
   document.getElementById('emp-max-hours').value = '38';
   
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  const paySection = document.getElementById('emp-award-pay-section');
+  if (paySection) paySection.style.display = isOwnerOrPeter ? 'block' : 'none';
+  const rateInput = document.getElementById('emp-rate');
+  if (rateInput) rateInput.disabled = !isOwnerOrPeter;
+
   const levelSelect = document.getElementById('emp-award-level');
   const typeSelect = document.getElementById('emp-employment-type');
   if (levelSelect) levelSelect.value = 'custom';
@@ -4704,6 +4774,10 @@ function openEditEmployeeModal(empId) {
   const dobInput = document.getElementById('emp-dob');
   if (dobInput) dobInput.value = emp.dob || '';
 
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  const paySection = document.getElementById('emp-award-pay-section');
+  if (paySection) paySection.style.display = isOwnerOrPeter ? 'block' : 'none';
+
   const levelSelect = document.getElementById('emp-award-level');
   const typeSelect = document.getElementById('emp-employment-type');
   if (levelSelect) levelSelect.value = emp.awardLevel || 'custom';
@@ -4719,9 +4793,8 @@ function openEditEmployeeModal(empId) {
   }
   onEmployeeDobChange();
 
-  const isManagerOrOwner = hasManagerPermissions(state.currentUser);
   const rateInput = document.getElementById('emp-rate');
-  if (rateInput) rateInput.disabled = !isManagerOrOwner;
+  if (rateInput) rateInput.disabled = !isOwnerOrPeter;
 
   const roleSelect = document.getElementById('emp-role');
   roleSelect.innerHTML = '<option value="">-- Select Default Position --</option>';
@@ -4763,11 +4836,10 @@ async function handleEmployeeSubmit(event) {
   const role = document.getElementById('emp-role').value;
   const email = document.getElementById('emp-email').value;
   const phone = document.getElementById('emp-phone').value;
-  const hourlyRate = parseFloat(document.getElementById('emp-rate').value) || 0;
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  const existingEmp = id ? state.employees.find(e => e.id === id) : null;
   const rawMax = parseInt(document.getElementById('emp-max-hours').value, 10);
   const maxHours = isNaN(rawMax) ? 38 : rawMax;
-  const awardLevel = document.getElementById('emp-award-level') ? document.getElementById('emp-award-level').value : 'custom';
-  const employmentType = document.getElementById('emp-employment-type') ? document.getElementById('emp-employment-type').value : 'permanent';
   const dob = document.getElementById('emp-dob') ? document.getElementById('emp-dob').value : null;
 
   const availability = {};
@@ -4788,34 +4860,46 @@ async function handleEmployeeSubmit(event) {
     }
   }
 
-  const existingEmp = id ? state.employees.find(e => e.id === id) : null;
   const employeeData = {
     name,
     role,
     email,
     phone,
-    hourlyRate,
     maxHours,
-    awardLevel,
-    employmentType,
     dob: dob,
     certificates: window.currentEditingCertificates || [],
     availability,
     active: existingEmp ? existingEmp.active : true
   };
 
+  // Defensive Payload Guard: Only attach rates and employment tiers if user is Owner / Peter Kim
+  if (isOwnerOrPeter) {
+    employeeData.hourlyRate = parseFloat(document.getElementById('emp-rate').value) || 0;
+    employeeData.awardLevel = document.getElementById('emp-award-level') ? document.getElementById('emp-award-level').value : 'custom';
+    employeeData.employmentType = document.getElementById('emp-employment-type') ? document.getElementById('emp-employment-type').value : 'permanent';
+  } else if (!id) {
+    // When registering brand-new staff, default to standard permanent if non-owner
+    employeeData.hourlyRate = 0;
+    employeeData.awardLevel = 'custom';
+    employeeData.employmentType = 'permanent';
+  }
+
   try {
     if (id) {
       employeeData.id = id;
       await BriskDB.updateEmployee(employeeData);
       if (typeof BriskDB.logAudit === 'function') {
-        BriskDB.logAudit('EMPLOYEE_UPDATE', `Updated staff profile for ${name} (${role}, Rate: $${hourlyRate.toFixed(2)}/h, ${employmentType})`, id);
+        const auditRate = employeeData.hourlyRate != null ? `$${employeeData.hourlyRate.toFixed(2)}/h` : '(Protected)';
+        const auditTier = employeeData.employmentType || '(Protected)';
+        BriskDB.logAudit('EMPLOYEE_UPDATE', `Updated staff profile for ${name} (${role}, Rate: ${auditRate}, ${auditTier})`, id);
       }
       showToast('Employee updated successfully.', 'success');
     } else {
       const added = await BriskDB.addEmployee(employeeData);
       if (typeof BriskDB.logAudit === 'function') {
-        BriskDB.logAudit('EMPLOYEE_CREATE', `Created staff profile for ${name} (${role}, Rate: $${hourlyRate.toFixed(2)}/h, ${employmentType})`, added ? added.id : null);
+        const auditRate = employeeData.hourlyRate != null ? `$${employeeData.hourlyRate.toFixed(2)}/h` : '(Protected)';
+        const auditTier = employeeData.employmentType || 'permanent';
+        BriskDB.logAudit('EMPLOYEE_CREATE', `Created staff profile for ${name} (${role}, Rate: ${auditRate}, ${auditTier})`, added ? added.id : null);
       }
       showToast('Employee added successfully.', 'success');
     }
@@ -5700,6 +5784,10 @@ function renderReportsPanel() {
   let totalSuperCostSum = 0;
   let totalLoadedCostSum = 0;
 
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  const exportBtn = document.getElementById('btn-export-payroll');
+  if (exportBtn) exportBtn.style.display = isOwnerOrPeter ? 'inline-flex' : 'none';
+
   const activeEmployees = state.employees.filter(e => e.active);
 
   activeEmployees.forEach(emp => {
@@ -5735,24 +5823,30 @@ function renderReportsPanel() {
 
     const otBadge = (actualHours > (emp.maxHours || 38) + 0.001) ? ' <span class="badge badge-danger">OT Exceeded</span>' : '';
 
+    const payBadge = isOwnerOrPeter ? (
+      isLocum 
+        ? '<span class="badge" style="font-size:9px; margin-left:4px; background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);">Locum Contractor</span>' 
+        : '<span class="badge" style="font-size:9px; margin-left:4px; background:rgba(16,185,129,0.1); color:#10b981;">PAYG</span>'
+    ) : '';
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>
         <strong>${emp.name}</strong> <span class="text-muted" style="font-size:11px;">(${emp.role})</span>
-        ${isLocum ? '<span class="badge" style="font-size:9px; margin-left:4px; background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);">Locum Contractor</span>' : '<span class="badge" style="font-size:9px; margin-left:4px; background:rgba(16,185,129,0.1); color:#10b981;">PAYG</span>'}
+        ${payBadge}
       </td>
-      <td class="text-right">$${hourlyRate.toFixed(2)}</td>
+      <td class="text-right">${isOwnerOrPeter ? ('$' + hourlyRate.toFixed(2)) : '—'}</td>
       <td class="text-right">${empWeekHours.toFixed(1)}h</td>
       <td class="text-right">${actualHours.toFixed(1)}h${otBadge}</td>
-      <td class="text-right text-neon">$${grossPay.toFixed(2)}</td>
-      <td class="text-right" style="color: #10b981;">$${superCost.toFixed(2)}</td>
-      <td class="text-right" style="color: #a855f7; font-weight: 600;">$${loadedCost.toFixed(2)}</td>
+      <td class="text-right text-neon">${isOwnerOrPeter ? ('$' + grossPay.toFixed(2)) : '—'}</td>
+      <td class="text-right" style="color: #10b981;">${isOwnerOrPeter ? ('$' + superCost.toFixed(2)) : '—'}</td>
+      <td class="text-right" style="color: #a855f7; font-weight: 600;">${isOwnerOrPeter ? ('$' + loadedCost.toFixed(2)) : '—'}</td>
       <td class="text-center print-hide">
         <div style="display:flex; justify-content:center; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="openEmailRosterModal('${emp.id}')" ${empWeekHours === 0 ? 'disabled' : ''}>
             <i class="fa-solid fa-envelope"></i> Email
           </button>
-          ${isLocum ? `
+          ${(isOwnerOrPeter && isLocum) ? `
           <button class="btn btn-outline" style="padding:4px 8px; font-size:11px; color:#c084fc; border-color:rgba(168,85,247,0.4);" onclick="openLocumRemittanceModal('${emp.id}')" title="Generate Locum Contractor Remittance Slip">
             <i class="fa-solid fa-file-invoice-dollar"></i> Remittance
           </button>
@@ -5765,11 +5859,11 @@ function renderReportsPanel() {
 
   document.getElementById('rep-total-sched-hours').textContent = `${totalSchedHoursSum.toFixed(1)}h`;
   document.getElementById('rep-total-actual-hours').textContent = `${totalActualHoursSum.toFixed(1)}h`;
-  document.getElementById('rep-total-actual-cost').textContent = `$${totalActualCostSum.toFixed(2)}`;
+  document.getElementById('rep-total-actual-cost').textContent = isOwnerOrPeter ? `$${totalActualCostSum.toFixed(2)}` : '—';
   const repSuperEl = document.getElementById('rep-total-super-cost');
-  if (repSuperEl) repSuperEl.textContent = `$${totalSuperCostSum.toFixed(2)}`;
+  if (repSuperEl) repSuperEl.textContent = isOwnerOrPeter ? `$${totalSuperCostSum.toFixed(2)}` : '—';
   const repLoadedEl = document.getElementById('rep-total-loaded-cost');
-  if (repLoadedEl) repLoadedEl.textContent = `$${totalLoadedCostSum.toFixed(2)}`;
+  if (repLoadedEl) repLoadedEl.textContent = isOwnerOrPeter ? `$${totalLoadedCostSum.toFixed(2)}` : '—';
   
   // Sync Reports Sales & Wage Ratio summary card
   calculateLaborCostForecast();
@@ -5803,6 +5897,10 @@ window.isNswPublicHoliday = isNswPublicHoliday;
 
 // Export approved weekly timesheets to Australian Xero / MYOB (STP Phase 2 Standard) CSV
 function exportToXeroCsv() {
+  if (!hasOwnerOrPeterPermissions(state.currentUser)) {
+    showToast('Permission denied: Exporting payroll data is restricted to Owners.', 'warning');
+    return;
+  }
   const mon = new Date(state.currentWeekStart);
   const sun = new Date(mon);
   sun.setDate(mon.getDate() + 6);
@@ -6496,9 +6594,9 @@ function assignCandidateToShiftModal(empId) {
 }
 
 function openLocumRemittanceModal(empId) {
-  const isManagerOrOwner = hasManagerPermissions(state.currentUser);
-  if (!isManagerOrOwner) {
-    showToast('Locum Remittance Statements are restricted to Managers.', 'warning');
+  const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  if (!isOwnerOrPeter) {
+    showToast('Locum Remittance Statements are restricted to Owners.', 'warning');
     return;
   }
 

@@ -9,38 +9,53 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
 });
 
 const MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+const OWNER_ROLES = ['owner', 'co-owner', 'partner', 'superadmin'];
+const OWNER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com'];
+const OWNER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen'];
 const MANAGER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
 
 function jsonRes(res: VercelResponse, data: unknown, status = 200) {
   return res.status(status).json(data);
 }
 
-// Bug #7 Fix: Resolve whether the calling user is a manager.
-// Returns true only for confirmed manager/owner roles. Unauthenticated = false.
-async function resolveIsManager(token: string): Promise<boolean> {
-  if (!token) return false;
+// Resolve caller identity, manager status, and owner/Peter Kim privileges from Bearer token
+async function resolveCaller(token: string): Promise<{ isManager: boolean; isOwnerOrPeter: boolean; email: string }> {
+  if (!token) return { isManager: false, isOwnerOrPeter: false, email: '' };
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) return false;
+    if (error || !user) return { isManager: false, isOwnerOrPeter: false, email: '' };
     const email = (user.email || '').toLowerCase().trim();
-    if (MANAGER_EMAILS.includes(email) || email.startsWith('pharmotago')) return true;
-    // Check brisk_users table for role
+
+    // Check brisk_users table for role and name
     const { data: profile } = await supabaseAdmin
       .from('brisk_users')
-      .select('role')
+      .select('role, name')
       .eq('id', user.id)
       .maybeSingle();
-    if (profile && MANAGER_ROLES.includes((profile.role || '').toLowerCase().trim())) return true;
+
+    const profileRole = (profile?.role || '').toLowerCase().trim();
+    const profileName = (profile?.name || '').toLowerCase().trim();
+    const isOwnerRole = OWNER_ROLES.includes(profileRole);
+
     // Fallback: check brisk_employees by email
     const { data: emp } = await supabaseAdmin
       .from('brisk_employees')
-      .select('role')
+      .select('role, name')
       .eq('email', user.email)
       .maybeSingle();
-    if (emp && MANAGER_ROLES.includes((emp.role || '').toLowerCase().trim())) return true;
-    return false;
+
+    const empRole = (emp?.role || '').toLowerCase().trim();
+    const empName = (emp?.name || '').toLowerCase().trim();
+    const isOwnerEmp = OWNER_ROLES.includes(empRole);
+
+    const isOwnerByEmail = OWNER_EMAILS.includes(email) || email.startsWith('pharmotago') || email.includes('peter.kim');
+    const isOwnerByName = OWNER_NAMES.some(n => profileName.includes(n) || empName.includes(n));
+    const isOwnerOrPeter = isOwnerByEmail || isOwnerByName || isOwnerRole || isOwnerEmp;
+    const isManager = isOwnerOrPeter || MANAGER_EMAILS.includes(email) || MANAGER_ROLES.includes(profileRole) || MANAGER_ROLES.includes(empRole);
+
+    return { isManager, isOwnerOrPeter, email };
   } catch {
-    return false;
+    return { isManager: false, isOwnerOrPeter: false, email: '' };
   }
 }
 
@@ -62,11 +77,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Resolve caller's manager status from Bearer token.
-  // Non-managers receive employee data with sensitive fields (hourly_rate, phone, dob) masked as null.
+  // Resolve caller privileges from Bearer token.
+  // Financial pay structures and contract tiers (PAYG/casual/locum) are restricted exclusively to Owners & Peter Kim.
   const authHeader = (req.headers.authorization as string) || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : '';
-  const isManager = await resolveIsManager(token);
+  const caller = await resolveCaller(token);
 
   res.setHeader('Cache-Control', 'private, max-age=30');
 
@@ -90,10 +105,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const systemRolesEmp = allEmployees.find((e: any) => e.email === 'system_roles@brisk.internal');
     const employees = allEmployees.filter((e: any) => e.email !== 'system_roles@brisk.internal');
 
-    // Security: strip sensitive fields for non-managers
-    const safeEmployees = isManager
+    // Security: Only Owners & Peter Kim receive unmasked pay rates and contract tiers
+    const safeEmployees = caller.isOwnerOrPeter
       ? employees
-      : employees.map((e: any) => ({ ...e, hourly_rate: null, phone: null, dob: null }));
+      : employees.map((e: any) => {
+          const isSelf = caller.email && e.email && e.email.toLowerCase() === caller.email;
+          if (isSelf) return e; // Employees may see their own profile
+
+          const safeAvail = { ...(e.availability || {}) };
+          delete safeAvail.employment_type;
+          delete safeAvail.award_level;
+          return {
+            ...e,
+            hourly_rate: null,
+            phone: caller.isManager ? e.phone : null,
+            dob: caller.isManager ? e.dob : null,
+            employment_type: null,
+            award_level: null,
+            availability: safeAvail
+          };
+        });
 
     return jsonRes(res, {
       success: true,

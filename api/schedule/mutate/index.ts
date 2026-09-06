@@ -88,6 +88,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const OWNER_ROLES = ['owner', 'co-owner', 'partner', 'superadmin'];
+    const OWNER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com'];
+    const OWNER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen'];
+
+    const isOwnerOrPeter = 
+      OWNER_ROLES.includes(callerRole) ||
+      OWNER_EMAILS.includes(callerEmail) ||
+      callerEmail.startsWith('pharmotago') ||
+      OWNER_NAMES.some(n => callerName.includes(n));
+
     if (
       ['owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager'].includes(callerRole) ||
       MANAGER_EMAILS_EXACT.includes(callerEmail) ||
@@ -114,42 +124,118 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const empData = body.employee || body.data || body;
 
       if (action === 'create') {
+        const avail = { ...(empData.availability || {}) };
+        const empType = isOwnerOrPeter ? (empData.employment_type || empData.employmentType || avail.employment_type || 'permanent') : 'permanent';
+        const awdLevel = isOwnerOrPeter ? (empData.award_level || empData.awardLevel || avail.award_level || 'custom') : 'custom';
+        const hourlyRate = isOwnerOrPeter ? (empData.hourly_rate != null ? empData.hourly_rate : (empData.hourlyRate || 0)) : 0;
+        avail.employment_type = empType;
+        avail.award_level = awdLevel;
+
         const newObj: Record<string, unknown> = {
           name: empData.name,
           email: (empData.email || '').toLowerCase().trim(),
           role: empData.role || 'Pharmacy Assistant',
           phone: empData.phone || null,
-          hourly_rate: empData.hourly_rate != null ? empData.hourly_rate : (empData.hourlyRate || 0),
+          hourly_rate: hourlyRate,
           max_hours: empData.max_hours != null ? empData.max_hours : (empData.maxHours || 38),
-          availability: empData.availability || {},
-          active: empData.active !== undefined ? !!empData.active : true
+          availability: avail,
+          active: empData.active !== undefined ? !!empData.active : true,
+          employment_type: empType,
+          award_level: awdLevel
         };
         if (empData.id) newObj.id = empData.id;
 
-        const { data, error } = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
+        let { data, error } = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+          delete newObj.award_level;
+          delete newObj.employment_type;
+          const retry = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
+          data = retry.data;
+          error = retry.error;
+        }
         if (error) throw error;
-        return jsonRes(res, { success: true, employee: data }, 200);
+        const safeCreateData = isOwnerOrPeter ? data : {
+          ...data,
+          hourly_rate: null,
+          employment_type: null,
+          award_level: null,
+          availability: (() => {
+            const av = { ...(data?.availability || {}) };
+            delete av.employment_type;
+            delete av.award_level;
+            return av;
+          })()
+        };
+        return jsonRes(res, { success: true, employee: safeCreateData }, 200);
       }
 
       if (action === 'update') {
         const targetId = empData.id || body.id;
         if (!targetId) return jsonRes(res, { error: 'Employee ID is required.' }, 400);
 
+        // Fetch complete existing record to prevent non-owner overwrites of rates & tiers
+        const { data: existingRecord } = await supabaseAdmin
+          .from('brisk_employees')
+          .select('id, hourly_rate, employment_type, award_level, availability')
+          .eq('id', targetId)
+          .maybeSingle();
+
+        const avail = { ...(existingRecord?.availability || {}), ...(empData.availability || {}) };
+        
+        let empType: string;
+        let awdLevel: string;
+        let hourlyRate: number | null = null;
+
+        if (isOwnerOrPeter) {
+          empType = empData.employment_type || empData.employmentType || avail.employment_type || existingRecord?.employment_type || 'permanent';
+          awdLevel = empData.award_level || empData.awardLevel || avail.award_level || existingRecord?.award_level || 'custom';
+          if (empData.hourly_rate !== undefined) hourlyRate = Number(empData.hourly_rate);
+          else if (empData.hourlyRate !== undefined) hourlyRate = Number(empData.hourlyRate);
+        } else {
+          // STRICT VALUE PRESERVATION: Non-owners cannot mutate pay structure, tier, or hourly rate
+          empType = existingRecord?.employment_type || existingRecord?.availability?.employment_type || 'permanent';
+          awdLevel = existingRecord?.award_level || existingRecord?.availability?.award_level || 'custom';
+          hourlyRate = existingRecord?.hourly_rate != null ? Number(existingRecord.hourly_rate) : null;
+        }
+
+        avail.employment_type = empType;
+        avail.award_level = awdLevel;
+
         const updateObj: Record<string, unknown> = {};
         if (empData.name !== undefined) updateObj.name = empData.name;
         if (empData.email !== undefined) updateObj.email = (empData.email || '').toLowerCase().trim();
         if (empData.role !== undefined) updateObj.role = empData.role;
         if (empData.phone !== undefined) updateObj.phone = empData.phone || null;
-        if (empData.hourly_rate !== undefined) updateObj.hourly_rate = empData.hourly_rate;
-        else if (empData.hourlyRate !== undefined) updateObj.hourly_rate = empData.hourlyRate;
         if (empData.max_hours !== undefined) updateObj.max_hours = empData.max_hours;
         else if (empData.maxHours !== undefined) updateObj.max_hours = empData.maxHours;
-        if (empData.availability !== undefined) updateObj.availability = empData.availability;
+        updateObj.availability = avail;
+        updateObj.employment_type = empType;
+        updateObj.award_level = awdLevel;
+        if (hourlyRate !== null && !isNaN(hourlyRate)) updateObj.hourly_rate = hourlyRate;
         if (empData.active !== undefined) updateObj.active = !!empData.active;
 
-        const { data, error } = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
+        let { data, error } = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+          delete updateObj.award_level;
+          delete updateObj.employment_type;
+          const retry = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
+          data = retry.data;
+          error = retry.error;
+        }
         if (error) throw error;
-        return jsonRes(res, { success: true, employee: data }, 200);
+        const safeUpdateData = isOwnerOrPeter ? data : {
+          ...data,
+          hourly_rate: null,
+          employment_type: null,
+          award_level: null,
+          availability: (() => {
+            const av = { ...(data?.availability || {}) };
+            delete av.employment_type;
+            delete av.award_level;
+            return av;
+          })()
+        };
+        return jsonRes(res, { success: true, employee: safeUpdateData }, 200);
       }
 
       if (action === 'delete') {
