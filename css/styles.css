@@ -1746,6 +1746,7 @@ select.form-control option {
   .leave-list-scroll .data-table tr.leave-request-row td {
     display: block !important;
     width: 100% !important;
+    min-width: 0 !important;
   }
   .leave-list-scroll .data-table thead {
     display: none !important;
