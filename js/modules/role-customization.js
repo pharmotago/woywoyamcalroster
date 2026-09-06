@@ -756,6 +756,245 @@ function renderDailyDayStrip() {
 }
 window.renderDailyDayStrip = renderDailyDayStrip;
 
+/* ==========================================================================
+   INLINE DRAG-TO-ADJUST ENGINE FOR DAILY TIMELINE BARS
+   Supports: left-edge resize, right-edge resize, center slide
+   Snaps to 15-minute increments. Click (<3px) opens modal.
+   ========================================================================== */
+
+function decimalToTimeStr(dec) {
+  const clamped = Math.max(0, Math.min(23.75, dec));
+  const h = Math.floor(clamped);
+  const m = Math.round((clamped - h) * 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function initBarDragBehavior(bar, shift, leftHandle, rightHandle, container, timelineStart, span, dateStr) {
+  let dragState = null;
+
+  function getClientX(e) {
+    if (e.touches && e.touches.length > 0) return e.touches[0].clientX;
+    if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientX;
+    return e.clientX;
+  }
+  function getClientY(e) {
+    if (e.touches && e.touches.length > 0) return e.touches[0].clientY;
+    if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0].clientY;
+    return e.clientY;
+  }
+
+  function startDrag(e, mode) {
+    e.stopPropagation();
+    e.preventDefault();
+    const containerRect = container.getBoundingClientRect();
+    const timelineEnd = timelineStart + span;
+    dragState = {
+      mode, // 'resize-start' | 'resize-end' | 'slide'
+      shiftId: shift.id,
+      origStartDec: timeToDecimal(shift.startTime),
+      origEndDec: timeToDecimal(shift.endTime),
+      startX: getClientX(e),
+      containerRect,
+      timelineStart,
+      timelineEnd,
+      span,
+      totalMoveX: 0,
+      newStartDec: timeToDecimal(shift.startTime),
+      newEndDec: timeToDecimal(shift.endTime),
+      tooltip: null
+    };
+
+    // Create floating tooltip
+    const tooltip = document.createElement('div');
+    tooltip.className = 'timeline-drag-tooltip';
+    tooltip.textContent = buildTooltipText(dragState.newStartDec, dragState.newEndDec);
+    document.body.appendChild(tooltip);
+    dragState.tooltip = tooltip;
+    positionTooltip(tooltip, getClientX(e), getClientY(e));
+
+    // Apply visual states
+    bar.classList.add('dragging');
+    bar.style.transition = 'none'; // Remove transition during drag for instant feedback
+    if (mode === 'slide') {
+      document.body.classList.add('timeline-dragging');
+    } else {
+      document.body.classList.add('timeline-dragging-resize');
+    }
+
+    // Attach move/end listeners
+    document.addEventListener('mousemove', onDragMove, { passive: false });
+    document.addEventListener('mouseup', onDragEnd);
+    document.addEventListener('touchmove', onDragMove, { passive: false });
+    document.addEventListener('touchend', onDragEnd);
+    document.addEventListener('touchcancel', onDragEnd);
+  }
+
+  function onDragMove(e) {
+    if (!dragState) return;
+    e.preventDefault();
+
+    const currentX = getClientX(e);
+    const deltaX = currentX - dragState.startX;
+    dragState.totalMoveX = Math.max(dragState.totalMoveX, Math.abs(deltaX));
+
+    // Convert pixel delta to decimal hours
+    const deltaHours = (deltaX / dragState.containerRect.width) * dragState.span;
+    // Snap to 15-min increments
+    const snappedDelta = Math.round(deltaHours * 4) / 4;
+
+    const { origStartDec, origEndDec, timelineStart: tlStart, timelineEnd: tlEnd, mode } = dragState;
+
+    if (mode === 'resize-start') {
+      // Move start time, keep end fixed
+      dragState.newStartDec = Math.max(tlStart, Math.min(origEndDec - 0.25, origStartDec + snappedDelta));
+      // Re-snap after clamping
+      dragState.newStartDec = Math.round(dragState.newStartDec * 4) / 4;
+      dragState.newEndDec = origEndDec;
+    } else if (mode === 'resize-end') {
+      // Move end time, keep start fixed
+      dragState.newEndDec = Math.max(origStartDec + 0.25, Math.min(tlEnd, origEndDec + snappedDelta));
+      dragState.newEndDec = Math.round(dragState.newEndDec * 4) / 4;
+      dragState.newStartDec = origStartDec;
+    } else {
+      // Slide: move both equally
+      let newStart = origStartDec + snappedDelta;
+      let newEnd = origEndDec + snappedDelta;
+      const duration = origEndDec - origStartDec;
+      // Clamp to timeline bounds
+      if (newStart < tlStart) { newStart = tlStart; newEnd = tlStart + duration; }
+      if (newEnd > tlEnd) { newEnd = tlEnd; newStart = tlEnd - duration; }
+      dragState.newStartDec = Math.round(newStart * 4) / 4;
+      dragState.newEndDec = Math.round(newEnd * 4) / 4;
+    }
+
+    // Update bar position visually in real-time
+    const newLeft = Math.max(0, Math.min(100, ((dragState.newStartDec - tlStart) / dragState.span) * 100));
+    const newWidth = Math.max(1, Math.min(100 - newLeft, ((dragState.newEndDec - dragState.newStartDec) / dragState.span) * 100));
+    bar.style.left = `${newLeft}%`;
+    bar.style.width = `${newWidth}%`;
+
+    // Update tooltip
+    if (dragState.tooltip) {
+      dragState.tooltip.textContent = buildTooltipText(dragState.newStartDec, dragState.newEndDec);
+      positionTooltip(dragState.tooltip, currentX, getClientY(e));
+    }
+  }
+
+  async function onDragEnd(e) {
+    if (!dragState) return;
+
+    // Cleanup listeners
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onDragEnd);
+    document.removeEventListener('touchmove', onDragMove);
+    document.removeEventListener('touchend', onDragEnd);
+    document.removeEventListener('touchcancel', onDragEnd);
+
+    // Remove visual states
+    bar.classList.remove('dragging');
+    bar.style.transition = 'box-shadow 0.15s ease, transform 0.15s ease';
+    bar.style.boxShadow = 'none';
+    bar.style.transform = 'none';
+    document.body.classList.remove('timeline-dragging', 'timeline-dragging-resize');
+
+    // Remove tooltip
+    if (dragState.tooltip) {
+      dragState.tooltip.remove();
+      dragState.tooltip = null;
+    }
+
+    const wasDrag = dragState.totalMoveX >= 3;
+    const { origStartDec, origEndDec, newStartDec, newEndDec } = dragState;
+    const timeChanged = (Math.abs(newStartDec - origStartDec) >= 0.01) || (Math.abs(newEndDec - origEndDec) >= 0.01);
+
+    if (wasDrag && timeChanged) {
+      // Persist the change
+      const newStartStr = decimalToTimeStr(newStartDec);
+      const newEndStr = decimalToTimeStr(newEndDec);
+      const newGross = calculateShiftHours(newStartStr, newEndStr, 0);
+      const newBreaks = getAwardBreakEntitlements(newGross);
+
+      try {
+        const updatedShift = {
+          ...shift,
+          startTime: newStartStr,
+          endTime: newEndStr,
+          unpaidMealMins: newBreaks.unpaidMealMins
+        };
+
+        if (typeof BriskDB !== 'undefined' && typeof BriskDB.updateShift === 'function') {
+          await BriskDB.updateShift(updatedShift);
+        }
+
+        // Update local state
+        const stateShift = state.shifts.find(ss => ss.id === shift.id);
+        if (stateShift) {
+          stateShift.startTime = newStartStr;
+          stateShift.endTime = newEndStr;
+          stateShift.unpaidMealMins = newBreaks.unpaidMealMins;
+        }
+
+        showToast(`✓ ${shift.employeeId ? '' : 'Unassigned '}Shift updated: ${formatTimeAmPm(newStartStr)} – ${formatTimeAmPm(newEndStr)}`, 'success');
+
+        // Re-render the daily panel to update table, heatmap, gap warnings
+        if (typeof renderDailyPanel === 'function') renderDailyPanel();
+      } catch (err) {
+        console.error('[DragAdjust] Failed to persist shift update:', err);
+        showToast('⚠ Failed to save shift change. Please try again.', 'error');
+        // Revert bar position
+        const revertLeft = Math.max(0, Math.min(100, ((origStartDec - timelineStart) / span) * 100));
+        const revertWidth = Math.max(1, Math.min(100 - revertLeft, ((origEndDec - origStartDec) / span) * 100));
+        bar.style.left = `${revertLeft}%`;
+        bar.style.width = `${revertWidth}%`;
+      }
+    } else if (!wasDrag) {
+      // Was a click, not a drag — open edit modal
+      if (typeof openEditShiftModal === 'function') {
+        openEditShiftModal(shift);
+      }
+    } else {
+      // Dragged but snapped back to same position — revert bar
+      const revertLeft = Math.max(0, Math.min(100, ((origStartDec - timelineStart) / span) * 100));
+      const revertWidth = Math.max(1, Math.min(100 - revertLeft, ((origEndDec - origStartDec) / span) * 100));
+      bar.style.left = `${revertLeft}%`;
+      bar.style.width = `${revertWidth}%`;
+    }
+
+    dragState = null;
+  }
+
+  function buildTooltipText(startDec, endDec) {
+    const startStr = decimalToTimeStr(startDec);
+    const endStr = decimalToTimeStr(endDec);
+    const grossH = calculateShiftHours(startStr, endStr, 0);
+    const breaks = getAwardBreakEntitlements(grossH);
+    const netH = calculateShiftHours(startStr, endStr, breaks.unpaidMealMins);
+    return `${formatTimeAmPm(startStr)} – ${formatTimeAmPm(endStr)}  (${netH.toFixed(1)}h net)`;
+  }
+
+  function positionTooltip(tooltip, clientX, clientY) {
+    tooltip.style.left = `${clientX}px`;
+    tooltip.style.top = `${clientY}px`;
+  }
+
+  // Attach mousedown to handles and bar body
+  leftHandle.addEventListener('mousedown', (e) => startDrag(e, 'resize-start'));
+  leftHandle.addEventListener('touchstart', (e) => startDrag(e, 'resize-start'), { passive: false });
+
+  rightHandle.addEventListener('mousedown', (e) => startDrag(e, 'resize-end'));
+  rightHandle.addEventListener('touchstart', (e) => startDrag(e, 'resize-end'), { passive: false });
+
+  bar.addEventListener('mousedown', (e) => {
+    // Don't trigger bar drag if clicking on a handle
+    if (e.target.closest('.timeline-bar-handle')) return;
+    startDrag(e, 'slide');
+  });
+  bar.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.timeline-bar-handle')) return;
+    startDrag(e, 'slide');
+  }, { passive: false });
+}
+
 function renderDailyPanel() {
   if (!window.state) window.state = {};
   if (!window.state.dailyDate || isNaN(new Date(window.state.dailyDate).getTime())) {
@@ -1070,27 +1309,38 @@ function renderDailyPanel() {
           breakSummary = parts.join(' + ');
         }
 
-        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role}) | ${breakEntitlement.description}${isMgr ? ' (Click to edit)' : ''}`;
+        bar.title = `${empName}: ${formatTimeAmPm(s.startTime)} - ${formatTimeAmPm(s.endTime)} (${s.role}) | ${breakEntitlement.description}${isMgr ? ' (Drag edges to resize, drag center to slide, click for full edit)' : ''}`;
         bar.innerHTML = `<span style="font-weight:600;">${empName} (${s.role})</span>${breakSummary ? ` <span style="font-size:0.68rem; opacity:0.95; background:rgba(0,0,0,0.38); padding:1px 6px; border-radius:4px; margin-left:6px; display:inline-flex; align-items:center; gap:4px; vertical-align:middle;"><i class="fa-solid fa-mug-hot" style="font-size:0.65rem; color:#0ea5e9;"></i> ${breakSummary}</span>` : ''}`;
         
-        // Make timeline bar interactive for managers
+        // Make timeline bar interactive for managers — unified drag + click
         if (isMgr) {
-          bar.style.cursor = 'pointer';
-          bar.style.transition = 'all 0.15s ease';
+          bar.style.cursor = 'grab';
+          bar.style.transition = 'box-shadow 0.15s ease, transform 0.15s ease';
+
+          // Append resize handles
+          const leftHandle = document.createElement('div');
+          leftHandle.className = 'timeline-bar-handle timeline-bar-handle-left';
+          bar.appendChild(leftHandle);
+          const rightHandle = document.createElement('div');
+          rightHandle.className = 'timeline-bar-handle timeline-bar-handle-right';
+          bar.appendChild(rightHandle);
+
+          // Hover glow (only when NOT actively dragging)
           bar.addEventListener('mouseenter', () => {
-            bar.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.7)';
-            bar.style.transform = 'translateY(-1px)';
-          });
-          bar.addEventListener('mouseleave', () => {
-            bar.style.boxShadow = 'none';
-            bar.style.transform = 'none';
-          });
-          bar.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (typeof openEditShiftModal === 'function') {
-              openEditShiftModal(s);
+            if (!document.body.classList.contains('timeline-dragging') && !document.body.classList.contains('timeline-dragging-resize')) {
+              bar.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.7)';
+              bar.style.transform = 'translateY(-1px)';
             }
           });
+          bar.addEventListener('mouseleave', () => {
+            if (!bar.classList.contains('dragging')) {
+              bar.style.boxShadow = 'none';
+              bar.style.transform = 'none';
+            }
+          });
+
+          // Unified drag/click engine
+          initBarDragBehavior(bar, s, leftHandle, rightHandle, timelineVisual, timelineStart, span, dateStr);
         }
 
         timelineVisual.appendChild(bar);

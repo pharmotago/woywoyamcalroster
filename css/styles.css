@@ -3008,3 +3008,91 @@ body.role-employee .cell-add-btn,
 body.role-employee #timeclock-admin-panel {
   display: none !important;
 }
+
+/* ==========================================================================
+   DAILY VIEW — INLINE DRAG-TO-ADJUST SHIFT BARS
+   ========================================================================== */
+
+/* Prevent text selection on timeline bars during drag */
+.timeline-bar {
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+
+/* Invisible resize handle hotzones on left and right edges */
+.timeline-bar-handle {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  z-index: 5;
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.timeline-bar-handle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(0, 229, 255, 0.6);
+}
+.timeline-bar-handle-left {
+  left: -2px;
+}
+.timeline-bar-handle-left::after {
+  left: 2px;
+}
+.timeline-bar-handle-right {
+  right: -2px;
+}
+.timeline-bar-handle-right::after {
+  right: 2px;
+}
+.timeline-bar:hover .timeline-bar-handle,
+.timeline-bar-handle:hover {
+  opacity: 1;
+}
+
+/* Active dragging state */
+.timeline-bar.dragging {
+  opacity: 0.85 !important;
+  box-shadow: 0 4px 16px rgba(0, 229, 255, 0.35), 0 0 0 1px rgba(0, 229, 255, 0.3) !important;
+  z-index: 10 !important;
+}
+
+/* Floating tooltip during drag */
+.timeline-drag-tooltip {
+  position: fixed;
+  z-index: 10000;
+  pointer-events: none;
+  background: rgba(10, 12, 18, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #e0f7fa;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transform: translate(-50%, -130%);
+}
+
+/* Global cursor override during drag — prevents flicker */
+body.timeline-dragging,
+body.timeline-dragging * {
+  cursor: grabbing !important;
+}
+body.timeline-dragging-resize,
+body.timeline-dragging-resize * {
+  cursor: col-resize !important;
+}
+body.timeline-dragging .timeline-bar:not(.dragging) {
+  pointer-events: none;
+}

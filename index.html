@@ -306,7 +306,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.1.0)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.2.0)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -2158,18 +2158,37 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.1.0)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.2.0)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
-        <!-- v10.1.0 -->
+        <!-- v10.2.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.1.0 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.2.0 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Inline Drag-to-Adjust Shift Bars in Daily View</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Drag to Resize:</strong> Drag the left or right edge of any shift bar in the Daily View timeline to shorten or extend the shift — no modal needed.</li>
+            <li><strong>Drag to Slide:</strong> Grab the centre of a shift bar and slide it left or right to move the entire shift earlier or later in the day.</li>
+            <li><strong>15-Minute Snapping:</strong> All drag adjustments snap to 15-minute increments (e.g. 08:00, 08:15, 08:30) for clean scheduling.</li>
+            <li><strong>Live Floating Tooltip:</strong> A real-time tooltip follows your cursor during drag showing the updated time range and net paid hours.</li>
+            <li><strong>Instant Persistence:</strong> On release, changes are automatically saved to the database and the heatmap, table, and gap warnings refresh immediately.</li>
+            <li><strong>Click Still Works:</strong> A quick tap (no drag) on any bar still opens the full Edit Shift modal for detailed adjustments.</li>
+          </ul>
+        </div>
+
+        <!-- v10.1.0 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.1.0</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Daily View Roster Editing, Timeline Guidelines, Quick Calendar & Target-Week Copy</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>
