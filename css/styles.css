@@ -2189,7 +2189,7 @@ select.form-control option {
     bottom: 0;
     left: 0;
     right: 0;
-    height: calc(62px + env(safe-area-inset-bottom, 0px));
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     background: rgba(13, 15, 18, 0.95);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
@@ -2197,7 +2197,7 @@ select.form-control option {
     justify-content: space-around;
     align-items: center;
     z-index: 999;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
   }
   
@@ -2801,6 +2801,58 @@ select.form-control option {
     color: #0f172a !important;
     display: flex !important;
     justify-content: space-between !important;
+  }
+
+  .action-bar .week-picker {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+  .action-bar .week-picker #btn-prev-week {
+    order: 1 !important;
+    flex-shrink: 0 !important;
+  }
+  .action-bar .week-range-text {
+    order: 2 !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    padding: 0 4px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .action-bar .week-picker #btn-next-week {
+    order: 3 !important;
+    flex-shrink: 0 !important;
+  }
+  .action-bar button[onclick="window.print()"] {
+    display: none !important;
+  }
+  .action-bar .week-picker #labor-cost-forecast-badge,
+  .action-bar .week-picker #wage-ratio-forecast-badge {
+    order: 4 !important;
+    flex: 1 1 calc(50% - 6px) !important;
+    justify-content: center !important;
+    font-size: 0.76rem !important;
+    height: 30px !important;
+    margin-top: 2px !important;
+  }
+  .stencil-chip {
+    font-size: 0.72rem !important;
+    padding: 4px 8px !important;
+  }
+  .action-bar .scheduler-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
   }
 
   .shift-card-time {
