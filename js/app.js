@@ -3691,7 +3691,7 @@ function renderRoleSplitList() {
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <div style="display:flex; align-items:center; gap:6px; flex:1;">
           <span class="badge" style="background:rgba(168,85,247,0.2); color:#c084fc; font-weight:700; font-size:0.75rem; white-space:nowrap;">Part ${idx + 2}</span>
-          <select class="form-control" style="flex:1; height:32px; font-size:0.82rem;" onchange="updateRoleSplitSegment('${seg.id}', 'role', this.value)">
+          <select class="form-control" style="flex:1; height:34px; font-size:0.85rem; padding:4px 8px;" onchange="updateRoleSplitSegment('${seg.id}', 'role', this.value)">
             ${roles.map(r => `<option value="${r.name}" ${r.name === seg.role ? 'selected' : ''}>${r.name}</option>`).join('')}
           </select>
         </div>
@@ -3699,9 +3699,9 @@ function renderRoleSplitList() {
       </div>
       <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
         <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:240px;">
-          <input type="time" class="form-control" style="flex:1; min-width:115px; height:32px; font-size:0.82rem; padding:4px 8px;" value="${seg.startTime}" onchange="updateRoleSplitSegment('${seg.id}', 'startTime', this.value)">
+          <input type="time" class="form-control" style="flex:1; min-width:115px; height:34px; font-size:0.85rem; padding:4px 8px;" value="${seg.startTime}" onchange="updateRoleSplitSegment('${seg.id}', 'startTime', this.value)">
           <span style="color:var(--text-muted); font-size:0.82rem; font-weight:600;">to</span>
-          <input type="time" class="form-control" style="flex:1; min-width:115px; height:32px; font-size:0.82rem; padding:4px 8px;" value="${seg.endTime}" onchange="updateRoleSplitSegment('${seg.id}', 'endTime', this.value)">
+          <input type="time" class="form-control" style="flex:1; min-width:115px; height:34px; font-size:0.85rem; padding:4px 8px;" value="${seg.endTime}" onchange="updateRoleSplitSegment('${seg.id}', 'endTime', this.value)">
         </div>
         <span class="badge" style="background:rgba(0,229,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:0.75rem; padding:4px 8px; border:1px solid rgba(0,229,255,0.25);" id="${seg.id}_dur">${segGross.toFixed(1)}h</span>
       </div>
