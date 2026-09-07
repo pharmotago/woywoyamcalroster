@@ -426,8 +426,20 @@ function updateShiftBreakSummary() {
     return;
   }
 
-  const grossHours = calculateShiftHours(start, end, 0); // 0 meal mins to get gross duration
-  const entitlements = getAwardBreakEntitlements(grossHours);
+  const part1Gross = calculateShiftHours(start, end, 0);
+  let totalGrossHours = part1Gross;
+  let splitCount = 1;
+
+  if (typeof roleSplitSegments !== 'undefined' && Array.isArray(roleSplitSegments) && roleSplitSegments.length > 0) {
+    roleSplitSegments.forEach(seg => {
+      if (seg.startTime && seg.endTime) {
+        totalGrossHours += calculateShiftHours(seg.startTime, seg.endTime, 0);
+        splitCount++;
+      }
+    });
+  }
+
+  const entitlements = getAwardBreakEntitlements(totalGrossHours);
   
   let mealMins = entitlements.unpaidMealMins;
   let isCrib = false;
@@ -438,20 +450,24 @@ function updateShiftBreakSummary() {
     mealMins = parseInt(breakSelectVal, 10) || 0;
   }
 
-  const netHours = calculateShiftHours(start, end, isCrib ? 'crib_paid' : mealMins);
+  const netHours = Math.max(0, parseFloat((totalGrossHours - (isCrib ? 0 : (mealMins / 60))).toFixed(2)));
   
   if (summaryEl) {
+    const splitLabel = splitCount > 1 ? ` across ${splitCount} split roles` : '';
     if (isCrib) {
-      summaryEl.innerHTML = `<span style="color:#10b981;"><i class="fa-solid fa-mug-hot"></i> 30m Paid Crib Break (Clause 20.2 - Sole Pharmacist On-Premises, 100% Paid)</span>`;
+      summaryEl.innerHTML = `<span style="color:#10b981;"><i class="fa-solid fa-mug-hot"></i> 30m Paid Crib Break (Clause 20.2 - Sole Pharmacist On-Premises, 100% Paid)</span> <span style="font-size:7.5pt; opacity:0.85;">(${totalGrossHours.toFixed(1)}h gross${splitLabel})</span>`;
     } else {
-      const mealText = mealMins > 0 ? `🍱 ${mealMins}m Unpaid Lunch` : (grossHours > 5.0 ? '⚠️ No Lunch (Clause 20: 5h+ work requires 30m break)' : '🍱 No Unpaid Lunch');
-      const restText = '';
-      summaryEl.textContent = `${mealText}`;
+      const mealText = mealMins > 0 ? `🍱 ${mealMins}m Unpaid Lunch` : (totalGrossHours > 5.0 ? '⚠️ No Lunch (Clause 20: 5h+ work requires 30m break)' : '🍱 No Unpaid Lunch');
+      const restText = entitlements.paidBreaks > 0 ? ` | ☕ ${entitlements.paidBreaks}x 10m Paid Rest` : '';
+      summaryEl.innerHTML = `${mealText}${restText} (${totalGrossHours.toFixed(1)}h gross${splitLabel})`;
     }
   }
 
   if (netHoursInput) {
     netHoursInput.value = `${netHours.toFixed(1)}h`;
+    if (splitCount > 1) {
+      netHoursInput.title = `Split Shift Total: ${totalGrossHours.toFixed(1)}h gross across ${splitCount} roles - ${mealMins}m lunch break = ${netHours.toFixed(1)}h net paid`;
+    }
   }
 
   // Live Overtime Progress in Shift Modal
@@ -471,8 +487,26 @@ function updateShiftBreakSummary() {
       if (shiftId) {
         const prevShift = state.shifts.find(s => s.id === shiftId);
         if (prevShift && prevShift.employeeId === emp.id) {
-          prevShiftHours = calculateShiftHours(prevShift.startTime, prevShift.endTime, prevShift.unpaidMealMins);
+          prevShiftHours += calculateShiftHours(prevShift.startTime, prevShift.endTime, prevShift.unpaidMealMins);
         }
+      }
+      if (typeof roleSplitSegments !== 'undefined' && Array.isArray(roleSplitSegments)) {
+        roleSplitSegments.forEach(seg => {
+          if (seg.existingShiftId) {
+            const prevSibling = state.shifts.find(s => s.id === seg.existingShiftId);
+            if (prevSibling && prevSibling.employeeId === emp.id) {
+              prevShiftHours += calculateShiftHours(prevSibling.startTime, prevSibling.endTime, prevSibling.unpaidMealMins);
+            }
+          }
+        });
+      }
+      if (typeof removedSplitShiftIds !== 'undefined' && Array.isArray(removedSplitShiftIds)) {
+        removedSplitShiftIds.forEach(remId => {
+          const remShift = state.shifts.find(s => s.id === remId);
+          if (remShift && remShift.employeeId === emp.id) {
+            prevShiftHours += calculateShiftHours(remShift.startTime, remShift.endTime, remShift.unpaidMealMins);
+          }
+        });
       }
       
       const newTotalWeekHours = Math.max(0, currentWeekHours - prevShiftHours + netHours);

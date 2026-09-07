@@ -1698,7 +1698,7 @@
           <div id="role-split-segments" style="display:none; margin-top: 10px; padding: 12px; background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: var(--radius-sm);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
               <strong style="font-size: 0.82rem; color: #a855f7;"><i class="fa-solid fa-layer-group"></i> Role Segments</strong>
-              <button type="button" class="btn btn-icon" style="padding:0; font-size:0.8rem; color:var(--text-muted);" onclick="clearRoleSplitSegments()"><i class="fa-solid fa-xmark"></i></button>
+              <button type="button" class="btn btn-icon" style="padding:0; font-size:0.8rem; color:var(--text-muted);" onclick="clearRoleSplitSegments(true)"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="role-split-list" style="display:flex; flex-direction:column; gap:8px;">
               <!-- Dynamically populated role segments -->
@@ -2293,11 +2293,28 @@
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
+        <!-- v10.3.7 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.7 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Split-Shift UI Time Visibility & Unified Award Lunch Break Engine</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">07 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Unclipped Split Shift Time Pickers:</strong> Completely redesigned role segment rows into spacious 2-row cards with ample width for start and finish time pickers, preventing any number or AM/PM truncation.</li>
+            <li><strong>Unified Daily Award Break Engine:</strong> Evaluates total combined daily hours across Part 1 and all split segments to guarantee that shifts totaling 5+ or 7.6+ hours properly receive Award lunch breaks (30m) and rest breaks, even when individual split segments are under 4 hours.</li>
+            <li><strong>Synchronized Split Shift Editing:</strong> Opening any segment of a split shift automatically re-assembles the complete day's schedule in the Edit Shift modal with live aggregate net hours calculation.</li>
+            <li><strong>Cloud Meal Break Persistence:</strong> Ensured unpaid meal minutes are explicitly mapped and persisted to Supabase so that payroll and weekly hours calculations remain 100% accurate.</li>
+          </ul>
+        </div>
+
         <!-- v10.3.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.0 (Latest)</span>
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.3.0</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Department Filters, Global Undo/Redo, 1-Click Stencils & Staff Privacy Guard</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">06 Sep 2026</span>
@@ -2475,13 +2492,13 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.3.6"></script>
+  <script type="module" src="js/app.js?v=10.3.7"></script>
 
   <!-- PWA Service Worker Registration & Auto-Update Engine -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=10.3.6')
+        navigator.serviceWorker.register('sw.js?v=10.3.7')
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load

@@ -216,6 +216,9 @@ const BriskDB = (function() {
       role: shift.role || 'Pharmacy Assistant',
       notes: shift.notes || ''
     };
+    if (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null && !isNaN(Number(shift.unpaidMealMins))) {
+      obj.unpaid_meal_mins = Number(shift.unpaidMealMins);
+    }
     if (shift.status && shift.status !== 'draft') obj.status = shift.status;
     if (shift.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(shift.id)) {
       obj.id = shift.id;
@@ -233,7 +236,7 @@ const BriskDB = (function() {
       endTime: formatTimeHHmm(shift.end_time),
       role: shift.role,
       status: shift.status || 'draft',
-      unpaidMealMins: shift.unpaid_meal_mins,
+      unpaidMealMins: (shift.unpaid_meal_mins !== undefined && shift.unpaid_meal_mins !== null && !isNaN(Number(shift.unpaid_meal_mins))) ? Number(shift.unpaid_meal_mins) : null,
       color: shift.color,
       notes: shift.notes
     };

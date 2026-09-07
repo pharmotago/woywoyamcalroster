@@ -72,7 +72,9 @@ function calculateShiftHours(start, end, unpaidMealMins = null) {
   
   const grossHours = diffMinutes / 60;
   let mealMins = 0;
-  if (unpaidMealMins !== null && unpaidMealMins !== undefined) {
+  if (unpaidMealMins === 'crib_paid') {
+    mealMins = 0;
+  } else if (unpaidMealMins !== null && unpaidMealMins !== undefined && unpaidMealMins !== 'auto') {
     mealMins = Number(unpaidMealMins) || 0;
   } else {
     // Fair Work Default: 30m unpaid break if shift >= 5h
@@ -174,8 +176,20 @@ function updateShiftBreakSummary() {
     return;
   }
 
-  const grossHours = calculateShiftHours(start, end, 0); // 0 meal mins to get gross duration
-  const entitlements = getAwardBreakEntitlements(grossHours);
+  const part1Gross = calculateShiftHours(start, end, 0); // Part 1 gross duration
+  let totalGrossHours = part1Gross;
+  let splitCount = 1;
+
+  if (typeof roleSplitSegments !== 'undefined' && Array.isArray(roleSplitSegments) && roleSplitSegments.length > 0) {
+    roleSplitSegments.forEach(seg => {
+      if (seg.startTime && seg.endTime) {
+        totalGrossHours += calculateShiftHours(seg.startTime, seg.endTime, 0);
+        splitCount++;
+      }
+    });
+  }
+
+  const entitlements = getAwardBreakEntitlements(totalGrossHours);
   
   let mealMins = entitlements.unpaidMealMins;
   let isCrib = false;
@@ -186,20 +200,89 @@ function updateShiftBreakSummary() {
     mealMins = parseInt(breakSelectVal, 10) || 0;
   }
 
-  const netHours = calculateShiftHours(start, end, isCrib ? 'crib_paid' : mealMins);
+  const netHours = Math.max(0, parseFloat((totalGrossHours - (isCrib ? 0 : (mealMins / 60))).toFixed(2)));
   
   if (summaryEl) {
+    const splitLabel = splitCount > 1 ? ` across ${splitCount} split roles` : '';
     if (isCrib) {
-      summaryEl.innerHTML = `<span style="color:#10b981;"><i class="fa-solid fa-mug-hot"></i> 30m Paid Crib Break (Clause 20.2 - Sole Pharmacist On-Premises, 100% Paid)</span>`;
+      summaryEl.innerHTML = `<span style="color:#10b981;"><i class="fa-solid fa-mug-hot"></i> 30m Paid Crib Break (Clause 20.2 - Sole Pharmacist, 100% Paid)</span> <span style="font-size:7.5pt; opacity:0.85;">(${totalGrossHours.toFixed(1)}h gross${splitLabel})</span>`;
     } else {
-      const mealText = mealMins > 0 ? `🍱 ${mealMins}m Unpaid Lunch` : (grossHours > 5.0 ? '⚠️ No Lunch (Clause 20: 5h+ work requires 30m break)' : '🍱 No Unpaid Lunch');
+      const mealText = mealMins > 0 ? `🍱 ${mealMins}m Unpaid Lunch` : (totalGrossHours > 5.0 ? '⚠️ No Lunch (Clause 20: 5h+ work requires 30m break)' : '🍱 No Unpaid Lunch');
       const restText = entitlements.paidBreaks > 0 ? ` | ☕ ${entitlements.paidBreaks}x 10m Paid Rest` : '';
-      summaryEl.innerHTML = `${mealText}${restText} (${grossHours.toFixed(1)}h gross)`;
+      summaryEl.innerHTML = `${mealText}${restText} (${totalGrossHours.toFixed(1)}h gross${splitLabel})`;
     }
   }
 
   if (netHoursInput) {
     netHoursInput.value = `${netHours.toFixed(1)}h`;
+    if (splitCount > 1) {
+      netHoursInput.title = `Split Shift Total: ${totalGrossHours.toFixed(1)}h gross across ${splitCount} roles - ${mealMins}m lunch break = ${netHours.toFixed(1)}h net paid`;
+    }
+  }
+
+  // Live Overtime Progress in Shift Modal
+  const empSelect = document.getElementById('shift-employee');
+  const shiftDate = document.getElementById('shift-date')?.value;
+  const otText = document.getElementById('shift-weekly-ot-text');
+  const otBadge = document.getElementById('shift-weekly-ot-badge');
+  const shiftId = document.getElementById('shift-id')?.value;
+
+  if (empSelect && empSelect.value && shiftDate && otText && typeof calculateEmployeeWeekHours === 'function' && typeof getMondayOfCurrentWeek === 'function') {
+    const emp = state.employees.find(e => e.id === empSelect.value);
+    if (emp) {
+      const maxH = emp.maxHours || 38;
+      const currentWeekHours = calculateEmployeeWeekHours(emp.id, getMondayOfCurrentWeek(new Date(shiftDate)));
+      
+      let prevShiftHours = 0;
+      if (shiftId) {
+        const prevShift = state.shifts.find(s => s.id === shiftId);
+        if (prevShift && prevShift.employeeId === emp.id) {
+          prevShiftHours += calculateShiftHours(prevShift.startTime, prevShift.endTime, prevShift.unpaidMealMins);
+        }
+      }
+      if (typeof roleSplitSegments !== 'undefined' && Array.isArray(roleSplitSegments)) {
+        roleSplitSegments.forEach(seg => {
+          if (seg.existingShiftId) {
+            const prevSibling = state.shifts.find(s => s.id === seg.existingShiftId);
+            if (prevSibling && prevSibling.employeeId === emp.id) {
+              prevShiftHours += calculateShiftHours(prevSibling.startTime, prevSibling.endTime, prevSibling.unpaidMealMins);
+            }
+          }
+        });
+      }
+      if (typeof removedSplitShiftIds !== 'undefined' && Array.isArray(removedSplitShiftIds)) {
+        removedSplitShiftIds.forEach(remId => {
+          const remShift = state.shifts.find(s => s.id === remId);
+          if (remShift && remShift.employeeId === emp.id) {
+            prevShiftHours += calculateShiftHours(remShift.startTime, remShift.endTime, remShift.unpaidMealMins);
+          }
+        });
+      }
+      
+      const newTotalWeekHours = Math.max(0, currentWeekHours - prevShiftHours + netHours);
+      const otHours = newTotalWeekHours > maxH ? (newTotalWeekHours - maxH) : 0;
+      
+      if (otText) {
+        otText.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-cyan);"></i> Weekly Hours: <strong>${newTotalWeekHours.toFixed(1)}h / ${maxH}h</strong> (Current: ${currentWeekHours.toFixed(1)}h + Shift: ${netHours.toFixed(1)}h)`;
+      }
+      if (otBadge) {
+        if (otHours > 0) {
+          otBadge.style.display = 'inline-block';
+          otBadge.className = 'badge';
+          otBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+          otBadge.style.color = '#f87171';
+          otBadge.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+          otBadge.textContent = `+${otHours.toFixed(1)}h OT Incurred`;
+        } else {
+          otBadge.style.display = 'inline-block';
+          otBadge.className = 'badge badge-success';
+          otBadge.textContent = `Within Target (${(maxH - newTotalWeekHours).toFixed(1)}h rem)`;
+        }
+      }
+    } else {
+      if (otText) otText.innerHTML = `<i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-cyan);"></i> Unassigned Shift: <strong>${netHours.toFixed(1)}h</strong>`;
+      if (otBadge) otBadge.style.display = 'none';
+    }
   }
 }
 window.updateShiftBreakSummary = updateShiftBreakSummary;
@@ -2772,8 +2855,12 @@ function getEffectiveShiftHourlyRate(shift) {
           const breakEntitlement = getAwardBreakEntitlements(shiftDuration);
           const unpaidMeal = (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null) ? shift.unpaidMealMins : breakEntitlement.unpaidMealMins;
 
+          const isSplit = cellShifts.length > 1;
+          const splitIdx = cellShifts.indexOf(shift) + 1;
+          const splitTagHtml = isSplit ? `<span class="badge" style="font-size:6.8pt; padding:1px 4px; background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); margin-left:4px; font-weight:700;">Part ${splitIdx}/${cellShifts.length}</span>` : '';
+
           let breakBadgeHtml = '';
-          if (shiftDuration >= 4 && unpaidMeal > 0) {
+          if (unpaidMeal > 0) {
             breakBadgeHtml = `<div class="shift-card-breaks" style="font-size: 7.5pt; color: var(--text-muted); margin-top: 2px;"><i class="fa-solid fa-mug-hot"></i> ${unpaidMeal}m Lunch</div>`;
           }
 
@@ -2799,9 +2886,11 @@ function getEffectiveShiftHourlyRate(shift) {
 
           const copyBtnHtml = isMgr ? `<button class="btn-icon" onclick="copyShiftQuick('${shift.id}', event)" title="Copy Shift" style="padding:0; margin:0; font-size:11px; opacity:0.6;"><i class="fa-regular fa-copy"></i></button>` : '';
 
+          const displayNotes = typeof stripSplitTag === 'function' ? stripSplitTag(shift.notes) : (shift.notes || '');
+
           div.innerHTML = `
             <div class="shift-card-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}</span>
+              <span class="shift-role-title" style="color:${roleColor}; font-weight:700;">${shift.role}${splitTagHtml}</span>
               <div class="shift-card-actions print-hide" style="display:flex; gap:4px; align-items:center;">
                 ${copyBtnHtml}
                 ${delBtnHtml}
@@ -2809,7 +2898,7 @@ function getEffectiveShiftHourlyRate(shift) {
             </div>
             <div class="shift-card-time"><i class="fa-regular fa-clock"></i> ${formatTimeAmPm(shift.startTime)} – ${formatTimeAmPm(shift.endTime)} <span style="font-size:7.5pt; opacity:0.85;">(${shiftDuration.toFixed(1)}h)</span></div>
             ${breakBadgeHtml}
-            ${shift.notes ? `<div class="shift-card-notes">${shift.notes}</div>` : ''}
+            ${displayNotes ? `<div class="shift-card-notes">${displayNotes}</div>` : ''}
           `;
 
           tdDay.appendChild(div);
@@ -3368,12 +3457,32 @@ function calculateEmployeeWeekHours(employeeId, weekStart) {
     return sDate >= mon && sDate <= sun;
   });
   
+  // Group scheduled shifts by date to handle split shifts and ensure Award meal breaks
+  const shiftsByDate = new Map();
   empShifts.forEach(s => {
     const sDate = new Date(s.date + 'T00:00:00');
     sDate.setHours(0,0,0,0);
     if (sDate >= today || !daysWithTimecards.has(s.date)) {
-      const netHrs = calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
-      total += netHrs;
+      if (!shiftsByDate.has(s.date)) shiftsByDate.set(s.date, []);
+      shiftsByDate.get(s.date).push(s);
+    }
+  });
+
+  shiftsByDate.forEach((dayShifts) => {
+    // If any shift on this date has explicit unpaidMealMins set (even 0), calculate each directly
+    const hasExplicitMeal = dayShifts.some(s => s.unpaidMealMins !== undefined && s.unpaidMealMins !== null);
+    if (hasExplicitMeal || dayShifts.length === 1) {
+      dayShifts.forEach(s => {
+        total += calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
+      });
+    } else {
+      // Legacy fallback for split shifts with null break settings: sum gross hours and apply Award break
+      let dailyGross = 0;
+      dayShifts.forEach(s => {
+        dailyGross += calculateShiftHours(s.startTime, s.endTime, 0);
+      });
+      const mealMins = dailyGross >= 5.0 ? 30 : 0;
+      total += Math.max(0, dailyGross - (mealMins / 60));
     }
   });
 
@@ -3472,6 +3581,16 @@ window.toggleLeaveTimeFields = toggleLeaveTimeFields;
    ROLE SPLIT MANAGEMENT (MULTI-ROLE PER DAY)
    ========================================================================== */
 let roleSplitSegments = [];
+let removedSplitShiftIds = [];
+
+function stripSplitTag(notes) {
+  if (!notes || typeof notes !== 'string') return '';
+  return notes
+    .replace(/\[Split Shift[^\]]*\]\s*/gi, '')
+    .replace(/\[Split Role[^\]]*\]\s*/gi, '')
+    .trim();
+}
+window.stripSplitTag = stripSplitTag;
 
 function addRoleSplitSegment() {
   const currentEnd = document.getElementById('shift-end')?.value || '17:00';
@@ -3487,7 +3606,6 @@ function addRoleSplitSegment() {
   if (roleSplitSegments.length === 0) {
     if (currentStart < '13:00' && currentEnd > '13:00') {
       document.getElementById('shift-end').value = '13:00';
-      if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
     }
   }
 
@@ -3506,51 +3624,90 @@ function addRoleSplitSegment() {
   roleSplitSegments.push(segObj);
 
   renderRoleSplitList();
+  if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
 }
 window.addRoleSplitSegment = addRoleSplitSegment;
 
 function removeRoleSplitSegment(id) {
+  const seg = roleSplitSegments.find(s => s.id === id);
+  if (seg && seg.existingShiftId && !removedSplitShiftIds.includes(seg.existingShiftId)) {
+    removedSplitShiftIds.push(seg.existingShiftId);
+  }
   roleSplitSegments = roleSplitSegments.filter(s => s.id !== id);
   if (roleSplitSegments.length === 0) {
-    clearRoleSplitSegments();
+    clearRoleSplitSegments(false);
   } else {
     renderRoleSplitList();
   }
+  if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
 }
 window.removeRoleSplitSegment = removeRoleSplitSegment;
 
-function clearRoleSplitSegments() {
+function clearRoleSplitSegments(markForDeletion = false) {
+  if (markForDeletion && roleSplitSegments && roleSplitSegments.length > 0) {
+    roleSplitSegments.forEach(s => {
+      if (s.existingShiftId && !removedSplitShiftIds.includes(s.existingShiftId)) {
+        removedSplitShiftIds.push(s.existingShiftId);
+      }
+    });
+  }
   roleSplitSegments = [];
   const splitSection = document.getElementById('role-split-segments');
   const splitList = document.getElementById('role-split-list');
   if (splitSection) splitSection.style.display = 'none';
   if (splitList) splitList.innerHTML = '';
+  if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
 }
 window.clearRoleSplitSegments = clearRoleSplitSegments;
 
 function updateRoleSplitSegment(id, field, value) {
   const seg = roleSplitSegments.find(s => s.id === id);
-  if (seg) seg[field] = value;
+  if (seg) {
+    seg[field] = value;
+    const durEl = document.getElementById(`${id}_dur`);
+    if (durEl && seg.startTime && seg.endTime) {
+      const g = calculateShiftHours(seg.startTime, seg.endTime, 0);
+      durEl.textContent = `${g.toFixed(1)}h`;
+    }
+    if (typeof updateShiftBreakSummary === 'function') updateShiftBreakSummary();
+  }
 }
 window.updateRoleSplitSegment = updateRoleSplitSegment;
 
 function renderRoleSplitList() {
   const splitList = document.getElementById('role-split-list');
   if (!splitList) return;
-  const roles = (state.roles && state.roles.length > 0) ? state.roles : [];
+  const roles = (state.roles && state.roles.length > 0) 
+    ? [...state.roles] 
+    : (typeof BriskDB !== 'undefined' && BriskDB.getRoles ? [...BriskDB.getRoles()] : []);
 
-  splitList.innerHTML = roleSplitSegments.map((seg, idx) => `
-    <div class="glass-card" style="padding:8px; border:1px solid rgba(168,85,247,0.3); border-radius:4px; display:flex; gap:6px; align-items:center; flex-wrap:wrap;" id="${seg.id}">
-      <span style="font-weight:700; font-size:0.75rem; color:#a855f7; min-width:55px;">Part ${idx + 2}:</span>
-      <select class="form-control" style="flex:1; min-width:110px; height:32px; font-size:0.8rem;" onchange="updateRoleSplitSegment('${seg.id}', 'role', this.value)">
-        ${roles.map(r => `<option value="${r.name}" ${r.name === seg.role ? 'selected' : ''}>${r.name}</option>`).join('')}
-      </select>
-      <input type="time" class="form-control" style="width:85px; height:32px; font-size:0.8rem;" value="${seg.startTime}" onchange="updateRoleSplitSegment('${seg.id}', 'startTime', this.value)">
-      <span style="color:var(--text-muted); font-size:0.8rem;">~</span>
-      <input type="time" class="form-control" style="width:85px; height:32px; font-size:0.8rem;" value="${seg.endTime}" onchange="updateRoleSplitSegment('${seg.id}', 'endTime', this.value)">
-      <button type="button" class="btn btn-icon text-danger" style="padding:2px 6px;" onclick="removeRoleSplitSegment('${seg.id}')" title="Remove Segment"><i class="fa-solid fa-trash"></i></button>
+  splitList.innerHTML = roleSplitSegments.map((seg, idx) => {
+    const segGross = calculateShiftHours(seg.startTime, seg.endTime, 0);
+    if (seg.role && !roles.some(r => r.name === seg.role)) {
+      roles.push({ name: seg.role });
+    }
+    return `
+    <div class="glass-card role-split-card" style="padding:10px; border:1px solid rgba(168,85,247,0.3); border-radius:6px; background:rgba(168,85,247,0.04); display:flex; flex-direction:column; gap:8px;" id="${seg.id}">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:6px; flex:1;">
+          <span class="badge" style="background:rgba(168,85,247,0.2); color:#c084fc; font-weight:700; font-size:0.75rem; white-space:nowrap;">Part ${idx + 2}</span>
+          <select class="form-control" style="flex:1; height:32px; font-size:0.82rem;" onchange="updateRoleSplitSegment('${seg.id}', 'role', this.value)">
+            ${roles.map(r => `<option value="${r.name}" ${r.name === seg.role ? 'selected' : ''}>${r.name}</option>`).join('')}
+          </select>
+        </div>
+        <button type="button" class="btn btn-icon text-danger" style="padding:4px 6px; font-size:0.85rem;" onclick="removeRoleSplitSegment('${seg.id}')" title="Remove Segment"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:240px;">
+          <input type="time" class="form-control" style="flex:1; min-width:115px; height:32px; font-size:0.82rem; padding:4px 8px;" value="${seg.startTime}" onchange="updateRoleSplitSegment('${seg.id}', 'startTime', this.value)">
+          <span style="color:var(--text-muted); font-size:0.82rem; font-weight:600;">to</span>
+          <input type="time" class="form-control" style="flex:1; min-width:115px; height:32px; font-size:0.82rem; padding:4px 8px;" value="${seg.endTime}" onchange="updateRoleSplitSegment('${seg.id}', 'endTime', this.value)">
+        </div>
+        <span class="badge" style="background:rgba(0,229,255,0.12); color:var(--accent-cyan); font-weight:700; font-size:0.75rem; padding:4px 8px; border:1px solid rgba(0,229,255,0.25);" id="${seg.id}_dur">${segGross.toFixed(1)}h</span>
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 window.renderRoleSplitList = renderRoleSplitList;
 
@@ -3654,7 +3811,8 @@ function openAddShiftModal(employeeId = '', dateStr = '') {
     showToast('Permission denied: Only Owners and Managers can add or edit shifts.', 'warning');
     return;
   }
-  clearRoleSplitSegments();
+  clearRoleSplitSegments(false);
+  removedSplitShiftIds = [];
   clearEditingCell();
 
   document.getElementById('shift-modal-title').textContent = 'Add New Shift';
@@ -3749,27 +3907,71 @@ function openEditShiftModal(shift) {
     return;
   }
   clearRoleSplitSegments();
+  removedSplitShiftIds = [];
 
-  const cellKey = `${shift.employeeId || ''}_${shift.date}`;
-  trackEditingCell(cellKey, shift.id);
+  // Check for same-day shifts for this employee (multi-role split shifts)
+  let sameDayShifts = [];
+  if (shift.employeeId && shift.date) {
+    sameDayShifts = state.shifts.filter(s => 
+      s.employeeId === shift.employeeId && 
+      s.date === shift.date &&
+      s.startTime && s.endTime
+    );
+    sameDayShifts.sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+  }
+
+  // Primary shift is the earliest chronological segment
+  let primaryShift = shift;
+  let splitShifts = [];
+  if (sameDayShifts.length > 1) {
+    primaryShift = sameDayShifts[0];
+    splitShifts = sameDayShifts.slice(1);
+  }
+
+  const cellKey = `${primaryShift.employeeId || ''}_${primaryShift.date}`;
+  trackEditingCell(cellKey, primaryShift.id);
 
   if (activePresences && activePresences[cellKey]) {
     const editor = activePresences[cellKey].name || activePresences[cellKey].email;
     showToast(`⚠️ Notice: ${editor} is also currently viewing/editing this cell slot.`, 'warning');
   }
 
-  document.getElementById('shift-modal-title').textContent = 'Edit Shift';
-  document.getElementById('shift-id').value = shift.id;
-  document.getElementById('shift-date').value = shift.date;
-  document.getElementById('shift-start').value = (shift.startTime || '09:00').substring(0, 5);
-  document.getElementById('shift-end').value = (shift.endTime || '17:00').substring(0, 5);
-  document.getElementById('shift-notes').value = shift.notes || '';
+  document.getElementById('shift-modal-title').textContent = splitShifts.length > 0 ? `Edit Split Shift (${1 + splitShifts.length} Roles)` : 'Edit Shift';
+  document.getElementById('shift-id').value = primaryShift.id;
+  document.getElementById('shift-date').value = primaryShift.date;
+  document.getElementById('shift-start').value = (primaryShift.startTime || '09:00').substring(0, 5);
+  document.getElementById('shift-end').value = (primaryShift.endTime || '17:00').substring(0, 5);
+  document.getElementById('shift-notes').value = stripSplitTag(primaryShift.notes || '');
   
+  // Find any existing unpaid meal setting across segments
+  const anyMealVal = sameDayShifts.find(s => s.unpaidMealMins !== undefined && s.unpaidMealMins !== null && s.unpaidMealMins > 0)?.unpaidMealMins;
   if (document.getElementById('shift-unpaid-break')) {
-    document.getElementById('shift-unpaid-break').value = (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null) ? String(shift.unpaidMealMins) : 'auto';
+    if (anyMealVal !== undefined) {
+      document.getElementById('shift-unpaid-break').value = String(anyMealVal);
+    } else if (primaryShift.unpaidMealMins !== undefined && primaryShift.unpaidMealMins !== null) {
+      document.getElementById('shift-unpaid-break').value = String(primaryShift.unpaidMealMins);
+    } else {
+      document.getElementById('shift-unpaid-break').value = 'auto';
+    }
   }
 
   document.getElementById('btn-delete-shift').classList.remove('hide');
+
+  // Load sibling split shifts into roleSplitSegments
+  if (splitShifts.length > 0) {
+    splitShifts.forEach(s => {
+      roleSplitSegments.push({
+        id: 'seg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        existingShiftId: s.id,
+        role: s.role || 'Floor',
+        startTime: (s.startTime || '09:00').substring(0, 5),
+        endTime: (s.endTime || '17:00').substring(0, 5)
+      });
+    });
+    const splitSection = document.getElementById('role-split-segments');
+    if (splitSection) splitSection.style.display = 'block';
+    renderRoleSplitList();
+  }
 
   // Populate Roles select
   const roleSelect = document.getElementById('shift-role');
@@ -3785,34 +3987,34 @@ function openEditShiftModal(shift) {
   if (state.roles && Array.isArray(state.roles)) {
     state.roles.forEach(r => allRolesSet.add(r.name));
   }
-  if (shift && shift.role) {
-    allRolesSet.add(shift.role);
+  if (primaryShift && primaryShift.role) {
+    allRolesSet.add(primaryShift.role);
   }
   allRolesSet.forEach(rName => {
     const opt = document.createElement('option');
     opt.value = rName;
     opt.textContent = rName;
-    if (shift && shift.role === rName) opt.selected = true;
+    if (primaryShift && primaryShift.role === rName) opt.selected = true;
     roleSelect.appendChild(opt);
   });
-  if (shift && shift.role) {
-    roleSelect.value = shift.role;
+  if (primaryShift && primaryShift.role) {
+    roleSelect.value = primaryShift.role;
   }
 
   const select = document.getElementById('shift-employee');
   select.innerHTML = '<option value="">-- Unassigned --</option>';
   
   state.employees.forEach(emp => {
-    if (!emp.active && emp.id !== shift.employeeId) return;
+    if (!emp.active && emp.id !== primaryShift.employeeId) return;
     const r = (emp.role || '').toLowerCase().trim();
-    if ((r === 'owner' || r === 'partner' || r === 'managing partner') && emp.id !== shift.employeeId) return;
+    if ((r === 'owner' || r === 'partner' || r === 'managing partner') && emp.id !== primaryShift.employeeId) return;
     const opt = document.createElement('option');
     opt.value = emp.id;
     opt.textContent = `${emp.name} (${emp.role || 'Staff'})`;
-    if (emp.id === shift.employeeId) opt.selected = true;
+    if (emp.id === primaryShift.employeeId) opt.selected = true;
     select.appendChild(opt);
   });
-  if (shift.employeeId) select.value = shift.employeeId;
+  if (primaryShift.employeeId) select.value = primaryShift.employeeId;
 
   select.onchange = updateShiftBreakSummary;
   const dateInput = document.getElementById('shift-date');
@@ -3825,7 +4027,8 @@ function openEditShiftModal(shift) {
 }
 
 function closeShiftModal() {
-  clearRoleSplitSegments();
+  clearRoleSplitSegments(false);
+  removedSplitShiftIds = [];
   clearEditingCell();
   const modal = document.getElementById('modal-shift');
   if (modal) {
@@ -3862,12 +4065,44 @@ async function handleShiftSubmit(event) {
     }
 
     if (empId) {
-      // Strict Overlap validation only if assigned
-      const empShifts = state.shifts.filter(s => s.employeeId === empId && String(s.id) !== String(id));
-      const hasOverlap = empShifts.some(s => BriskScheduler.isOverlapping(date, start, end, s.date, s.startTime, s.endTime));
+      // Build set of shifts managed in this modal session (Part 1 + any existing split segment shifts)
+      const managedShiftIds = new Set();
+      if (id) managedShiftIds.add(String(id));
+      if (Array.isArray(roleSplitSegments)) {
+        roleSplitSegments.forEach(seg => {
+          if (seg.existingShiftId) managedShiftIds.add(String(seg.existingShiftId));
+        });
+      }
+
+      // Strict Overlap validation against other external shifts for this employee
+      const otherEmpShifts = state.shifts.filter(s => s.employeeId === empId && !managedShiftIds.has(String(s.id)));
+      const hasOverlap = otherEmpShifts.some(s => BriskScheduler.isOverlapping(date, start, end, s.date, s.startTime, s.endTime));
       if (hasOverlap) {
-        showToast('This shift overlaps with another shift for this employee.', 'error');
+        showToast('Part 1 overlaps with another existing shift for this employee.', 'error');
         return;
+      }
+
+      // Check internal overlap between Part 1 and roleSplitSegments, and between roleSplitSegments themselves
+      if (Array.isArray(roleSplitSegments) && roleSplitSegments.length > 0) {
+        for (let i = 0; i < roleSplitSegments.length; i++) {
+          const segA = roleSplitSegments[i];
+          if (BriskScheduler.isOverlapping(date, start, end, date, segA.startTime, segA.endTime)) {
+            showToast(`Part 1 (${formatTimeAmPm(start)}–${formatTimeAmPm(end)}) overlaps with Part ${i + 2} (${formatTimeAmPm(segA.startTime)}–${formatTimeAmPm(segA.endTime)}).`, 'error');
+            return;
+          }
+          const segExternalOverlap = otherEmpShifts.some(s => BriskScheduler.isOverlapping(date, segA.startTime, segA.endTime, s.date, s.startTime, s.endTime));
+          if (segExternalOverlap) {
+            showToast(`Part ${i + 2} (${formatTimeAmPm(segA.startTime)}–${formatTimeAmPm(segA.endTime)}) overlaps with another shift on this day.`, 'error');
+            return;
+          }
+          for (let j = i + 1; j < roleSplitSegments.length; j++) {
+            const segB = roleSplitSegments[j];
+            if (BriskScheduler.isOverlapping(date, segA.startTime, segA.endTime, date, segB.startTime, segB.endTime)) {
+              showToast(`Part ${i + 2} and Part ${j + 2} overlap in time.`, 'error');
+              return;
+            }
+          }
+        }
       }
 
       // Fair Work MA000012 / Pharmacy Industry Award 2026 10-Hour Rest Break Warning
@@ -3875,7 +4110,7 @@ async function handleShiftSubmit(event) {
       let shiftEndMs = new Date(`${date}T${end.substring(0, 5)}:00`).getTime();
       if (shiftEndMs <= shiftStartMs) shiftEndMs += 86400000;
 
-      for (const s of empShifts) {
+      for (const s of otherEmpShifts) {
         if (s.date === date) continue; // Same-day multi-role split shift: skip cross-day 10h rest break warning
 
         const sStartMs = new Date(`${s.date}T${(s.startTime || '00:00').substring(0, 5)}:00`).getTime();
@@ -3898,18 +4133,28 @@ async function handleShiftSubmit(event) {
       }
     }
 
-    // Award Compliance Checks: Casual 3h minimum (Clause 11.4) & Daily 12h max ordinary hours (Clause 13.2)
+    // Calculate combined gross duration across Part 1 and all split segments
     const singleShiftDuration = BriskScheduler.getShiftDuration(start, end);
+    let totalGrossHours = singleShiftDuration;
+    if (Array.isArray(roleSplitSegments) && roleSplitSegments.length > 0) {
+      roleSplitSegments.forEach(seg => {
+        if (seg.startTime && seg.endTime) {
+          totalGrossHours += BriskScheduler.getShiftDuration(seg.startTime, seg.endTime);
+        }
+      });
+    }
+
+    // Award Compliance Checks: Casual 3h minimum (Clause 11.4) & Daily 12h max ordinary hours (Clause 13.2)
     if (empId) {
       const emp = state.employees.find(e => e.id === empId);
       if (emp) {
-        if (emp.employmentType === 'casual' && singleShiftDuration < 3.0) {
-          if (!confirm(`Notice (Pharmacy Industry Award 2026 [MA000012] Clause 11.4): Casual employees have a minimum engagement of 3 hours per shift (scheduled: ${singleShiftDuration.toFixed(1)}h).\n\nAssign this shift anyway?`)) {
+        if (emp.employmentType === 'casual' && totalGrossHours < 3.0) {
+          if (!confirm(`Notice (Pharmacy Industry Award 2026 [MA000012] Clause 11.4): Casual employees have a minimum engagement of 3 hours per shift (scheduled: ${totalGrossHours.toFixed(1)}h).\n\nAssign this shift anyway?`)) {
             return;
           }
         }
-        if (singleShiftDuration > 12.0) {
-          if (!confirm(`Notice (Pharmacy Industry Award 2026 [MA000012] Clause 13.2): Maximum ordinary daily shift length is 12.0 hours (scheduled: ${singleShiftDuration.toFixed(1)}h).\n\nOvertime penalty rates may apply for hours exceeding 12 hours. Schedule anyway?`)) {
+        if (totalGrossHours > 12.0) {
+          if (!confirm(`Notice (Pharmacy Industry Award 2026 [MA000012] Clause 13.2): Maximum ordinary daily shift length is 12.0 hours (scheduled: ${totalGrossHours.toFixed(1)}h).\n\nOvertime penalty rates may apply for hours exceeding 12 hours. Schedule anyway?`)) {
             return;
           }
         }
@@ -3996,18 +4241,35 @@ async function handleShiftSubmit(event) {
 
     if (empId) {
       const emp = state.employees.find(e => e.id === empId);
-      const duration = BriskScheduler.getShiftDuration(start, end);
       const currentWeekHours = calculateEmployeeWeekHours(empId, getMondayOfCurrentWeek(new Date(date)));
       
       let prevDuration = 0;
       if (id) {
         const prevShift = state.shifts.find(s => s.id === id);
         if (prevShift && prevShift.employeeId === empId) {
-          prevDuration = BriskScheduler.getShiftDuration(prevShift.startTime, prevShift.endTime);
+          prevDuration += BriskScheduler.getShiftDuration(prevShift.startTime, prevShift.endTime);
         }
       }
+      if (Array.isArray(roleSplitSegments)) {
+        roleSplitSegments.forEach(seg => {
+          if (seg.existingShiftId) {
+            const prevSibling = state.shifts.find(s => s.id === seg.existingShiftId);
+            if (prevSibling && prevSibling.employeeId === empId) {
+              prevDuration += BriskScheduler.getShiftDuration(prevSibling.startTime, prevSibling.endTime);
+            }
+          }
+        });
+      }
+      if (Array.isArray(removedSplitShiftIds)) {
+        removedSplitShiftIds.forEach(remId => {
+          const remShift = state.shifts.find(s => s.id === remId);
+          if (remShift && remShift.employeeId === empId) {
+            prevDuration += BriskScheduler.getShiftDuration(remShift.startTime, remShift.endTime);
+          }
+        });
+      }
 
-      if (currentWeekHours - prevDuration + duration > emp.maxHours) {
+      if (currentWeekHours - prevDuration + totalGrossHours > emp.maxHours) {
         if (!confirm(`Adding this shift will exceed ${emp.name}'s weekly limit of ${emp.maxHours} hours. Continue?`)) {
           return;
         }
@@ -4015,17 +4277,20 @@ async function handleShiftSubmit(event) {
     }
 
     const unpaidMealVal = document.getElementById('shift-unpaid-break') ? document.getElementById('shift-unpaid-break').value : 'auto';
-    let unpaidMealMins = null;
+    const breakEntitlements = getAwardBreakEntitlements(totalGrossHours);
+
+    let targetMealMins = 0;
     if (unpaidMealVal === 'crib_paid') {
-      unpaidMealMins = 0; // 0 unpaid minutes for Paid Crib Break
-    } else if (unpaidMealVal !== 'auto') {
-      unpaidMealMins = parseInt(unpaidMealVal, 10);
+      targetMealMins = 0;
+    } else if (unpaidMealVal === 'auto') {
+      targetMealMins = breakEntitlements.unpaidMealMins;
+    } else {
+      targetMealMins = parseInt(unpaidMealVal, 10) || 0;
     }
 
     // Clause 20 5-Hour Work Meal Break Guard
-    const grossShiftDuration = BriskScheduler.getShiftDuration(start, end);
-    if (grossShiftDuration > 5.0 && unpaidMealVal === '0') {
-      if (!confirm(`⚠️ Fair Work Award Notice (Pharmacy Award Clause 20):\n\nEmployees working more than 5 continuous hours (${grossShiftDuration.toFixed(1)}h) must be rostered for a meal break of at least 30 minutes (or Paid Crib Break for sole pharmacists).\n\nProceed without scheduling a meal break?`)) {
+    if (totalGrossHours > 5.0 && targetMealMins === 0 && unpaidMealVal !== 'crib_paid') {
+      if (!confirm(`⚠️ Fair Work Award Notice (Pharmacy Award Clause 20):\n\nEmployees working more than 5 continuous hours (${totalGrossHours.toFixed(1)}h) must be rostered for a meal break of at least 30 minutes (or Paid Crib Break for sole pharmacists).\n\nProceed without scheduling a meal break?`)) {
         return;
       }
     }
@@ -4044,7 +4309,6 @@ async function handleShiftSubmit(event) {
       const prevDate = getOffsetDateStr(date, -1);
       const nextDate = getOffsetDateStr(date, 1);
       
-      // Check yesterday's shifts for this employee
       const prevShifts = state.shifts.filter(s => s.employeeId === empId && s.date === prevDate && String(s.id) !== String(id));
       for (const ps of prevShifts) {
         const prevEndDt = new Date(`${prevDate}T${(ps.endTime || '00:00').substring(0, 5)}:00`);
@@ -4057,7 +4321,6 @@ async function handleShiftSubmit(event) {
         }
       }
 
-      // Check tomorrow's shifts for this employee
       const nextShifts = state.shifts.filter(s => s.employeeId === empId && s.date === nextDate && String(s.id) !== String(id));
       for (const ns of nextShifts) {
         const curEndDt = new Date(`${date}T${end.substring(0, 5)}:00`);
@@ -4071,14 +4334,51 @@ async function handleShiftSubmit(event) {
       }
     }
 
+    // Allocate targetMealMins across segments:
+    // Place targetMealMins on Part 1 if its duration >= targetMealMins / 60, otherwise on the longest segment
+    let primaryUnpaidMeal = 0;
+    const segMealMinsMap = new Map();
+
+    if (targetMealMins > 0) {
+      if (singleShiftDuration >= (targetMealMins / 60)) {
+        primaryUnpaidMeal = targetMealMins;
+      } else {
+        let longestSeg = null;
+        let longestDur = 0;
+        if (Array.isArray(roleSplitSegments)) {
+          roleSplitSegments.forEach(seg => {
+            const d = BriskScheduler.getShiftDuration(seg.startTime, seg.endTime);
+            if (d > longestDur) {
+              longestDur = d;
+              longestSeg = seg;
+            }
+          });
+        }
+        if (longestSeg && longestDur >= (targetMealMins / 60)) {
+          segMealMinsMap.set(longestSeg.id, targetMealMins);
+        } else {
+          primaryUnpaidMeal = targetMealMins;
+        }
+      }
+    }
+
+    const isSplitShift = Array.isArray(roleSplitSegments) && roleSplitSegments.length > 0;
+    const totalParts = 1 + (isSplitShift ? roleSplitSegments.length : 0);
+    const splitGrpId = 'grp_' + date.replace(/-/g, '') + '_' + (empId || 'unassigned').substring(0, 8);
+    const cleanNotes = stripSplitTag(notes);
+
+    const primaryNotes = isSplitShift 
+      ? `[Split Shift #${splitGrpId} Part 1/${totalParts}]${cleanNotes ? ' ' + cleanNotes : ''}`
+      : cleanNotes;
+
     const shiftData = {
       employeeId: empId,
       role: role,
       date: date,
       startTime: start,
       endTime: end,
-      unpaidMealMins: unpaidMealMins,
-      notes: notes
+      unpaidMealMins: primaryUnpaidMeal,
+      notes: primaryNotes
     };
 
     if (id) {
@@ -4100,6 +4400,10 @@ async function handleShiftSubmit(event) {
       }
     } else {
       const created = await BriskDB.addShift(shiftData);
+      if (created && created.id) {
+        const shiftIdInput = document.getElementById('shift-id');
+        if (shiftIdInput) shiftIdInput.value = created.id;
+      }
       if (created && typeof recordRosterAction === 'function') {
         recordRosterAction({
           type: 'CREATE',
@@ -4113,28 +4417,50 @@ async function handleShiftSubmit(event) {
       }
     }
 
-    // Save extra split-role segments if present
-    if (roleSplitSegments && roleSplitSegments.length > 0) {
+    // Save or update split segments
+    if (isSplitShift) {
+      let partIdx = 2;
       for (const seg of roleSplitSegments) {
         if (seg.startTime && seg.endTime && seg.role) {
-          const segDuration = calculateShiftHours(seg.startTime, seg.endTime, 0);
-          const segBreaks = getAwardBreakEntitlements(segDuration);
-          const segShift = {
+          const segMealMins = segMealMinsMap.get(seg.id) || 0;
+          const segNotes = `[Split Shift #${splitGrpId} Part ${partIdx}/${totalParts}]${cleanNotes ? ' ' + cleanNotes : ''}`;
+          const segShiftData = {
             employeeId: empId,
             role: seg.role,
             date: date,
             startTime: seg.startTime,
             endTime: seg.endTime,
-            unpaidMealMins: segBreaks.unpaidMealMins,
-            notes: notes ? `[Split Role] ${notes}` : '[Split Role]'
+            unpaidMealMins: segMealMins,
+            notes: segNotes
           };
-          await BriskDB.addShift(segShift);
+
+          if (seg.existingShiftId) {
+            segShiftData.id = seg.existingShiftId;
+            await BriskDB.updateShift(segShiftData);
+          } else {
+            const addedSeg = await BriskDB.addShift(segShiftData);
+            if (addedSeg && addedSeg.id) {
+              seg.existingShiftId = addedSeg.id;
+            }
+          }
+          partIdx++;
         }
       }
-      showToast(`Saved multi-role shifts (${1 + roleSplitSegments.length} parts) successfully.`, 'success');
-    } else {
-      showToast(id ? 'Shift updated successfully.' : 'Shift added successfully.', 'success');
     }
+
+    // Delete any segments removed by user
+    if (Array.isArray(removedSplitShiftIds) && removedSplitShiftIds.length > 0) {
+      for (const remId of removedSplitShiftIds) {
+        try {
+          await BriskDB.deleteShift(remId);
+        } catch (e) {
+          console.warn('Notice removing split shift segment:', remId, e);
+        }
+      }
+      removedSplitShiftIds = [];
+    }
+
+    showToast(isSplitShift ? `Saved multi-role split shift (${totalParts} parts, ${totalGrossHours.toFixed(1)}h gross, ${targetMealMins}m lunch) successfully.` : (id ? 'Shift updated successfully.' : 'Shift added successfully.'), 'success');
 
     clearRoleSplitSegments();
     clearEditingCell();
@@ -4164,10 +4490,34 @@ async function handleShiftDelete() {
     try {
       const shiftToDelete = state.shifts.find(s => s.id === id);
       const emp = shiftToDelete ? state.employees.find(e => e.id === shiftToDelete.employeeId) : null;
-      await BriskDB.deleteShift(id);
-      if (typeof BriskDB.logAudit === 'function') {
-        BriskDB.logAudit('SHIFT_DELETE', `Deleted shift #${id} on ${shiftToDelete ? shiftToDelete.date : ''} (${emp ? emp.name : 'Unassigned'}, ${shiftToDelete ? shiftToDelete.startTime + '-' + shiftToDelete.endTime : ''})`, id);
+      
+      // Check if this shift has sibling split shifts on this date
+      const siblingShifts = (shiftToDelete && shiftToDelete.employeeId && shiftToDelete.date)
+        ? state.shifts.filter(s => 
+            s.employeeId === shiftToDelete.employeeId && 
+            s.date === shiftToDelete.date && 
+            s.id !== id &&
+            s.notes && (s.notes.includes('[Split Shift') || s.notes.includes('[Split Role'))
+          )
+        : [];
+
+      let deleteSiblings = false;
+      if (siblingShifts.length > 0) {
+        deleteSiblings = confirm(`This shift is part of a multi-role split shift (${1 + siblingShifts.length} parts on this day).\n\n• Click OK to delete ALL ${1 + siblingShifts.length} split parts for this day.\n• Click Cancel to delete ONLY this segment (${shiftToDelete ? shiftToDelete.role : 'Part 1'} ${(shiftToDelete?.startTime || '').substring(0, 5)}–${(shiftToDelete?.endTime || '').substring(0, 5)}).`);
       }
+
+      await BriskDB.deleteShift(id);
+      if (deleteSiblings) {
+        for (const sib of siblingShifts) {
+          await BriskDB.deleteShift(sib.id);
+        }
+      }
+
+      if (typeof BriskDB.logAudit === 'function') {
+        BriskDB.logAudit('SHIFT_DELETE', `Deleted shift #${id} on ${shiftToDelete ? shiftToDelete.date : ''} (${emp ? emp.name : 'Unassigned'})`, id);
+      }
+      clearRoleSplitSegments();
+      clearEditingCell();
       loadDataFromState();
       renderScheduler();
       calculateLaborCostForecast();

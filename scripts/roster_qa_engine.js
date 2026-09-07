@@ -271,6 +271,68 @@ assertTest('Wage-to-Sales KPI & Forecast Badge Elements Present', kpiElementsPre
 assertTest('Obsolete Pay Slip & AI Ops Panels Cleanly Removed', payslipModalRemoved, 'index.html still contains obsolete modal-employee-payslip or menu-ai-ops.');
 
 // ---------------------------------------------------------
+// Test Suite 11: Split Shift UI & Award 2026 Break Engine Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 11: Split Shift UI & Award 2026 Break Engine Guard]');
+let splitCardTimeLayoutPass = false;
+let awardBreakEnginePass = false;
+let weekHoursSplitAggregationPass = false;
+
+if (fs.existsSync(appJsPath)) {
+  const appCode = fs.readFileSync(appJsPath, 'utf8');
+  
+  // 1. Check spacious 2-row layout with min-width: 115px for start and finish pickers
+  splitCardTimeLayoutPass = appCode.includes('min-width:115px') && 
+                            appCode.includes('role-split-card') &&
+                            appCode.includes('flex-direction:column');
+  
+  // 2. Check Award Break Engine handles 5h+ and 7.6h+ thresholds
+  awardBreakEnginePass = appCode.includes('unpaidMealMins: 30') &&
+                         appCode.includes('paidBreaks: 2') &&
+                         appCode.includes('grossHours < 7.6');
+
+  // 3. Check calculateEmployeeWeekHours aggregates split shifts per date
+  weekHoursSplitAggregationPass = appCode.includes('shiftsByDate') &&
+                                  appCode.includes('hasExplicitMeal') &&
+                                  appCode.includes('calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins)');
+}
+
+assertTest('Split Shift Time Picker Unclipped Layout Guard', splitCardTimeLayoutPass, 'Role segment rows missing spacious 2-row card or min-width:115px time pickers.');
+assertTest('Pharmacy Industry Award 2026 Break Engine Logic Guard', awardBreakEnginePass, 'Award break engine missing required 30m meal break or 7.6h rest break thresholds.');
+assertTest('Weekly Hours Split Shift Grouping & Calculation Guard', weekHoursSplitAggregationPass, 'calculateEmployeeWeekHours missing date-grouped split shift aggregation.');
+
+// ---------------------------------------------------------
+// Test Suite 12: Split Shift Overtime & DB Defensive Integrity Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 12: Split Shift Overtime & DB Defensive Integrity Guard]');
+let otSplitSiblingDeductionPass = false;
+let saveIdempotencyPass = false;
+let dbNanGuardPass = false;
+
+if (fs.existsSync(appJsPath)) {
+  const appCode = fs.readFileSync(appJsPath, 'utf8');
+  
+  // 1. Check prevShiftHours / prevDuration subtracts existing sibling split shifts to eliminate false OT
+  otSplitSiblingDeductionPass = appCode.includes('seg.existingShiftId') &&
+                               appCode.includes('prevSibling.employeeId === emp.id') &&
+                               appCode.includes('removedSplitShiftIds');
+
+  // 2. Check shift-id is assigned upon creation to prevent duplicates on retry
+  saveIdempotencyPass = appCode.includes("shiftIdInput.value = created.id") &&
+                        appCode.includes("seg.existingShiftId = addedSeg.id");
+}
+
+const dbJsPath = path.join(rootDir, 'js/database.js');
+if (fs.existsSync(dbJsPath)) {
+  const dbCode = fs.readFileSync(dbJsPath, 'utf8');
+  dbNanGuardPass = dbCode.includes('!isNaN(Number(shift.unpaidMealMins))');
+}
+
+assertTest('Split Shift Overtime Deduplication Guard', otSplitSiblingDeductionPass, 'updateShiftBreakSummary or handleShiftSubmit missing sibling split shift deduction.');
+assertTest('Shift Save Idempotency & Retry Duplication Guard', saveIdempotencyPass, 'Shift ID not assigned upon creation or segment ID missing on retry.');
+assertTest('Database Unpaid Meal Minutes NaN Type Guard', dbNanGuardPass, 'database.js missing NaN defensive guard on unpaidMealMins.');
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');
