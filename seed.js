@@ -64,7 +64,7 @@ async function seedPeter() {
       {
         name: 'Wendy Lobb',
         email: 'craftsisters.sydney@gmail.com',
-        role: 'Pharmacy Assistant',
+        role: 'Retail Coordinator',
         hourly_rate: 30.00,
         max_hours: 38,
         availability: {
@@ -115,7 +115,7 @@ async function seedPeter() {
       {
         name: 'Mia Staniland',
         email: 'mia.staniland07@gmail.com',
-        role: 'Pharmacy Assistant',
+        role: 'Stock Controller',
         hourly_rate: 30.00,
         max_hours: 38,
         availability: {
@@ -132,7 +132,7 @@ async function seedPeter() {
       {
         name: 'Vicki Duffy',
         email: 'vickilorraine75@gmail.com',
-        role: 'Pharmacy Assistant',
+        role: 'Retail Manager',
         hourly_rate: 30.00,
         max_hours: 38,
         availability: {

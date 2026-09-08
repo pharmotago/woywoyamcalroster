@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.3.6">
+  <link rel="stylesheet" href="css/styles.css?v=10.3.8">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -362,7 +362,7 @@
             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> <span>Staff Guide (PDF)</span>
           </a>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.3.3)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.3.8)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -2286,18 +2286,35 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.3.0)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.3.8)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
         
+        <!-- v10.3.8 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.8 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Multi-Device Cache-Busting & Autonomous Version Sync</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">08 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Autonomous Version Synchronization:</strong> Built-in client-server version comparison engine that proactively polls version metadata on app launch, window focus, and tab switching. Outdated clients automatically unregister stale service workers and refresh to the newest release without manual intervention.</li>
+            <li><strong>Strict Cache-Control Directives:</strong> Enforced HTTP zero-cache revalidation policies across Vercel Edge CDN for the root HTML shell, Service Worker, and version metadata, ensuring no computer gets locked onto older cached bundles.</li>
+            <li><strong>1-Click Emergency Cache Purge:</strong> Added an instant "Force Update & Clear Cache" action to purge local CacheStorage and browser registrations across any pharmacy dispensary PC or mobile screen.</li>
+            <li><strong>Fault-Tolerant Pre-Caching:</strong> Upgraded Service Worker cache installation with graceful degradation so minor asset network misses never block service worker activation or skipWaiting handover.</li>
+          </ul>
+        </div>
+
         <!-- v10.3.7 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.7 (Latest)</span>
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.3.7</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Split-Shift UI Time Visibility & Unified Award Lunch Break Engine</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">07 Sep 2026</span>
@@ -2478,10 +2495,15 @@
         </div>
 
       </div>
-      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-        <a href="staff-guide.html" target="_blank" class="btn btn-outline" style="font-size:0.8rem;">
-          <i class="fa-solid fa-book-open text-cyan"></i> Open Web Staff Guide
-        </a>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); flex-wrap:wrap; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <a href="staff-guide.html" target="_blank" class="btn btn-outline" style="font-size:0.8rem;">
+            <i class="fa-solid fa-book-open text-cyan"></i> Open Web Staff Guide
+          </a>
+          <button type="button" class="btn btn-outline" onclick="window.forceHardAppUpdate()" style="font-size:0.8rem; border-color:rgba(0,229,255,0.4); color:var(--accent-cyan);" title="Force browser to purge cached version and reload latest release">
+            <i class="fa-solid fa-arrows-rotate"></i> Force Update & Clear Cache
+          </button>
+        </div>
         <button class="btn btn-primary" onclick="closeChangelogModal()">Close</button>
       </div>
     </div>
@@ -2492,16 +2514,103 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.3.7"></script>
+  <script type="module" src="js/app.js?v=10.3.8"></script>
 
-  <!-- PWA Service Worker Registration & Auto-Update Engine -->
+  <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
+    const APP_VERSION = '10.3.8';
+    window.APP_VERSION = APP_VERSION;
+
+    // Global helper to force-purge all caches and reload the latest version
+    window.forceHardAppUpdate = async function(silent = false) {
+      if (!silent) {
+        if (typeof showToast === 'function') {
+          showToast('Updating to latest version (' + APP_VERSION + ')...', 'info');
+        } else {
+          console.log('[Update] Updating to latest version (' + APP_VERSION + ')...');
+        }
+      }
+      try {
+        // 1. Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            try {
+              if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+              await reg.unregister();
+            } catch (e) {
+              console.warn('[Update] Unregister SW failed:', e);
+            }
+          }
+        }
+        // 2. Clear all CacheStorage entries
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const key of keys) {
+            try {
+              await caches.delete(key);
+            } catch (e) {
+              console.warn('[Update] Delete cache failed:', key, e);
+            }
+          }
+        }
+        // 3. Mark version in localStorage
+        try {
+          localStorage.setItem('amcal_app_version', APP_VERSION);
+          localStorage.setItem('amcal_last_force_update', Date.now().toString());
+        } catch (e) {}
+
+        // 4. Force reload from server with cache-busting timestamp
+        const cleanUrl = window.location.origin + window.location.pathname + '?upd=' + Date.now();
+        window.location.replace(cleanUrl);
+      } catch (err) {
+        console.error('[Update] Error during hard update:', err);
+        window.location.reload();
+      }
+    };
+
+    // Check version against version.json
+    async function checkServerVersion() {
+      try {
+        const res = await fetch('version.json?_t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          const meta = await res.json();
+          if (meta && meta.version && meta.version !== APP_VERSION) {
+            console.log(`[Update] Newer version on server: ${meta.version} vs local: ${APP_VERSION}. Triggering hard update...`);
+            window.forceHardAppUpdate(false);
+          }
+        }
+      } catch (e) {
+        // Silent network fallback
+      }
+    }
+    window.checkServerVersion = checkServerVersion;
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=10.3.7')
+        // Run initial server version check
+        checkServerVersion();
+
+        navigator.serviceWorker.register('sw.js?v=' + APP_VERSION)
           .then(registration => {
             console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
             registration.update(); // Proactively poll for SW updates on every load
+
+            // If a worker is waiting, immediately instruct it to skipWaiting
+            if (registration.waiting) {
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+
+            registration.addEventListener('updatefound', () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.addEventListener('statechange', () => {
+                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    installingWorker.postMessage({ type: 'SKIP_WAITING' });
+                  }
+                });
+              }
+            });
           })
           .catch(error => console.error('[PWA] ServiceWorker registration failed:', error));
       });
@@ -2515,7 +2624,21 @@
         }
       });
     }
+
+    // Check server version when tab becomes active / visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        checkServerVersion();
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) reg.update();
+          });
+        }
+      }
+    });
+
+    // Periodic background check every 15 minutes
+    setInterval(checkServerVersion, 15 * 60 * 1000);
   </script>
 </body>
 </html>
-

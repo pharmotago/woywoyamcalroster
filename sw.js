@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amcal-rosters-v10.3.7';
+const CACHE_NAME = 'amcal-rosters-v10.3.8';
 const ASSETS = [
   './',
   './index.html',
@@ -11,33 +11,66 @@ const ASSETS = [
   './js/modules/payroll-engine.js',
   './js/modules/compliance.js',
   './js/modules/role-customization.js',
-  './manifest.json'
+  './js/modules/ai-ops.js',
+  './manifest.json',
+  './version.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS))
+      .then(async (cache) => {
+        for (const asset of ASSETS) {
+          try {
+            await cache.add(asset);
+          } catch (err) {
+            console.warn('[SW] Pre-caching asset failed (skipping):', asset, err);
+          }
+        }
+      })
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys.filter((key) => key !== CACHE_NAME).map((key) => {
+          console.log('[SW] Purging old cache:', key);
+          return caches.delete(key);
+        })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'PURGE_ALL_CACHES') {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(() => self.skipWaiting())
+    );
+  }
 });
 
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests
   if (event.request.method !== 'GET') return;
-  // Don't cache Supabase API calls, external dynamic requests, or binary PDF downloads
-  if (event.request.url.includes('supabase.co') || event.request.url.includes('/api/') || event.request.url.endsWith('.pdf') || event.request.url.includes('staff-guide')) return;
+  // Don't cache Supabase API calls, external dynamic requests, binary PDF downloads, version check, or SW itself
+  if (
+    event.request.url.includes('supabase.co') || 
+    event.request.url.includes('/api/') || 
+    event.request.url.endsWith('.pdf') || 
+    event.request.url.includes('staff-guide') ||
+    event.request.url.includes('version.json') ||
+    event.request.url.includes('sw.js')
+  ) {
+    return;
+  }
 
   // Network-First strategy for HTML and JS to ensure instant updates
   event.respondWith(

@@ -52,6 +52,7 @@
     "release:v10.3.5": "git add -A && git commit -m \"fix(mobile): clean mobile table headers suppression for time off cards (v10.3.5) [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.3.6": "git add -A && git commit -m \"feat(scheduler): clean high-legibility weekly shift cards with explicit times (v10.3.6) [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.3.7": "git add -A && git commit -m \"feat(roster): split shift time picker UI fix & unified Award 2026 meal break engine (v10.3.7) [auto]\" && git push origin main && vercel --prod --yes --cwd .",
+    "release:v10.3.8": "git add -A && git commit -m \"feat(pwa): v10.3.8 - multi-device auto-update engine, strict cache-busting headers & 1-click purge [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "release:split-polish": "git add -A && git commit -m \"polish(roster): split segment role select vertical alignment and 34px input balance [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "copy:screen-split": "powershell -Command \"Copy-Item C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/.system_generated/steps/291/media_0.png C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/split_shift_verified_award_break.png -Force\"",
     "copy:screens": "powershell -Command \"Copy-Item C:/Users/Sung/.gemini/antigravity/brain/8366db3e-22d1-448a-8ea4-cac36ae417a0/.system_generated/steps/3722/media_0.png C:/Users/Sung/.gemini/antigravity/brain/8366db3e-22d1-448a-8ea4-cac36ae417a0/weekly_scheduler_clean_shift_cards_v1036.png -Force\"",
@@ -71,6 +72,7 @@
     "git:diff:css": "git diff css/styles.css",
     "git:diff": "git status -s",
     "vercel-help": "vercel link --help",
+    "create:version": "node -e \"const fs=require('fs'); fs.writeFileSync('version.json', JSON.stringify({version:'10.3.8', name:'Amcal Pharmacy Woy Woy Rosters', buildTime:new Date().toISOString()}, null, 2)); console.log('version.json created');\"",
     "vercel-git-help": "vercel git connect --help"
   },
   "dependencies": {

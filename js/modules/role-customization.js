@@ -341,6 +341,9 @@ window.triggerGlobalRefresh = async function() {
   showToast('Refreshing data from Supabase...', 'info');
 
   try {
+    if (typeof window.checkServerVersion === 'function') {
+      window.checkServerVersion();
+    }
     // Force sync and reload
     await BriskDB.syncFromServer();
     loadDataFromState();
