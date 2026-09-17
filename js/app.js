@@ -6087,8 +6087,15 @@ function renderReportsPanel() {
   let totalLoadedCostSum = 0;
 
   const isOwnerOrPeter = hasOwnerOrPeterPermissions(state.currentUser);
+  const isManager = hasManagerPermissions(state.currentUser);
   const exportBtn = document.getElementById('btn-export-payroll');
   if (exportBtn) exportBtn.style.display = isOwnerOrPeter ? 'inline-flex' : 'none';
+
+  const btnKatWeekly = document.getElementById('btn-kat-weekly-payroll');
+  if (btnKatWeekly) btnKatWeekly.style.display = (isOwnerOrPeter || isManager) ? 'inline-flex' : 'none';
+
+  const repKatCard = document.getElementById('rep-kat-payroll-card');
+  if (repKatCard) repKatCard.style.display = (isOwnerOrPeter || isManager) ? 'flex' : 'none';
 
   const activeEmployees = state.employees.filter(e => e.active);
 

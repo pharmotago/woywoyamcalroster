@@ -654,7 +654,692 @@ async function triggerAutoScheduler() {
   }
 }
 
+/* ==========================================================================
+   KATHERINE'S WEEKLY PAYROLL SUMMARY (MONDAY TO SUNDAY)
+   Gated strictly to Owners & Managers.
+   Provides a clean, summarized payroll report per employee from Monday to Sunday
+   so Katherine can easily put through pay via external payroll company.
+   ========================================================================== */
 
+window.katPayrollState = {
+  currentWeekStart: null,
+  mode: 'actual', // 'actual' (approved timecards), 'scheduled' (rostered shifts), 'reconciled' (actual with roster fallback)
+  lastSummaryData: null
+};
+
+function getWeeklyPayrollSummaryForKatherine(weekStartDate = null, mode = 'actual') {
+  if (!hasManagerPermissions(state.currentUser) && !hasOwnerOrPeterPermissions(state.currentUser)) {
+    return { error: 'Unauthorized: Gated strictly to Owners & Managers.' };
+  }
+
+  // 1. Resolve target Monday (00:00:00) to Sunday (23:59:59)
+  let mon = weekStartDate ? new Date(weekStartDate) : (state.currentWeekStart ? new Date(state.currentWeekStart) : new Date());
+  if (isNaN(mon.getTime())) mon = new Date();
+  
+  // Align strictly to Monday
+  const day = mon.getDay();
+  const diff = mon.getDate() - day + (day === 0 ? -6 : 1);
+  mon.setDate(diff);
+  mon.setHours(0, 0, 0, 0);
+
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  sun.setHours(23, 59, 59, 999);
+
+  const monStr = formatDateISO(mon);
+  const sunStr = formatDateISO(sun);
+
+  // 2. Filter Active Employees
+  const activeEmployees = (state.employees || []).filter(e => e.active);
+
+  // Sort employees: Pharmacists first, then Dispensary, then Webster, then Retail/Front, then Casuals
+  activeEmployees.sort((a, b) => {
+    const roleA = (a.role || '').toLowerCase();
+    const roleB = (b.role || '').toLowerCase();
+    const isPharmA = roleA.includes('pharmacist') || roleA.includes('pic');
+    const isPharmB = roleB.includes('pharmacist') || roleB.includes('pic');
+    if (isPharmA && !isPharmB) return -1;
+    if (!isPharmA && isPharmB) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const employeeSummaries = [];
+  let totalOrdinaryHours = 0;
+  let totalSaturdayHours = 0;
+  let totalSundayHours = 0;
+  let totalPubHolidayHours = 0;
+  let totalOvertimeHours = 0;
+  let totalAnnualLeaveHours = 0;
+  let totalSickLeaveHours = 0;
+  let totalPaidHoursAll = 0;
+  let totalGrossWagesAll = 0;
+  let totalSuperannuationAll = 0;
+  let totalLocumInvoicesAll = 0;
+  let totalTimecardsCount = 0;
+  let totalApprovedTimecardsCount = 0;
+  let pendingApprovalAlerts = 0;
+
+  activeEmployees.forEach(emp => {
+    const empType = emp.employmentType || 'permanent';
+    const isCasual = empType === 'casual';
+    const isLocum = empType.startsWith('locum');
+    const hourlyRate = parseFloat(emp.hourlyRate) || 0;
+
+    // Pull timecards for this employee in Mon-Sun
+    const empTimecards = (state.timecards || []).filter(tc => {
+      if (tc.employeeId !== emp.id) return false;
+      const [y, m, d] = tc.date.split('-');
+      const tcDate = new Date(y, m - 1, d);
+      tcDate.setHours(0, 0, 0, 0);
+      return tcDate >= mon && tcDate <= sun;
+    });
+
+    // Pull scheduled shifts for this employee in Mon-Sun
+    const empShifts = (state.shifts || []).filter(s => {
+      if (s.employeeId !== emp.id) return false;
+      const [y, m, d] = s.date.split('-');
+      const sDate = new Date(y, m - 1, d);
+      sDate.setHours(0, 0, 0, 0);
+      return sDate >= mon && sDate <= sun;
+    });
+
+    // Pull approved leave for this employee in Mon-Sun
+    const empLeave = (state.leaveRequests || []).filter(lv => {
+      if (lv.employeeId !== emp.id || lv.status !== 'Approved') return false;
+      const lvStart = new Date(lv.startDate + 'T00:00:00');
+      const lvEnd = new Date(lv.endDate + 'T23:59:59');
+      return (lvStart <= sun && lvEnd >= mon);
+    });
+
+    let empOrdHours = 0;
+    let empSatHours = 0;
+    let empSunHours = 0;
+    let empPubHolHours = 0;
+    let empOtHours = 0;
+    let empAnnualLeaveHours = 0;
+    let empSickLeaveHours = 0;
+
+    let unapprovedPunches = 0;
+    let totalPunches = 0;
+
+    // Calculate daily hours for all 7 days (Mon to Sun)
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(mon.getTime() + i * 86400000);
+      const dateStr = formatDateISO(dayDate);
+      const dayOfWeek = dayDate.getDay(); // 1..6, 0=Sun
+      const isPubHol = typeof isNswPublicHoliday === 'function' ? isNswPublicHoliday(dateStr) : false;
+
+      const dayTcs = empTimecards.filter(tc => tc.date === dateStr);
+      const dayShifts = empShifts.filter(s => s.date === dateStr);
+
+      let dayHours = 0;
+      let dayPunched = false;
+
+      if (dayTcs.length > 0) {
+        totalPunches += dayTcs.length;
+        dayPunched = true;
+        dayTcs.forEach(tc => {
+          if (!tc.approved) unapprovedPunches++;
+          dayHours += parseFloat(tc.totalHours) || 0;
+        });
+      }
+
+      // Mode resolution
+      if (mode === 'scheduled') {
+        dayHours = 0;
+        dayShifts.forEach(s => {
+          if (typeof calculateShiftHours === 'function') {
+            dayHours += calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
+          } else if (typeof BriskScheduler !== 'undefined' && BriskScheduler.getShiftDuration) {
+            dayHours += BriskScheduler.getShiftDuration(s.startTime, s.endTime);
+          }
+        });
+      } else if (mode === 'reconciled' && !dayPunched && dayShifts.length > 0) {
+        dayShifts.forEach(s => {
+          if (typeof calculateShiftHours === 'function') {
+            dayHours += calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
+          } else if (typeof BriskScheduler !== 'undefined' && BriskScheduler.getShiftDuration) {
+            dayHours += BriskScheduler.getShiftDuration(s.startTime, s.endTime);
+          }
+        });
+      }
+
+      // Check for daily overtime (> 12.0 hours ordinary per Fair Work Award Clause 13.2)
+      let normalDailyHours = dayHours;
+      if (dayHours > 12.0) {
+        empOtHours += (dayHours - 12.0);
+        normalDailyHours = 12.0;
+      }
+
+      if (normalDailyHours > 0) {
+        if (isPubHol) {
+          empPubHolHours += normalDailyHours;
+        } else if (dayOfWeek === 0) {
+          empSunHours += normalDailyHours;
+        } else if (dayOfWeek === 6) {
+          empSatHours += normalDailyHours;
+        } else {
+          empOrdHours += normalDailyHours;
+        }
+      }
+    }
+
+    // Weekly Overtime (> 38 hours ordinary for the week)
+    if (empOrdHours > 38.0) {
+      const weeklyOt = empOrdHours - 38.0;
+      empOtHours += weeklyOt;
+      empOrdHours = 38.0;
+    }
+
+    // Process Approved Paid Leave (Mon-Fri ordinary days)
+    if (!isCasual && !isLocum) {
+      empLeave.forEach(lv => {
+        const reason = (lv.reason || '').toLowerCase();
+        const lvStart = new Date(lv.startDate + 'T00:00:00');
+        const lvEnd = new Date(lv.endDate + 'T23:59:59');
+        let leaveDaysInWeek = 0;
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(mon.getTime() + i * 86400000);
+          if (d >= lvStart && d <= lvEnd && d.getDay() >= 1 && d.getDay() <= 5) {
+            leaveDaysInWeek++;
+          }
+        }
+        const hoursPerDay = 7.6; // Standard 38h / 5 days
+        const totalLvHours = leaveDaysInWeek * hoursPerDay;
+
+        if (reason.includes('sick') || reason.includes('personal') || reason.includes('carer') || reason.includes('medical')) {
+          empSickLeaveHours += totalLvHours;
+        } else {
+          empAnnualLeaveHours += totalLvHours;
+        }
+      });
+    }
+
+    const totalPaidHours = empOrdHours + empSatHours + empSunHours + empPubHolHours + empOtHours + empAnnualLeaveHours + empSickLeaveHours;
+
+    // Financial calculations
+    let grossPay = 0;
+    let superAmount = 0;
+    let locumInvoice = 0;
+
+    if (isLocum) {
+      locumInvoice = totalPaidHours * hourlyRate;
+      if (empType === 'locum_invoice') {
+        const gst = locumInvoice * 0.10;
+        superAmount = locumInvoice * 0.12;
+        grossPay = locumInvoice + gst + superAmount;
+      } else if (empType === 'locum_invoice_no_gst') {
+        superAmount = locumInvoice * 0.12;
+        grossPay = locumInvoice + superAmount;
+      } else {
+        // all-inclusive
+        grossPay = locumInvoice;
+        superAmount = 0;
+      }
+    } else if (isCasual) {
+      const ordPay = empOrdHours * hourlyRate * 1.25;
+      const satPay = empSatHours * hourlyRate * 1.50;
+      const sunPay = empSunHours * hourlyRate * 2.00;
+      const pubPay = empPubHolHours * hourlyRate * 2.50;
+      const otPay = empOtHours * hourlyRate * 2.25;
+      grossPay = ordPay + satPay + sunPay + pubPay + otPay;
+      superAmount = grossPay * 0.12;
+    } else {
+      const ordPay = empOrdHours * hourlyRate * 1.0;
+      const satPay = empSatHours * hourlyRate * 1.25;
+      const sunPay = empSunHours * hourlyRate * 1.75;
+      const pubPay = empPubHolHours * hourlyRate * 2.25;
+      const otPay = empOtHours * hourlyRate * 2.00;
+      const leavePay = (empAnnualLeaveHours + empSickLeaveHours) * hourlyRate * 1.0;
+      grossPay = ordPay + satPay + sunPay + pubPay + otPay + leavePay;
+      superAmount = grossPay * 0.12;
+    }
+
+    // Accumulate Store Totals
+    totalOrdinaryHours += empOrdHours;
+    totalSaturdayHours += empSatHours;
+    totalSundayHours += empSunHours;
+    totalPubHolidayHours += empPubHolHours;
+    totalOvertimeHours += empOtHours;
+    totalAnnualLeaveHours += empAnnualLeaveHours;
+    totalSickLeaveHours += empSickLeaveHours;
+    totalPaidHoursAll += totalPaidHours;
+    totalGrossWagesAll += grossPay;
+    totalSuperannuationAll += superAmount;
+    if (isLocum) totalLocumInvoicesAll += locumInvoice;
+
+    totalTimecardsCount += totalPunches;
+    totalApprovedTimecardsCount += (totalPunches - unapprovedPunches);
+    pendingApprovalAlerts += unapprovedPunches;
+
+    // Only include employees who have hours or scheduled shifts this week
+    if (totalPaidHours > 0 || empShifts.length > 0 || empTimecards.length > 0) {
+      employeeSummaries.push({
+        id: emp.id,
+        name: emp.name,
+        role: emp.role || 'Staff',
+        employmentType: empType,
+        awardLevel: emp.awardLevel || 'Standard',
+        hourlyRate,
+        isLocum,
+        isCasual,
+        ordinaryHours: empOrdHours,
+        saturdayHours: empSatHours,
+        sundayHours: empSunHours,
+        pubHolidayHours: empPubHolHours,
+        overtimeHours: empOtHours,
+        annualLeaveHours: empAnnualLeaveHours,
+        sickLeaveHours: empSickLeaveHours,
+        totalPaidHours,
+        grossPay,
+        superAmount,
+        locumInvoice,
+        unapprovedPunches,
+        totalPunches,
+        approvalStatus: totalPunches === 0 
+          ? (empShifts.length > 0 ? 'Rostered Only' : 'No Punches')
+          : (unapprovedPunches === 0 ? 'Approved' : `${unapprovedPunches} Pending`)
+      });
+    }
+  });
+
+  const result = {
+    storeName: 'Amcal Pharmacy Woy Woy',
+    storeAddress: 'Deepwater Plaza, Woy Woy NSW 2256',
+    monDate: monStr,
+    sunDate: sunStr,
+    monDateObj: mon,
+    periodDisplay: `${mon.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} – ${sun.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`,
+    mode,
+    activeStaffCount: employeeSummaries.length,
+    totalPunches: totalTimecardsCount,
+    unapprovedPunches: pendingApprovalAlerts,
+    allTimecardsApproved: pendingApprovalAlerts === 0,
+    employeeSummaries,
+    totals: {
+      ordinaryHours: totalOrdinaryHours,
+      saturdayHours: totalSaturdayHours,
+      sundayHours: totalSundayHours,
+      pubHolidayHours: totalPubHolidayHours,
+      overtimeHours: totalOvertimeHours,
+      annualLeaveHours: totalAnnualLeaveHours,
+      sickLeaveHours: totalSickLeaveHours,
+      totalPaidHours: totalPaidHoursAll,
+      grossWages: totalGrossWagesAll,
+      superannuation: totalSuperannuationAll,
+      locumInvoices: totalLocumInvoicesAll,
+      totalPayable: totalGrossWagesAll
+    }
+  };
+
+  window.katPayrollState.lastSummaryData = result;
+  return result;
+}
+
+function openKatPayrollSummaryModal(targetWeekStart = null) {
+  if (!hasManagerPermissions(state.currentUser) && !hasOwnerOrPeterPermissions(state.currentUser)) {
+    showToast('Permission denied: Payroll Summary is restricted to Katherine and Managers.', 'warning');
+    return;
+  }
+
+  const modal = document.getElementById('modal-kat-payroll-summary');
+  if (!modal) {
+    console.error('Modal modal-kat-payroll-summary not found in DOM.');
+    return;
+  }
+
+  if (targetWeekStart) {
+    window.katPayrollState.currentWeekStart = new Date(targetWeekStart);
+  } else if (!window.katPayrollState.currentWeekStart) {
+    window.katPayrollState.currentWeekStart = state.currentWeekStart ? new Date(state.currentWeekStart) : new Date();
+  }
+
+  renderKatPayrollSummaryModal();
+  modal.classList.add('active');
+}
+
+function closeKatPayrollSummaryModal() {
+  const modal = document.getElementById('modal-kat-payroll-summary');
+  if (modal) modal.classList.remove('active');
+}
+
+function changeKatPayrollWeek(offsetWeeks = 0) {
+  if (offsetWeeks === 0) {
+    window.katPayrollState.currentWeekStart = state.currentWeekStart ? new Date(state.currentWeekStart) : new Date();
+  } else {
+    const current = new Date(window.katPayrollState.currentWeekStart || state.currentWeekStart || new Date());
+    current.setDate(current.getDate() + (offsetWeeks * 7));
+    window.katPayrollState.currentWeekStart = current;
+  }
+  renderKatPayrollSummaryModal();
+}
+
+function toggleKatPayrollDataMode(mode) {
+  window.katPayrollState.mode = mode;
+  renderKatPayrollSummaryModal();
+  showToast(`Switched payroll view mode to: ${mode === 'actual' ? 'Approved Timecards (Actual Punches)' : mode === 'scheduled' ? 'Scheduled Shifts (Planned Roster)' : 'Reconciled (Actual + Roster Fallback)'}`, 'info');
+}
+
+function renderKatPayrollSummaryModal() {
+  const summary = getWeeklyPayrollSummaryForKatherine(window.katPayrollState.currentWeekStart, window.katPayrollState.mode);
+  if (summary.error) {
+    showToast(summary.error, 'error');
+    return;
+  }
+
+  // Update Period Text
+  const weekDisplay = document.getElementById('kat-payroll-week-display');
+  if (weekDisplay) weekDisplay.textContent = summary.periodDisplay;
+  const printPeriod = document.getElementById('kat-print-period-text');
+  if (printPeriod) printPeriod.textContent = `Pay Period: Monday ${summary.monDate} to Sunday ${summary.sunDate}`;
+
+  // Mode Buttons
+  const modeActualBtn = document.getElementById('kat-mode-actual');
+  const modeSchedBtn = document.getElementById('kat-mode-scheduled');
+  const modeReconBtn = document.getElementById('kat-mode-reconciled');
+  if (modeActualBtn) modeActualBtn.className = window.katPayrollState.mode === 'actual' ? 'btn btn-primary' : 'btn btn-outline';
+  if (modeSchedBtn) modeSchedBtn.className = window.katPayrollState.mode === 'scheduled' ? 'btn btn-primary' : 'btn btn-outline';
+  if (modeReconBtn) modeReconBtn.className = window.katPayrollState.mode === 'reconciled' ? 'btn btn-primary' : 'btn btn-outline';
+
+  // Status Banner
+  const banner = document.getElementById('kat-payroll-status-banner');
+  if (banner) {
+    if (summary.unapprovedPunches > 0) {
+      banner.style.background = 'rgba(245, 158, 11, 0.12)';
+      banner.style.border = '1px solid rgba(245, 158, 11, 0.35)';
+      banner.style.color = '#f59e0b';
+      banner.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div>
+            <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>
+            <strong>Action Required:</strong> <strong>${summary.unapprovedPunches}</strong> timecard punch(es) are pending manager approval for this week.
+          </div>
+          <button type="button" class="btn btn-outline" style="padding:4px 12px; font-size:0.75rem; color:#10b981; border-color:rgba(16,185,129,0.4);" onclick="approveAllTimecardsForKatWeek()">
+            <i class="fa-solid fa-check-double"></i> Approve All For This Week
+          </button>
+        </div>
+      `;
+    } else {
+      banner.style.background = 'rgba(16, 185, 129, 0.1)';
+      banner.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+      banner.style.color = '#10b981';
+      banner.innerHTML = `<i class="fa-solid fa-circle-check" style="margin-right:6px;"></i> <strong>All Clear for Payroll:</strong> All timecards are approved and reconciled. Ready to submit via external payroll company.`;
+    }
+  }
+
+  // KPI Cards
+  const kpiGross = document.getElementById('kat-kpi-gross-wages');
+  const kpiSuper = document.getElementById('kat-kpi-super');
+  const kpiHours = document.getElementById('kat-kpi-hours');
+  const kpiLocum = document.getElementById('kat-kpi-locum');
+
+  if (kpiGross) kpiGross.textContent = `$${summary.totals.grossWages.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (kpiSuper) kpiSuper.textContent = `$${summary.totals.superannuation.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (kpiHours) kpiHours.textContent = `${summary.totals.totalPaidHours.toFixed(1)}h`;
+  if (kpiLocum) kpiLocum.textContent = `$${summary.totals.locumInvoices.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  // Table Body
+  const tbody = document.getElementById('kat-payroll-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (summary.employeeSummaries.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted" style="padding: 2rem;">No shifts or timecards recorded for Monday to Sunday in this week.</td></tr>`;
+    return;
+  }
+
+  summary.employeeSummaries.forEach(row => {
+    let typeBadge = '<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; font-size:0.72rem;">Permanent</span>';
+    if (row.isCasual) {
+      typeBadge = '<span class="badge" style="background:rgba(59,130,246,0.15); color:#60a5fa; font-size:0.72rem;">Casual (1.25x)</span>';
+    } else if (row.isLocum) {
+      typeBadge = '<span class="badge" style="background:rgba(168,85,247,0.15); color:#c084fc; font-size:0.72rem;">Locum Contractor</span>';
+    }
+
+    let statusPill = `<span class="badge badge-success" style="font-size:0.7rem;"><i class="fa-solid fa-check"></i> Approved</span>`;
+    if (row.unapprovedPunches > 0) {
+      statusPill = `<span class="badge badge-warning" style="font-size:0.7rem;">⚠️ ${row.unapprovedPunches} Pending</span>`;
+    } else if (row.totalPunches === 0) {
+      statusPill = `<span class="badge badge-outline" style="font-size:0.7rem;">Rostered</span>`;
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <strong style="color:var(--text-primary); font-size:0.88rem;">${row.name}</strong>
+        <div style="font-size:0.72rem; color:var(--text-muted);">${row.role}</div>
+      </td>
+      <td>${typeBadge}</td>
+      <td class="text-right" style="font-family:monospace;">$${row.hourlyRate.toFixed(2)}</td>
+      <td class="text-right" style="font-weight:600;">${row.ordinaryHours > 0 ? row.ordinaryHours.toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="color:#38bdf8;">${row.saturdayHours > 0 ? row.saturdayHours.toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="color:#ec4899;">${row.sundayHours > 0 ? row.sundayHours.toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="color:#f59e0b;">${row.pubHolidayHours > 0 ? row.pubHolidayHours.toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="color:#ef4444;">${row.overtimeHours > 0 ? row.overtimeHours.toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="color:#a855f7;">${(row.annualLeaveHours + row.sickLeaveHours) > 0 ? (row.annualLeaveHours + row.sickLeaveHours).toFixed(1) + 'h' : '—'}</td>
+      <td class="text-right" style="font-weight:700; color:var(--accent-cyan); font-size:0.92rem;">${row.totalPaidHours.toFixed(1)}h</td>
+      <td class="text-right" style="font-weight:700; color:#10b981; font-size:0.95rem;">$${row.grossPay.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      <td class="text-right" style="color:#34d399; font-size:0.85rem;">${row.isLocum && row.superAmount === 0 ? '—' : '$' + row.superAmount.toFixed(2)}</td>
+      <td class="text-center">${statusPill}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Table Foot
+  const tfoot = document.getElementById('kat-payroll-table-foot');
+  if (tfoot) {
+    tfoot.innerHTML = `
+      <tr class="row-total" style="background:rgba(255,255,255,0.04); font-weight:700;">
+        <td colspan="3">STORE GRAND TOTALS</td>
+        <td class="text-right">${summary.totals.ordinaryHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#38bdf8;">${summary.totals.saturdayHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#ec4899;">${summary.totals.sundayHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#f59e0b;">${summary.totals.pubHolidayHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#ef4444;">${summary.totals.overtimeHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#a855f7;">${(summary.totals.annualLeaveHours + summary.totals.sickLeaveHours).toFixed(1)}h</td>
+        <td class="text-right" style="color:var(--accent-cyan); font-size:1rem;">${summary.totals.totalPaidHours.toFixed(1)}h</td>
+        <td class="text-right" style="color:#10b981; font-size:1.05rem;">$${summary.totals.grossWages.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="text-right" style="color:#34d399; font-size:0.95rem;">$${summary.totals.superannuation.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td class="text-center">${summary.allTimecardsApproved ? '✅ Verified' : '⚠️ Pending'}</td>
+      </tr>
+    `;
+  }
+}
+
+async function approveAllTimecardsForKatWeek() {
+  if (!hasManagerPermissions(state.currentUser) && !hasOwnerOrPeterPermissions(state.currentUser)) {
+    showToast('Permission denied: Only managers and owners can approve timecards.', 'error');
+    return;
+  }
+
+  const summary = window.katPayrollState.lastSummaryData;
+  if (!summary) return;
+
+  const mon = new Date(summary.monDate + 'T00:00:00');
+  const sun = new Date(summary.sunDate + 'T23:59:59');
+
+  const pendingTcs = (state.timecards || []).filter(tc => {
+    if (tc.approved) return false;
+    const tcDate = new Date(tc.date + 'T00:00:00');
+    return tcDate >= mon && tcDate <= sun;
+  });
+
+  if (pendingTcs.length === 0) {
+    showToast('All timecards for this week are already approved!', 'info');
+    return;
+  }
+
+  if (!confirm(`Approve and lock all ${pendingTcs.length} pending timecards for the week of ${summary.periodDisplay}?`)) return;
+
+  try {
+    for (const tc of pendingTcs) {
+      tc.approved = true;
+      tc.approvedBy = state.currentUser.name || 'Owner (Katherine/Peter)';
+      await BriskDB.updateTimecard(tc);
+    }
+    showToast(`Successfully approved all ${pendingTcs.length} timecards for payroll!`, 'success');
+    renderKatPayrollSummaryModal();
+    if (typeof renderReportsPanel === 'function') renderReportsPanel();
+  } catch (err) {
+    console.error('Batch approve error:', err);
+    showToast(`Failed to approve all timecards: ${err.message}`, 'error');
+  }
+}
+
+async function copyKatPayrollSummaryToClipboard() {
+  const summary = window.katPayrollState.lastSummaryData || getWeeklyPayrollSummaryForKatherine(window.katPayrollState.currentWeekStart, window.katPayrollState.mode);
+  if (!summary || summary.error) {
+    showToast('Unable to copy payroll summary.', 'error');
+    return;
+  }
+
+  let text = `====================================================\n`;
+  text += `AMCAL PHARMACY WOY WOY — WEEKLY PAYROLL SUMMARY\n`;
+  text += `Period: Monday ${summary.monDate} to Sunday ${summary.sunDate}\n`;
+  text += `Store: Deepwater Plaza, Woy Woy NSW 2256\n`;
+  text += `Prepared for: Katherine Nguyen (External Payroll Processing)\n`;
+  text += `Mode: ${summary.mode === 'actual' ? 'Approved Timecards (Actual Punches)' : summary.mode === 'scheduled' ? 'Scheduled Roster Hours' : 'Reconciled'}\n`;
+  text += `====================================================\n\n`;
+
+  summary.employeeSummaries.forEach((emp, idx) => {
+    text += `${idx + 1}. ${emp.name} — ${emp.role} (${emp.employmentType})\n`;
+    text += `   • Base Hourly Rate: $${emp.hourlyRate.toFixed(2)}/h\n`;
+    text += `   • Ordinary Hours (Mon-Fri): ${emp.ordinaryHours.toFixed(1)}h\n`;
+    if (emp.saturdayHours > 0) text += `   • Saturday Hours: ${emp.saturdayHours.toFixed(1)}h (1.25x / 1.5x loading)\n`;
+    if (emp.sundayHours > 0) text += `   • Sunday Hours: ${emp.sundayHours.toFixed(1)}h (1.75x / 2.0x loading)\n`;
+    if (emp.pubHolidayHours > 0) text += `   • Public Holiday Hours: ${emp.pubHolidayHours.toFixed(1)}h (2.25x / 2.5x loading)\n`;
+    if (emp.overtimeHours > 0) text += `   • Overtime Hours: ${emp.overtimeHours.toFixed(1)}h (2.0x / 2.25x penalty)\n`;
+    if ((emp.annualLeaveHours + emp.sickLeaveHours) > 0) {
+      text += `   • Paid Leave: ${(emp.annualLeaveHours + emp.sickLeaveHours).toFixed(1)}h (Annual: ${emp.annualLeaveHours.toFixed(1)}h | Sick: ${emp.sickLeaveHours.toFixed(1)}h)\n`;
+    }
+    text += `   • TOTAL PAID HOURS: ${emp.totalPaidHours.toFixed(1)}h\n`;
+    text += `   • GROSS WAGES: $${emp.grossPay.toFixed(2)}\n`;
+    if (!emp.isLocum || emp.superAmount > 0) {
+      text += `   • Superannuation (12% SG): $${emp.superAmount.toFixed(2)}\n`;
+    }
+    text += `   • Status: ${emp.approvalStatus}\n\n`;
+  });
+
+  text += `====================================================\n`;
+  text += `GRAND TOTALS TO PROCESS VIA OTHER COMPANY PAYROLL:\n`;
+  text += `----------------------------------------------------\n`;
+  text += `• Total Gross Wages Payable: $${summary.totals.grossWages.toFixed(2)}\n`;
+  text += `• Total Superannuation (12% SG): $${summary.totals.superannuation.toFixed(2)}\n`;
+  if (summary.totals.locumInvoices > 0) {
+    text += `• Total Locum Invoices: $${summary.totals.locumInvoices.toFixed(2)}\n`;
+  }
+  text += `• Total Paid Hours: ${summary.totals.totalPaidHours.toFixed(1)}h\n`;
+  text += `  (Ordinary: ${summary.totals.ordinaryHours.toFixed(1)}h | Sat: ${summary.totals.saturdayHours.toFixed(1)}h | Sun: ${summary.totals.sundayHours.toFixed(1)}h | Pub Hol: ${summary.totals.pubHolidayHours.toFixed(1)}h | OT: ${summary.totals.overtimeHours.toFixed(1)}h | Leave: ${(summary.totals.annualLeaveHours + summary.totals.sickLeaveHours).toFixed(1)}h)\n`;
+  text += `• Timesheet Approval: ${summary.allTimecardsApproved ? '100% Approved & Locked' : `${summary.unapprovedPunches} punches pending approval`}\n`;
+  text += `====================================================\n`;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('📋 Weekly payroll summary copied to clipboard! Ready to paste into email or WhatsApp for Katherine.', 'success');
+  } catch (err) {
+    console.error('Clipboard copy error:', err);
+    showToast('Failed to copy to clipboard automatically. Check console.', 'error');
+  }
+}
+
+function downloadKatPayrollBureauCsv() {
+  const summary = window.katPayrollState.lastSummaryData || getWeeklyPayrollSummaryForKatherine(window.katPayrollState.currentWeekStart, window.katPayrollState.mode);
+  if (!summary || summary.error) {
+    showToast('Unable to export CSV.', 'error');
+    return;
+  }
+
+  const rows = [
+    ['Amcal Pharmacy Woy Woy - Weekly Payroll Bureau Summary'],
+    [`Period: Monday ${summary.monDate} to Sunday ${summary.sunDate}`],
+    [`Prepared for: Katherine Nguyen (External Payroll Processing)`],
+    [`Generated: ${new Date().toLocaleString('en-AU')}`],
+    [],
+    [
+      'Employee Name',
+      'Role / Department',
+      'Employment Type',
+      'Award Level',
+      'Base Hourly Rate ($/h)',
+      'Ordinary Hours (Mon-Fri)',
+      'Saturday Hours (h)',
+      'Sunday Hours (h)',
+      'Public Holiday Hours (h)',
+      'Overtime Hours (h)',
+      'Annual Leave Hours (h)',
+      'Sick / Carer Leave Hours (h)',
+      'Total Paid Hours (h)',
+      'Gross Wages ($)',
+      'Superannuation 12% ($)',
+      'Locum Invoice Total ($)',
+      'Timesheet Status'
+    ]
+  ];
+
+  summary.employeeSummaries.forEach(e => {
+    rows.push([
+      `"${e.name}"`,
+      `"${e.role}"`,
+      `"${e.employmentType}"`,
+      `"${e.awardLevel}"`,
+      e.hourlyRate.toFixed(2),
+      e.ordinaryHours.toFixed(2),
+      e.saturdayHours.toFixed(2),
+      e.sundayHours.toFixed(2),
+      e.pubHolidayHours.toFixed(2),
+      e.overtimeHours.toFixed(2),
+      e.annualLeaveHours.toFixed(2),
+      e.sickLeaveHours.toFixed(2),
+      e.totalPaidHours.toFixed(2),
+      e.grossPay.toFixed(2),
+      e.superAmount.toFixed(2),
+      e.locumInvoice.toFixed(2),
+      `"${e.approvalStatus}"`
+    ]);
+  });
+
+  // Add Grand Totals Row
+  rows.push([]);
+  rows.push([
+    '"GRAND TOTALS"',
+    '""',
+    '""',
+    '""',
+    '""',
+    summary.totals.ordinaryHours.toFixed(2),
+    summary.totals.saturdayHours.toFixed(2),
+    summary.totals.sundayHours.toFixed(2),
+    summary.totals.pubHolidayHours.toFixed(2),
+    summary.totals.overtimeHours.toFixed(2),
+    summary.totals.annualLeaveHours.toFixed(2),
+    summary.totals.sickLeaveHours.toFixed(2),
+    summary.totals.totalPaidHours.toFixed(2),
+    summary.totals.grossWages.toFixed(2),
+    summary.totals.superannuation.toFixed(2),
+    summary.totals.locumInvoices.toFixed(2),
+    summary.allTimecardsApproved ? '"All Approved"' : `"${summary.unapprovedPunches} Pending"`
+  ]);
+
+  const csvContent = rows.map(r => r.join(',')).join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Amcal_WoyWoy_Payroll_Summary_Mon_Sun_${summary.monDate}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('📥 Downloaded Katherine\'s Payroll Bureau CSV (1 row per employee) successfully!', 'success');
+}
+
+function printKatPayrollSummary() {
+  document.body.classList.add('printing-kat-payroll');
+  window.print();
+  setTimeout(() => {
+    document.body.classList.remove('printing-kat-payroll');
+  }, 1000);
+}
 
 /* --- AUTO-GENERATED WINDOW BINDINGS --- */
 if (typeof window !== 'undefined') window.getHigherDutiesMinimumRate = getHigherDutiesMinimumRate;
@@ -677,3 +1362,15 @@ if (typeof window !== 'undefined') window.handleSaveSalesTargets = handleSaveSal
 if (typeof window !== 'undefined') window.triggerClearWeek = triggerClearWeek;
 if (typeof window !== 'undefined') window.copyCurrentWeekToNextWeek = copyCurrentWeekToNextWeek;
 if (typeof window !== 'undefined') window.triggerAutoScheduler = triggerAutoScheduler;
+
+// Katherine's Weekly Payroll Summary Bindings
+if (typeof window !== 'undefined') window.getWeeklyPayrollSummaryForKatherine = getWeeklyPayrollSummaryForKatherine;
+if (typeof window !== 'undefined') window.openKatPayrollSummaryModal = openKatPayrollSummaryModal;
+if (typeof window !== 'undefined') window.closeKatPayrollSummaryModal = closeKatPayrollSummaryModal;
+if (typeof window !== 'undefined') window.changeKatPayrollWeek = changeKatPayrollWeek;
+if (typeof window !== 'undefined') window.toggleKatPayrollDataMode = toggleKatPayrollDataMode;
+if (typeof window !== 'undefined') window.renderKatPayrollSummaryModal = renderKatPayrollSummaryModal;
+if (typeof window !== 'undefined') window.approveAllTimecardsForKatWeek = approveAllTimecardsForKatWeek;
+if (typeof window !== 'undefined') window.copyKatPayrollSummaryToClipboard = copyKatPayrollSummaryToClipboard;
+if (typeof window !== 'undefined') window.downloadKatPayrollBureauCsv = downloadKatPayrollBureauCsv;
+if (typeof window !== 'undefined') window.printKatPayrollSummary = printKatPayrollSummary;

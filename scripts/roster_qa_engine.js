@@ -333,6 +333,65 @@ assertTest('Shift Save Idempotency & Retry Duplication Guard', saveIdempotencyPa
 assertTest('Database Unpaid Meal Minutes NaN Type Guard', dbNanGuardPass, 'database.js missing NaN defensive guard on unpaidMealMins.');
 
 // ---------------------------------------------------------
+// Test Suite 13: Katherine's Executive Payroll Summary & Award Penalty Engine Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 13: Katherine Weekly Payroll Summary & Award Engine Guard]');
+const payrollEnginePath = path.join(rootDir, 'js/modules/payroll-engine.js');
+let payrollEngineExists = false;
+let hasKatSummaryFn = false;
+let hasKatCsvExport = false;
+let hasKatClipboard = false;
+let hasKatApproval = false;
+
+if (fs.existsSync(payrollEnginePath)) {
+  payrollEngineExists = true;
+  const peCode = fs.readFileSync(payrollEnginePath, 'utf8');
+  hasKatSummaryFn = peCode.includes('getWeeklyPayrollSummaryForKatherine') && peCode.includes('employeeSummaries');
+  hasKatCsvExport = peCode.includes('downloadKatPayrollBureauCsv') && peCode.includes('text/csv');
+  hasKatClipboard = peCode.includes('copyKatPayrollSummaryToClipboard') && peCode.includes('navigator.clipboard.writeText');
+  hasKatApproval = peCode.includes('approveAllTimecardsForKatWeek');
+}
+
+let katModalInHtml = false;
+let katKpiInHtml = false;
+let katBtnInHtml = false;
+let versionAligned = false;
+
+if (fs.existsSync(indexHtmlPath)) {
+  const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+  katModalInHtml = indexHtml.includes('id="modal-kat-payroll-summary"') && indexHtml.includes('id="kat-payroll-table-body"');
+  katKpiInHtml = indexHtml.includes('id="kat-kpi-gross-wages"') && indexHtml.includes('id="kat-kpi-super"') && indexHtml.includes('id="kat-kpi-hours"');
+  katBtnInHtml = indexHtml.includes('id="btn-kat-weekly-payroll"') || indexHtml.includes('openKatPayrollSummaryModal()');
+  versionAligned = indexHtml.includes('10.4.0');
+}
+
+const stylesCssPath = path.join(rootDir, 'css/styles.css');
+let printStylesPass = false;
+if (fs.existsSync(stylesCssPath)) {
+  const cssCode = fs.readFileSync(stylesCssPath, 'utf8');
+  printStylesPass = cssCode.includes('printing-kat-payroll') && cssCode.includes('#kat-payroll-printable-area');
+}
+
+const versionJsonPath = path.join(rootDir, 'version.json');
+let versionJsonPass = false;
+if (fs.existsSync(versionJsonPath)) {
+  try {
+    const vMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+    versionJsonPass = vMeta.version === '10.4.0';
+  } catch (e) {}
+}
+
+assertTest('Payroll Engine Module (payroll-engine.js) Present', payrollEngineExists, 'js/modules/payroll-engine.js is missing.');
+assertTest('Katherine Mon-Sun Weekly Payroll Engine Function', hasKatSummaryFn, 'getWeeklyPayrollSummaryForKatherine missing or incomplete.');
+assertTest('External Bureau CSV Export & 1-Click Clipboard Actions', hasKatCsvExport && hasKatClipboard, 'CSV export or clipboard function missing.');
+assertTest('Batch Timecard Approval Action for Katherine\'s Selected Week', hasKatApproval, 'approveAllTimecardsForKatWeek function missing.');
+assertTest('Katherine Modal & Table Elements in index.html', katModalInHtml, 'modal-kat-payroll-summary or table body missing from index.html.');
+assertTest('Katherine Executive Gross/Super/Hours KPI Cards in index.html', katKpiInHtml, 'KPI cards missing from index.html.');
+assertTest('Reports Panel Katherine Payroll Trigger Button Present', katBtnInHtml, 'btn-kat-weekly-payroll trigger missing from index.html.');
+assertTest('High-Contrast Executive Print Stylesheet in styles.css', printStylesPass, 'Print CSS rules missing for Katherine payroll statement.');
+assertTest('Platform Version Aligned to v10.4.0 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

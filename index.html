@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.3.8">
+  <link rel="stylesheet" href="css/styles.css?v=10.4.0">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -1012,6 +1012,9 @@
             <button class="btn btn-icon" id="btn-report-next-week"><i class="fa-solid fa-chevron-right"></i></button>
           </div>
           <div class="report-controls">
+            <button class="btn btn-primary" id="btn-kat-weekly-payroll" onclick="openKatPayrollSummaryModal()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color: #38bdf8; font-weight:700; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);">
+              <i class="fa-solid fa-file-invoice-dollar"></i> Kat's Weekly Payroll Summary
+            </button>
             <button class="btn btn-outline" onclick="publishSchedule()">
               <i class="fa-solid fa-paper-plane"></i> Publish Schedule
             </button>
@@ -1023,6 +1026,27 @@
             </button>
             <button class="btn btn-primary" onclick="window.print()">
               <i class="fa-solid fa-print"></i> PDF Print / Download
+            </button>
+          </div>
+        </div>
+
+        <!-- Executive Weekly Payroll Callout for Katherine & Owners -->
+        <div class="glass-card flex-row" id="rep-kat-payroll-card" style="margin-bottom: 1.25rem; padding: 16px 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; background: linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(16, 185, 129, 0.04) 100%); border: 1px solid rgba(2, 132, 199, 0.35); border-radius: var(--radius-md);">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:44px; height:44px; border-radius:10px; background:rgba(2, 132, 199, 0.15); display:flex; align-items:center; justify-content:center; color:#38bdf8; font-size:1.3rem;">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+            </div>
+            <div>
+              <h4 style="margin:0 0 2px 0; font-size:1rem; color:#f8fafc;">Katherine's Weekly Payroll Summary (Monday – Sunday)</h4>
+              <span class="text-muted" style="font-size:0.78rem;">Summarised hours, weekend penalty rates, gross pay & super ready to submit via external payroll company</span>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline" onclick="copyKatPayrollSummaryToClipboard()" style="font-size:0.82rem; padding:8px 14px; color:#38bdf8; border-color:rgba(56, 189, 248, 0.4);">
+              <i class="fa-solid fa-copy"></i> 1-Click Copy Summary
+            </button>
+            <button type="button" class="btn btn-primary" onclick="openKatPayrollSummaryModal()" style="font-size:0.82rem; padding:8px 16px; background:linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border-color:#38bdf8; font-weight:700;">
+              <i class="fa-solid fa-up-right-from-square"></i> Open Full Payroll Summary
             </button>
           </div>
         </div>
@@ -2275,6 +2299,175 @@
   </div>
 
   <!-- ===================================== -->
+  <!-- MODAL: KATHERINE'S WEEKLY PAYROLL SUMMARY -->
+  <!-- ===================================== -->
+  <div id="modal-kat-payroll-summary" class="modal" onclick="if(event.target === this) closeKatPayrollSummaryModal()">
+    <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 1040px; width: 95%;">
+      <!-- Modal Header -->
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(0, 229, 255, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); font-size: 1.2rem;">
+            <i class="fa-solid fa-file-invoice-dollar"></i>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">Katherine's Weekly Payroll Summary</h3>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.72rem; font-weight: 700;">Monday – Sunday</span>
+              <span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); font-size: 0.72rem; font-weight: 700;">Owner / Manager Only</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Amcal Pharmacy Woy Woy • Summarised report for external company payroll submission</span>
+          </div>
+        </div>
+        <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeKatPayrollSummaryModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Controls & Filter Toolbar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; background: rgba(255, 255, 255, 0.02); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-glass);">
+        <!-- Week Navigation -->
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;" onclick="changeKatPayrollWeek(-1)" title="Previous Week">
+            <i class="fa-solid fa-chevron-left"></i> Previous Week
+          </button>
+          <span id="kat-payroll-week-display" style="font-weight: 700; font-size: 0.92rem; color: var(--text-primary); min-width: 170px; text-align: center;">Week of Mon – Sun</span>
+          <button type="button" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;" onclick="changeKatPayrollWeek(1)" title="Next Week">
+            Next Week <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button type="button" class="btn btn-outline" style="padding: 6px 10px; font-size: 0.75rem; margin-left: 4px;" onclick="changeKatPayrollWeek(0)" title="Jump to Current Week">
+            Current Week
+          </button>
+        </div>
+
+        <!-- Mode Selector -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Data Source:</span>
+          <div class="btn-group" role="group" aria-label="Payroll Data Mode">
+            <button type="button" id="kat-mode-actual" class="btn btn-primary" style="font-size: 0.75rem; padding: 6px 10px;" onclick="toggleKatPayrollDataMode('actual')" title="Calculate pay strictly from approved timecard punch clock hours">
+              <i class="fa-solid fa-fingerprint"></i> Approved Timecards
+            </button>
+            <button type="button" id="kat-mode-scheduled" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px;" onclick="toggleKatPayrollDataMode('scheduled')" title="Calculate projected pay from published roster schedule shifts">
+              <i class="fa-solid fa-calendar-days"></i> Roster Shifts
+            </button>
+            <button type="button" id="kat-mode-reconciled" class="btn btn-outline" style="font-size: 0.75rem; padding: 6px 10px;" onclick="toggleKatPayrollDataMode('reconciled')" title="Use approved punches where available, falling back to roster shifts">
+              <i class="fa-solid fa-code-compare"></i> Reconciled
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Status Banner -->
+      <div id="kat-payroll-status-banner" style="margin-bottom: 14px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; transition: all 0.2s ease;">
+        <!-- Dynamically rendered banner (Approval status or action button) -->
+      </div>
+
+      <!-- Scrollable Printable Area -->
+      <div class="modal-body" id="kat-payroll-printable-area" style="max-height: 58vh; overflow-y: auto; padding-right: 4px;">
+        
+        <!-- Print-only Header -->
+        <div class="kat-print-header" style="display: none; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h2 style="margin: 0; font-size: 1.4rem; color: #000;">AMCAL PHARMACY WOY WOY</h2>
+              <div style="font-size: 0.85rem; color: #444;">Deepwater Plaza, Woy Woy NSW 2256 • Ph: (02) 4341 1101</div>
+              <div style="font-size: 0.95rem; font-weight: 700; margin-top: 4px; color: #000;">Executive Weekly Payroll Summary (Mon – Sun)</div>
+            </div>
+            <div style="text-align: right;">
+              <div id="kat-print-period-text" style="font-weight: 700; font-size: 1rem; color: #000;">Pay Period: Monday to Sunday</div>
+              <div style="font-size: 0.8rem; color: #555;">Submitted for External Payroll Processing</div>
+              <div style="font-size: 0.75rem; color: #777;">Prepared for: Katherine Nguyen (Partner/Owner)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards Grid -->
+        <div class="kat-kpi-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+          <div class="glass-card" style="padding: 12px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); text-align: center;">
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;">Gross Wages Payable</span>
+            <div id="kat-kpi-gross-wages" style="font-weight: 800; font-size: 1.35rem; color: #10b981; margin-top: 4px;">$0.00</div>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">PAYG Staff Gross Pay</span>
+          </div>
+          <div class="glass-card" style="padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); text-align: center;">
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;">Superannuation (12%)</span>
+            <div id="kat-kpi-super" style="font-weight: 800; font-size: 1.35rem; color: #38bdf8; margin-top: 4px;">$0.00</div>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">Super Guarantee Charge</span>
+          </div>
+          <div class="glass-card" style="padding: 12px; background: rgba(0, 229, 255, 0.08); border: 1px solid rgba(0, 229, 255, 0.25); text-align: center;">
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Paid Hours</span>
+            <div id="kat-kpi-hours" style="font-weight: 800; font-size: 1.35rem; color: var(--accent-cyan); margin-top: 4px;">0.0h</div>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">Ord + Sat + Sun + Hol + OT</span>
+          </div>
+          <div class="glass-card" style="padding: 12px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); text-align: center;">
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;">Locum Invoices</span>
+            <div id="kat-kpi-locum" style="font-weight: 800; font-size: 1.35rem; color: #c084fc; margin-top: 4px;">$0.00</div>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">Contractor Remittance (+GST)</span>
+          </div>
+        </div>
+
+        <!-- Employee Summary Table -->
+        <div style="overflow-x: auto; border: 1px solid var(--border-glass); border-radius: var(--radius-sm); margin-bottom: 14px;">
+          <table id="kat-payroll-table" class="data-table" style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+            <thead>
+              <tr style="background: rgba(255, 255, 255, 0.04);">
+                <th style="min-width: 140px;">Employee</th>
+                <th style="min-width: 90px;">Type</th>
+                <th class="text-right" style="min-width: 65px;">Rate</th>
+                <th class="text-right" style="min-width: 55px;" title="Ordinary Hours (Monday to Friday)">Ord (M-F)</th>
+                <th class="text-right" style="min-width: 50px; color: #38bdf8;" title="Saturday Hours (1.25x Perm / 1.5x Casual)">Sat</th>
+                <th class="text-right" style="min-width: 50px; color: #ec4899;" title="Sunday Hours (1.75x Perm / 2.0x Casual)">Sun</th>
+                <th class="text-right" style="min-width: 50px; color: #f59e0b;" title="Public Holiday Hours (2.25x Perm / 2.5x Casual)">Pub Hol</th>
+                <th class="text-right" style="min-width: 50px; color: #ef4444;" title="Overtime Hours (>12h/day or >38h/week)">OT</th>
+                <th class="text-right" style="min-width: 55px; color: #a855f7;" title="Paid Annual & Personal/Sick Leave">Leave</th>
+                <th class="text-right" style="min-width: 65px; color: var(--accent-cyan); font-weight: 700;">Total Hrs</th>
+                <th class="text-right" style="min-width: 80px; color: #10b981; font-weight: 700;">Gross Pay</th>
+                <th class="text-right" style="min-width: 75px; color: #34d399;">Super (12%)</th>
+                <th class="text-center" style="min-width: 75px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="kat-payroll-table-body">
+              <!-- Dynamically populated rows -->
+            </tbody>
+            <tfoot id="kat-payroll-table-foot">
+              <!-- Dynamically populated grand totals -->
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Print-only Signatures block -->
+        <div class="kat-print-signatures" style="display: none; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc;">
+          <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+            <div style="width: 45%;">
+              <div style="border-bottom: 1px solid #000; height: 35px;"></div>
+              <div style="font-size: 0.8rem; margin-top: 4px; font-weight: bold; color: #000;">Submitted by: Katherine Nguyen / Peter Kim (Partners)</div>
+              <div style="font-size: 0.75rem; color: #555;">Date: ____________________</div>
+            </div>
+            <div style="width: 45%;">
+              <div style="border-bottom: 1px solid #000; height: 35px;"></div>
+              <div style="font-size: 0.8rem; margin-top: 4px; font-weight: bold; color: #000;">External Payroll Officer / Bureau Acceptance</div>
+              <div style="font-size: 0.75rem; color: #555;">Processed Date: ____________________</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer with Kat's 3 Core Actions -->
+      <div class="modal-footer" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="btn btn-outline" style="color: var(--accent-cyan); border-color: rgba(0, 229, 255, 0.4); font-size: 0.82rem;" onclick="copyKatPayrollSummaryToClipboard()" title="Copy clean, formatted summary text to clipboard for email/messaging to payroll company">
+            <i class="fa-solid fa-copy"></i> Copy for Email / WhatsApp
+          </button>
+          <button type="button" class="btn btn-outline" style="color: #10b981; border-color: rgba(16, 185, 129, 0.4); font-size: 0.82rem;" onclick="downloadKatPayrollBureauCsv()" title="Download standard CSV spreadsheet for external payroll system import">
+            <i class="fa-solid fa-file-csv"></i> Download Bureau CSV
+          </button>
+          <button type="button" class="btn btn-outline" style="color: #c084fc; border-color: rgba(168, 85, 247, 0.4); font-size: 0.82rem;" onclick="printKatPayrollSummary()" title="Print or save as executive clean PDF statement">
+            <i class="fa-solid fa-print"></i> Print / Save PDF
+          </button>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="closeKatPayrollSummaryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================== -->
   <!-- MODAL: SYSTEM UPDATES & CHANGELOG -->
   <!-- ===================================== -->
   <div id="modal-changelog" class="modal" onclick="if(event.target === this) closeChangelogModal()">
@@ -2286,18 +2479,36 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.3.8)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.4.0)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
-        
-        <!-- v10.3.8 -->
+
+        <!-- v10.4.0 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.3.8 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.4.0 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Katherine's Executive Weekly Payroll Summary (Mon–Sun)</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">17 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Weekly Payroll Summary Engine:</strong> Tailored specifically for co-owner Katherine Nguyen to review and put through pay via an external payroll company or accountant. Strictly aggregates hours from Monday to Sunday.</li>
+            <li><strong>Award Penalty Breakdown:</strong> Automatically separates hours into Ordinary (Mon–Fri), Saturday (1.25x/1.5x), Sunday (1.75x/2.0x), Public Holiday (2.25x/2.5x), Overtime, and Paid Leave with Gross Wages and 12% Superannuation calculation.</li>
+            <li><strong>1-Click Bureau Actions:</strong> Instant Copy to Clipboard for email/messaging, Download Bureau CSV (1 row per employee), and Print/Save clean PDF statement.</li>
+            <li><strong>Batch Timecard Approval:</strong> Instant 1-click approval for all pending timesheet punches in the selected week.</li>
+            <li><strong>Strict Security:</strong> Gated exclusively to Owners (Glen Kanawati, Katherine Nguyen, Peter Kim) and Managers.</li>
+          </ul>
+        </div>
+        
+        <!-- v10.3.8 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge" style="background:rgba(2,132,199,0.15); color:#0284c7; border:1px solid rgba(2,132,199,0.3); font-size:0.8rem; font-weight:800;">v10.3.8</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Multi-Device Cache-Busting & Autonomous Version Sync</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">08 Sep 2026</span>
@@ -2514,11 +2725,11 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.3.8"></script>
+  <script type="module" src="js/app.js?v=10.4.0"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.3.8';
+    const APP_VERSION = '10.4.0';
     window.APP_VERSION = APP_VERSION;
 
     // Global helper to force-purge all caches and reload the latest version

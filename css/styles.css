@@ -3233,3 +3233,81 @@ body.stamp-mode-active .calendar-grid-cell:hover {
   background: rgba(0, 229, 255, 0.12) !important;
   outline: 1px dashed var(--accent-cyan);
 }
+
+/* Katherine's Weekly Payroll Summary (Mon-Sun) Print Styling */
+@media print {
+  body.printing-kat-payroll {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body.printing-kat-payroll .app-container,
+  body.printing-kat-payroll .sidebar,
+  body.printing-kat-payroll .topbar,
+  body.printing-kat-payroll .main-content,
+  body.printing-kat-payroll .mobile-bottom-nav,
+  body.printing-kat-payroll .modal-header,
+  body.printing-kat-payroll .modal-footer,
+  body.printing-kat-payroll #kat-payroll-status-banner,
+  body.printing-kat-payroll .orb {
+    display: none !important;
+  }
+  body.printing-kat-payroll #modal-kat-payroll-summary {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  body.printing-kat-payroll #modal-kat-payroll-summary .modal-content {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+  }
+  body.printing-kat-payroll #kat-payroll-printable-area {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  body.printing-kat-payroll .kat-print-header,
+  body.printing-kat-payroll .kat-print-signatures {
+    display: block !important;
+  }
+  body.printing-kat-payroll .kat-print-only {
+    display: block !important;
+  }
+  body.printing-kat-payroll #kat-payroll-table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    color: #000000 !important;
+  }
+  body.printing-kat-payroll #kat-payroll-table th,
+  body.printing-kat-payroll #kat-payroll-table td {
+    border: 1px solid #94a3b8 !important;
+    padding: 6px 8px !important;
+    color: #000000 !important;
+    font-size: 8.5pt !important;
+  }
+  body.printing-kat-payroll #kat-payroll-table th {
+    background: #f1f5f9 !important;
+    font-weight: 700 !important;
+  }
+  body.printing-kat-payroll #kat-payroll-table tfoot tr {
+    background: #e2e8f0 !important;
+    font-weight: 800 !important;
+  }
+  body.printing-kat-payroll .badge {
+    border: 1px solid #64748b !important;
+    color: #000000 !important;
+    background: #f8fafc !important;
+  }
+}
