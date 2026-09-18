@@ -1124,10 +1124,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Form Validation UX limits
-  document.getElementById('shift-start')?.addEventListener('change', function(e) {
-    document.getElementById('shift-end').min = e.target.value;
-  });
+  // Form Validation UX limits: Ensure shift-end has no lingering min attribute
+  document.getElementById('shift-end')?.removeAttribute('min');
   document.getElementById('leave-start-date')?.addEventListener('change', function(e) {
     document.getElementById('leave-end-date').min = e.target.value;
   });
@@ -3823,7 +3821,12 @@ function openAddShiftModal(employeeId = '', dateStr = '') {
   const targetDate = dateStr || formatDateISO(new Date());
   document.getElementById('shift-date').value = targetDate;
   document.getElementById('shift-start').value = '09:00';
-  document.getElementById('shift-end').value = '17:00';
+  const shiftEndInput = document.getElementById('shift-end');
+  if (shiftEndInput) {
+    shiftEndInput.value = '17:00';
+    shiftEndInput.removeAttribute('min');
+    shiftEndInput.min = '';
+  }
 
   // If partial leave on this date, default hours to available window
   if (employeeId && targetDate) {
@@ -3940,7 +3943,12 @@ function openEditShiftModal(shift) {
   document.getElementById('shift-id').value = primaryShift.id;
   document.getElementById('shift-date').value = primaryShift.date;
   document.getElementById('shift-start').value = (primaryShift.startTime || '09:00').substring(0, 5);
-  document.getElementById('shift-end').value = (primaryShift.endTime || '17:00').substring(0, 5);
+  const editEndInput = document.getElementById('shift-end');
+  if (editEndInput) {
+    editEndInput.value = (primaryShift.endTime || '17:00').substring(0, 5);
+    editEndInput.removeAttribute('min');
+    editEndInput.min = '';
+  }
   document.getElementById('shift-notes').value = stripSplitTag(primaryShift.notes || '');
   
   // Find any existing unpaid meal setting across segments
@@ -4030,6 +4038,11 @@ function closeShiftModal() {
   clearRoleSplitSegments(false);
   removedSplitShiftIds = [];
   clearEditingCell();
+  const endInp = document.getElementById('shift-end');
+  if (endInp) {
+    endInp.removeAttribute('min');
+    endInp.min = '';
+  }
   const modal = document.getElementById('modal-shift');
   if (modal) {
     if (typeof window.closeModal === 'function') {
@@ -4058,6 +4071,11 @@ async function handleShiftSubmit(event) {
     const start = document.getElementById('shift-start').value;
     const end = document.getElementById('shift-end').value;
     const notes = document.getElementById('shift-notes').value;
+
+    if (!date || !start || !end) {
+      showToast('Please specify shift date, start time, and end time.', 'error');
+      return;
+    }
 
     if (start === end) {
       showToast('Shift start time and end time cannot be identical. (Tip: For 8:00 PM, enter 20:00 in 24-hour format)', 'error');

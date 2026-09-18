@@ -362,7 +362,7 @@ if (fs.existsSync(indexHtmlPath)) {
   katModalInHtml = indexHtml.includes('id="modal-kat-payroll-summary"') && indexHtml.includes('id="kat-payroll-table-body"');
   katKpiInHtml = indexHtml.includes('id="kat-kpi-gross-wages"') && indexHtml.includes('id="kat-kpi-super"') && indexHtml.includes('id="kat-kpi-hours"');
   katBtnInHtml = indexHtml.includes('id="btn-kat-weekly-payroll"') || indexHtml.includes('openKatPayrollSummaryModal()');
-  versionAligned = indexHtml.includes('10.4.0');
+  versionAligned = indexHtml.includes('10.4.1');
 }
 
 const stylesCssPath = path.join(rootDir, 'css/styles.css');
@@ -377,7 +377,7 @@ let versionJsonPass = false;
 if (fs.existsSync(versionJsonPath)) {
   try {
     const vMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
-    versionJsonPass = vMeta.version === '10.4.0';
+    versionJsonPass = vMeta.version === '10.4.1';
   } catch (e) {}
 }
 
@@ -389,7 +389,30 @@ assertTest('Katherine Modal & Table Elements in index.html', katModalInHtml, 'mo
 assertTest('Katherine Executive Gross/Super/Hours KPI Cards in index.html', katKpiInHtml, 'KPI cards missing from index.html.');
 assertTest('Reports Panel Katherine Payroll Trigger Button Present', katBtnInHtml, 'btn-kat-weekly-payroll trigger missing from index.html.');
 assertTest('High-Contrast Executive Print Stylesheet in styles.css', printStylesPass, 'Print CSS rules missing for Katherine payroll statement.');
-assertTest('Platform Version Aligned to v10.4.0 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
+assertTest('Platform Version Aligned to v10.4.1 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
+
+// ---------------------------------------------------------
+// Test Suite 14: Shift End Time Constraint Decoupling & Validation Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 14: Shift End Timepicker Decoupling & Non-Blocking Validation Guard]');
+let noShiftEndMinBinding = false;
+let modalClearsMin = false;
+let formNovalidate = false;
+
+if (fs.existsSync(appJsPath)) {
+  const appCode = fs.readFileSync(appJsPath, 'utf8');
+  noShiftEndMinBinding = !appCode.includes("document.getElementById('shift-end').min =");
+  modalClearsMin = appCode.includes("shiftEndInput.removeAttribute('min')") || appCode.includes("endInp.removeAttribute('min')");
+}
+
+if (fs.existsSync(indexHtmlPath)) {
+  const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+  formNovalidate = indexHtml.includes('id="shift-form"') && indexHtml.includes('novalidate');
+}
+
+assertTest('Decoupled Shift End Time Minimum Constraint Guard', noShiftEndMinBinding, 'Found active shift-end.min assignment causing browser validation lockup.');
+assertTest('Explicit Modal State Reset for Shift End Time Guard', modalClearsMin, 'Modal open/close missing explicit removeAttribute("min") on shift-end.');
+assertTest('Non-Blocking Form Novalidate Guard on Shift Form', formNovalidate, 'shift-form missing novalidate attribute.');
 
 // ---------------------------------------------------------
 // Final Summary & Verdict
