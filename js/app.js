@@ -17,6 +17,7 @@ import './modules/role-customization.js';
 import './modules/compliance.js';
 import './modules/payroll-engine.js';
 import './modules/ai-ops.js';
+import './modules/dispensary-handover.js';
 // Toast Notification System
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');

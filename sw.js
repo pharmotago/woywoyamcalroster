@@ -1,4 +1,4 @@
-const CACHE_NAME = 'amcal-rosters-v10.4.1';
+const CACHE_NAME = 'amcal-rosters-v10.5.0';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/supabase-client.js',
   './js/swaps.js',
   './js/modules/payroll-engine.js',
+  './js/modules/dispensary-handover.js',
   './js/modules/compliance.js',
   './js/modules/role-customization.js',
   './js/modules/ai-ops.js',

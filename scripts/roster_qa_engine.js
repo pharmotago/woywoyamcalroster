@@ -362,7 +362,7 @@ if (fs.existsSync(indexHtmlPath)) {
   katModalInHtml = indexHtml.includes('id="modal-kat-payroll-summary"') && indexHtml.includes('id="kat-payroll-table-body"');
   katKpiInHtml = indexHtml.includes('id="kat-kpi-gross-wages"') && indexHtml.includes('id="kat-kpi-super"') && indexHtml.includes('id="kat-kpi-hours"');
   katBtnInHtml = indexHtml.includes('id="btn-kat-weekly-payroll"') || indexHtml.includes('openKatPayrollSummaryModal()');
-  versionAligned = indexHtml.includes('10.4.1');
+  versionAligned = indexHtml.includes('10.5.0');
 }
 
 const stylesCssPath = path.join(rootDir, 'css/styles.css');
@@ -377,7 +377,7 @@ let versionJsonPass = false;
 if (fs.existsSync(versionJsonPath)) {
   try {
     const vMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
-    versionJsonPass = vMeta.version === '10.4.1';
+    versionJsonPass = vMeta.version === '10.5.0';
   } catch (e) {}
 }
 
@@ -389,7 +389,7 @@ assertTest('Katherine Modal & Table Elements in index.html', katModalInHtml, 'mo
 assertTest('Katherine Executive Gross/Super/Hours KPI Cards in index.html', katKpiInHtml, 'KPI cards missing from index.html.');
 assertTest('Reports Panel Katherine Payroll Trigger Button Present', katBtnInHtml, 'btn-kat-weekly-payroll trigger missing from index.html.');
 assertTest('High-Contrast Executive Print Stylesheet in styles.css', printStylesPass, 'Print CSS rules missing for Katherine payroll statement.');
-assertTest('Platform Version Aligned to v10.4.1 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
+assertTest('Platform Version Aligned to v10.5.0 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
 
 // ---------------------------------------------------------
 // Test Suite 14: Shift End Time Constraint Decoupling & Validation Guard
@@ -413,6 +413,48 @@ if (fs.existsSync(indexHtmlPath)) {
 assertTest('Decoupled Shift End Time Minimum Constraint Guard', noShiftEndMinBinding, 'Found active shift-end.min assignment causing browser validation lockup.');
 assertTest('Explicit Modal State Reset for Shift End Time Guard', modalClearsMin, 'Modal open/close missing explicit removeAttribute("min") on shift-end.');
 assertTest('Non-Blocking Form Novalidate Guard on Shift Form', formNovalidate, 'shift-form missing novalidate attribute.');
+
+// ---------------------------------------------------------
+// Test Suite 15: Dispensary Clinical Handover Board & All-Hands Meeting Presentation Deck
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 15: Dispensary Handover & All-Hands Deck ("전사미팅")]');
+const handoverJsPath = path.join(rootDir, 'js/modules/dispensary-handover.js');
+const handoverModuleExists = fs.existsSync(handoverJsPath);
+
+let hasHandoverFns = false;
+let hasDeckFns = false;
+let hasHandoverModal = false;
+let hasDeckModal = false;
+let hasHandoverButtons = false;
+
+if (handoverModuleExists) {
+  const code = fs.readFileSync(handoverJsPath, 'utf8');
+  hasHandoverFns = code.includes('openDispensaryHandoverModal') &&
+                   code.includes('handleSaveHandover') &&
+                   code.includes('getHandoverHistory');
+  hasDeckFns = code.includes('openAllHandsDeckModal') &&
+               code.includes('changeAllHandsSlide') &&
+               code.includes('renderAllHandsDeckSlide');
+}
+
+if (fs.existsSync(indexHtmlPath)) {
+  const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
+  hasHandoverModal = indexHtml.includes('id="modal-dispensary-handover"') &&
+                     indexHtml.includes('id="handover-s8-confirmed"') &&
+                     indexHtml.includes('id="handover-fridge-temp"');
+  hasDeckModal = indexHtml.includes('id="modal-all-hands-deck"') &&
+                 indexHtml.includes('id="deck-slide-title"') &&
+                 indexHtml.includes('id="deck-slide-body"');
+  hasHandoverButtons = indexHtml.includes('id="btn-dispensary-handover"') &&
+                       indexHtml.includes('id="btn-allhands-deck"');
+}
+
+assertTest('Dispensary Handover Module (dispensary-handover.js) Present', handoverModuleExists, 'js/modules/dispensary-handover.js is missing.');
+assertTest('Dispensary Clinical Handover & S8 Safe Logic Implementation', hasHandoverFns, 'Handover modal/saving functions missing in module.');
+assertTest('Interactive All-Hands Staff Meeting Presentation Deck Logic', hasDeckFns, 'Deck navigation & slide render functions missing in module.');
+assertTest('Dispensary Handover Modal & QCPP Fields in index.html', hasHandoverModal, 'modal-dispensary-handover or critical fields missing from index.html.');
+assertTest('All-Hands Deck Presentation Modal & Slide View in index.html', hasDeckModal, 'modal-all-hands-deck or slide elements missing from index.html.');
+assertTest('Dispensary Handover & All-Hands Deck Topbar Trigger Buttons', hasHandoverButtons, 'btn-dispensary-handover or btn-allhands-deck missing from index.html.');
 
 // ---------------------------------------------------------
 // Final Summary & Verdict
