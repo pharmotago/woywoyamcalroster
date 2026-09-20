@@ -6223,8 +6223,8 @@ function isNswPublicHoliday(dateStr) {
 }
 window.isNswPublicHoliday = isNswPublicHoliday;
 
-// Export approved weekly timesheets to Australian Xero / MYOB (STP Phase 2 Standard) CSV
-function exportToXeroCsv() {
+// Export approved weekly timesheets to Australian Payroll Bureau (STP Phase 2 Standard) CSV
+function exportToPayrollBureauCsv() {
   if (!hasOwnerOrPeterPermissions(state.currentUser)) {
     showToast('Permission denied: Exporting payroll data is restricted to Owners.', 'warning');
     return;
@@ -6317,14 +6317,15 @@ function exportToXeroCsv() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Amcal_WoyWoy_STP2_Timesheet_${formatDateISO(state.currentWeekStart)}.csv`;
+  a.download = `Amcal_WoyWoy_Payroll_Bureau_Timesheet_${formatDateISO(state.currentWeekStart)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast(`Successfully exported ${totalExportedRecords} timesheet records to Xero / MYOB STP2 CSV!`, 'success');
+  showToast(`Successfully exported ${totalExportedRecords} timesheet records to Payroll Bureau CSV!`, 'success');
 }
-window.exportToXeroCsv = exportToXeroCsv;
+window.exportToPayrollBureauCsv = exportToPayrollBureauCsv;
+window.exportToXeroCsv = exportToPayrollBureauCsv; // Backward compatibility alias
 
 // Open Roster Email modal (Supports All Staff Broadcast or Single Employee)
 function openEmailRosterModal(employeeId) {
