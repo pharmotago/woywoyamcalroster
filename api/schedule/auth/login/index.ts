@@ -158,11 +158,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       resolvedRole = 'owner';
     }
 
+    // 5. Multi-Store Clearance & Strict Store Isolation Gate
+    const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+    const hasMultiStoreAccess = MULTI_STORE_WHITELIST.some(w => cleanEmail.includes(w));
+
+    const targetStore = (
+      (req.headers['x-pharmacy-id'] as string) ||
+      req.body?.tenant ||
+      req.body?.store ||
+      (origin.includes('budgewoi') || origin.includes('dds') ? 'budgewoi_dds' : 'amcal_woywoy')
+    ).toLowerCase().trim();
+
+    const userPharmacyId = (
+      userProfile?.pharmacy_id ||
+      'amcal_woywoy'
+    ).toLowerCase().trim();
+
+    // STRICT STORE ISOLATION: Amcal staff cannot access Budgewoi, and Budgewoi staff cannot access Amcal
+    if (!hasMultiStoreAccess) {
+      if (targetStore === 'budgewoi_dds' && userPharmacyId !== 'budgewoi_dds') {
+        return jsonRes(res, {
+          error: 'Access Denied: Your account is registered with Amcal Pharmacy Woy Woy. Please log in at https://woywoyamcalroster.vercel.app'
+        }, 403);
+      }
+      if (targetStore === 'amcal_woywoy' && userPharmacyId === 'budgewoi_dds') {
+        return jsonRes(res, {
+          error: 'Access Denied: Your account is registered with Budgewoi Discount Drug Stores. Please log in at https://budgewoiddsroster.vercel.app'
+        }, 403);
+      }
+    }
+
     const sessionPayload = {
       email: signInData.user.email,
       role: resolvedRole,
       employeeId: userProfile?.employee_id || null,
       name: userProfile?.name || signInData.user.user_metadata?.name || cleanEmail.split('@')[0] || 'Staff Member',
+      pharmacyId: userPharmacyId,
+      hasMultiStoreAccess: hasMultiStoreAccess,
+      activeStore: hasMultiStoreAccess ? (targetStore === 'budgewoi_dds' ? 'budgewoi_dds' : 'amcal_woywoy') : userPharmacyId,
       token: signInData.session?.access_token || '',
       refreshToken: signInData.session?.refresh_token || ''
     };

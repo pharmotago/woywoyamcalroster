@@ -526,6 +526,72 @@ assertTest('PKRosters Brand Watermark in Sidebar Footer', hasWatermarkInHtml, 'P
 assertTest('PWA Manifest & Package Metadata PKRosters Rebrand', manifestHasPkRosters && pkgHasPkRosters, 'manifest.json or package.json missing PKRosters rebranding.');
 
 // ---------------------------------------------------------
+// Test Suite 17: Multi-Store Clearance & Store Isolation Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 17: Multi-Store Clearance & Store Isolation Guard]');
+const loginApiIndexPath = path.join(rootDir, 'api/schedule/auth/login/index.ts');
+const syncApiIndexPath = path.join(rootDir, 'api/schedule/sync/index.ts');
+
+let loginHasIsolation = false;
+let loginHasPeterKatherine = false;
+let syncHasIsolation = false;
+let syncHasPeterKatherine = false;
+let switcherInHtml = false;
+let switcherInAppJs = false;
+let switcherInCss = false;
+
+if (fs.existsSync(loginApiIndexPath)) {
+  const code = fs.readFileSync(loginApiIndexPath, 'utf8');
+  loginHasIsolation = code.includes('STRICT STORE ISOLATION') &&
+                      code.includes('budgewoi_dds') &&
+                      code.includes('Access Denied: Your account is registered with');
+  loginHasPeterKatherine = code.includes('MULTI_STORE_WHITELIST') &&
+                           code.includes('peter') &&
+                           code.includes('katherine') &&
+                           code.includes('hasMultiStoreAccess');
+}
+
+if (fs.existsSync(syncApiIndexPath)) {
+  const code = fs.readFileSync(syncApiIndexPath, 'utf8');
+  syncHasIsolation = code.includes('matchesPharmacy') &&
+                     code.includes('targetPharmacy') &&
+                     code.includes('budgewoi_dds');
+  syncHasPeterKatherine = code.includes('MULTI_STORE_WHITELIST') &&
+                          code.includes('peter') &&
+                          code.includes('katherine') &&
+                          code.includes('isMultiStoreExecutive');
+}
+
+if (fs.existsSync(indexHtmlPath)) {
+  const code = fs.readFileSync(indexHtmlPath, 'utf8');
+  switcherInHtml = code.includes('id="multi-store-switcher-container"') &&
+                   code.includes('id="btn-store-switcher"') &&
+                   code.includes('id="store-switcher-menu"');
+}
+
+if (fs.existsSync(appJsPath)) {
+  const code = fs.readFileSync(appJsPath, 'utf8');
+  switcherInAppJs = code.includes('updateMultiStoreSwitcherVisibility') &&
+                    code.includes('switchStoreTenant') &&
+                    code.includes('MULTI_STORE_WHITELIST');
+}
+
+if (fs.existsSync(stylesCssPath)) {
+  const code = fs.readFileSync(stylesCssPath, 'utf8');
+  switcherInCss = code.includes('.store-switcher-wrap') &&
+                  code.includes('.store-switcher-pill') &&
+                  code.includes('.store-switcher-menu');
+}
+
+assertTest('Login Endpoint Strict Store Isolation Gate', loginHasIsolation, 'api/schedule/auth/login missing strict store boundary isolation.');
+assertTest('Login Multi-Store Clearance for Peter Kim & Katherine', loginHasPeterKatherine, 'MULTI_STORE_WHITELIST missing Peter Kim / Katherine clearance in login API.');
+assertTest('Sync API Data Partitioning by Pharmacy ID', syncHasIsolation, 'api/schedule/sync missing matchesPharmacy isolation filter.');
+assertTest('Sync API Multi-Store Clearance for Peter Kim & Katherine', syncHasPeterKatherine, 'MULTI_STORE_WHITELIST missing Peter Kim / Katherine clearance in sync API.');
+assertTest('Executive Multi-Store Switcher Elements in index.html', switcherInHtml, 'multi-store-switcher-container missing from index.html.');
+assertTest('Executive Multi-Store Switcher Controller in app.js', switcherInAppJs, 'updateMultiStoreSwitcherVisibility or switchStoreTenant missing from app.js.');
+assertTest('Executive Multi-Store Switcher Styles in styles.css', switcherInCss, 'store-switcher styles missing from css/styles.css.');
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

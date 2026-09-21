@@ -135,10 +135,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const systemRolesEmp = allEmployees.find((e: any) => e.email === 'system_roles@brisk.internal');
     const employees = allEmployees.filter((e: any) => e.email !== 'system_roles@brisk.internal');
 
+    // Multi-store executive clearance: Peter Kim, Katherine Nguyen, Glen Kanawati
+    const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+    const isMultiStoreExecutive = MULTI_STORE_WHITELIST.some(w => (caller.email || '').includes(w));
+
+    // Resolve target pharmacy
+    const targetPharmacy = (
+      (req.headers['x-pharmacy-id'] as string) || 
+      req.body?.pharmacyId || 
+      (origin.includes('budgewoi') || origin.includes('dds') ? 'budgewoi_dds' : 'amcal_woywoy')
+    ).toLowerCase().trim();
+
+    // Security Guard: Prevent Amcal staff from querying Budgewoi, and vice versa
+    if (!isMultiStoreExecutive && caller.email) {
+      const callerEmp = employees.find((e: any) => e.email && e.email.toLowerCase().trim() === caller.email);
+      const callerPharmacyId = (callerEmp?.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+      if (callerPharmacyId !== targetPharmacy) {
+        return jsonRes(res, {
+          error: `Access Denied: You are registered with ${callerPharmacyId === 'budgewoi_dds' ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'} and cannot view ${targetPharmacy === 'budgewoi_dds' ? 'Budgewoi' : 'Amcal'} roster records.`
+        }, 403);
+      }
+    }
+
+    // Defensive store isolation filter
+    const matchesPharmacy = (item: any) => {
+      const pId = (item.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+      return targetPharmacy === 'budgewoi_dds' 
+        ? pId === 'budgewoi_dds' 
+        : (pId === 'amcal_woywoy' || !item.pharmacy_id);
+    };
+
+    const storeEmployees = employees.filter(matchesPharmacy);
+    const storeShifts = (shiftRes.data || []).filter(matchesPharmacy);
+    const storeTimecards = (tcRes.data || []).filter(matchesPharmacy);
+    const storeLeave = (leaveRes.data || []).filter(matchesPharmacy);
+
     // Security: Only Owners & Peter Kim receive unmasked pay rates and contract tiers
     const safeEmployees = caller.isOwnerOrPeter
-      ? employees
-      : employees.map((e: any) => {
+      ? storeEmployees
+      : storeEmployees.map((e: any) => {
           const isSelf = caller.email && e.email && e.email.toLowerCase() === caller.email;
           if (isSelf) return e; // Employees may see their own profile
 
@@ -159,9 +194,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return jsonRes(res, {
       success: true,
       employees: safeEmployees,
-      shifts: shiftRes.data || [],
-      timecards: tcRes.data || [],
-      leaveRequests: leaveRes.data || [],
+      shifts: storeShifts,
+      timecards: storeTimecards,
+      leaveRequests: storeLeave,
       settings: settingsRes.data || null,
       systemRoles: systemRolesEmp?.availability || null
     }, 200);

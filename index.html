@@ -360,8 +360,32 @@
       
       <!-- Top Bar -->
       <header class="topbar">
-        <div class="page-title">
+        <div class="page-title" style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
           <h1 id="current-panel-title">Dashboard</h1>
+          <!-- Multi-Store Switcher (Peter Kim & Katherine Nguyen Executive Clearance) -->
+          <div id="multi-store-switcher-container" class="store-switcher-wrap" style="display: none;">
+            <button id="btn-store-switcher" class="store-switcher-pill" type="button" aria-haspopup="true" aria-expanded="false" title="Switch Store Roster (Executive Clearance)">
+              <span class="store-badge-indicator" id="store-badge-indicator"></span>
+              <span id="store-switcher-current-name">Amcal Pharmacy Woy Woy</span>
+              <i class="fa-solid fa-chevron-down" style="font-size: 0.65rem; opacity: 0.7;"></i>
+            </button>
+            <div id="store-switcher-menu" class="store-switcher-menu" style="display: none;">
+              <div class="store-menu-item" data-store-id="amcal_woywoy">
+                <span class="store-dot dot-amcal"></span>
+                <div class="store-text">
+                  <strong>Amcal Pharmacy Woy Woy</strong>
+                  <small>Central Coast &bull; Royal Blue</small>
+                </div>
+              </div>
+              <div class="store-menu-item" data-store-id="budgewoi_dds">
+                <span class="store-dot dot-budgewoi"></span>
+                <div class="store-text">
+                  <strong>Budgewoi Discount Drug Stores</strong>
+                  <small>Budgewoi &bull; Emerald Green</small>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="topbar-actions">
           <div id="sync-pending-badge" style="display: none; align-items: center; gap: 6px; padding: 4px 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #f59e0b; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-right: 8px;">

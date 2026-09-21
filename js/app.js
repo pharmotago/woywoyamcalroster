@@ -118,6 +118,94 @@ export function detectAndApplyTenant() {
 }
 window.detectAndApplyTenant = detectAndApplyTenant;
 
+export function updateMultiStoreSwitcherVisibility() {
+  const currentUser = (window.state && window.state.currentUser) || (window.BriskDB && window.BriskDB.getSession()) || null;
+  const container = document.getElementById('multi-store-switcher-container');
+  if (!container) return;
+
+  const email = (currentUser?.email || '').toLowerCase().trim();
+  const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+  const hasAccess = MULTI_STORE_WHITELIST.some(w => email.includes(w)) || (currentUser?.hasMultiStoreAccess === true);
+
+  if (hasAccess) {
+    container.style.display = 'inline-flex';
+    const activeTenantKey = localStorage.getItem('pkrosters_active_tenant') || 
+      (window.location.hostname.includes('budgewoi') ? 'budgewoi' : 'woywoy');
+    const isBudgewoi = activeTenantKey.includes('budgewoi') || activeTenantKey.includes('dds');
+    
+    const label = document.getElementById('store-switcher-current-name');
+    const badge = document.getElementById('store-badge-indicator');
+    if (label) {
+      label.textContent = isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy';
+    }
+    if (badge) {
+      badge.style.background = isBudgewoi ? '#008752' : '#0066cc';
+      badge.style.boxShadow = isBudgewoi ? '0 0 8px #008752' : '0 0 8px #0066cc';
+    }
+  } else {
+    container.style.display = 'none';
+  }
+}
+window.updateMultiStoreSwitcherVisibility = updateMultiStoreSwitcherVisibility;
+
+export async function switchStoreTenant(targetStoreId) {
+  if (!targetStoreId) return;
+  const menu = document.getElementById('store-switcher-menu');
+  if (menu) menu.style.display = 'none';
+
+  const normalized = targetStoreId.includes('budgewoi') ? 'budgewoi' : 'woywoy';
+  localStorage.setItem('pkrosters_active_tenant', normalized);
+  detectAndApplyTenant();
+  updateMultiStoreSwitcherVisibility();
+
+  if (typeof showToast === 'function') {
+    showToast(`Switched active roster to ${normalized === 'budgewoi' ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'}`, 'info');
+  }
+
+  // Trigger re-sync from server for the selected store
+  if (window.BriskDB && typeof window.BriskDB.syncFromServer === 'function') {
+    try {
+      const user = (window.state && window.state.currentUser) || window.BriskDB.getSession();
+      await window.BriskDB.syncFromServer(user?.email, true);
+      if (typeof window.renderAll === 'function') {
+        window.renderAll();
+      } else if (typeof window.renderScheduler === 'function') {
+        window.renderScheduler();
+      }
+    } catch (err) {
+      console.warn('[StoreSwitcher] Re-sync notice:', err);
+    }
+  }
+}
+window.switchStoreTenant = switchStoreTenant;
+
+// Multi-Store Switcher Event Handlers
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const btn = document.getElementById('btn-store-switcher');
+    const menu = document.getElementById('store-switcher-menu');
+    if (!menu) return;
+
+    if (btn && (btn === e.target || btn.contains(e.target))) {
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      return;
+    }
+
+    const menuItem = e.target.closest('.store-menu-item');
+    if (menuItem) {
+      const storeId = menuItem.getAttribute('data-store-id');
+      if (storeId) {
+        switchStoreTenant(storeId);
+      }
+      return;
+    }
+
+    if (!menu.contains(e.target)) {
+      menu.style.display = 'none';
+    }
+  });
+}
+
 // Run immediate tenant detection on module evaluation
 detectAndApplyTenant();
 function showToast(message, type = 'success') {
@@ -1331,6 +1419,7 @@ async function bootApplication() {
 
 
 function loadDataFromState() {
+  updateMultiStoreSwitcherVisibility();
   const session = (typeof BriskDB !== 'undefined' && typeof BriskDB.getSession === 'function') ? BriskDB.getSession() : null;
   const user = state.currentUser || session;
   const sessionRole = String(user?.role || '').toLowerCase().trim();

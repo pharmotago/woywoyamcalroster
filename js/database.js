@@ -729,8 +729,11 @@ const BriskDB = (function() {
   }
 
   // Triggered on app load
-  async function syncFromServer() {
+  async function syncFromServer(candidateEmail, force) {
     const session = getSession() || {};
+    const emailToUse = candidateEmail || session.email || '';
+    const activeTenant = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || 
+      (typeof window !== 'undefined' && window.location.hostname.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
 
     // 1. Primary Strategy: Serverless Data Sync (100% reliable, zero token expiry / RLS lockouts)
     try {
@@ -739,15 +742,16 @@ const BriskDB = (function() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': session.token ? ('Bearer ' + session.token) : '',
-          'x-user-email': session.email || ''
+          'x-user-email': emailToUse,
+          'x-pharmacy-id': activeTenant
         },
-        body: JSON.stringify({ email: session.email || '' })
+        body: JSON.stringify({ email: emailToUse, pharmacyId: activeTenant })
       });
 
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         const syncData = await res.json();
-        if (syncData.success && Array.isArray(syncData.employees) && syncData.employees.length > 0) {
+        if (syncData.success && Array.isArray(syncData.employees)) {
           _employees = syncData.employees.map(mapEmployeeFromDb);
           _initialLoadCompleted.employees = true;
 
@@ -809,28 +813,33 @@ const BriskDB = (function() {
     const windowStr = fourteenDaysAgo.toISOString().split('T')[0];
 
     try {
+      const matchesStore = (item) => {
+        const pId = (item.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+        return activeTenant === 'budgewoi_dds' ? pId === 'budgewoi_dds' : (pId === 'amcal_woywoy' || !item.pharmacy_id);
+      };
+
       const { data: emps, error: empErr } = await supabase.from('brisk_employees').select('*');
       if (!empErr && emps && emps.length > 0) {
-        const allEmployees = emps.map(mapEmployeeFromDb);
+        const allEmployees = emps.filter(matchesStore).map(mapEmployeeFromDb);
         _employees = allEmployees.filter(e => e.email !== 'system_roles@brisk.internal');
         _initialLoadCompleted.employees = true;
       }
 
       const { data: sfs, error: sfErr } = await supabase.from('brisk_shifts').select('*').gte('date', windowStr);
       if (!sfErr && sfs && sfs.length > 0) {
-        _shifts = sfs.map(mapShiftFromDb);
+        _shifts = sfs.filter(matchesStore).map(mapShiftFromDb);
         _initialLoadCompleted.shifts = true;
       }
 
       const { data: tcs, error: tcErr } = await supabase.from('brisk_timecards').select('*').gte('date', windowStr);
       if (!tcErr && tcs) {
-        _timecards = tcs.map(mapTimecardFromDb);
+        _timecards = tcs.filter(matchesStore).map(mapTimecardFromDb);
         _initialLoadCompleted.timecards = true;
       }
 
       const { data: lrs, error: lrErr } = await supabase.from('brisk_leave_requests').select('*').gte('end_date', windowStr);
       if (!lrErr && lrs) {
-        _leaveRequests = lrs.map(mapLeaveRequestFromDb);
+        _leaveRequests = lrs.filter(matchesStore).map(mapLeaveRequestFromDb);
         _initialLoadCompleted.leaveRequests = true;
       }
 
@@ -861,12 +870,18 @@ const BriskDB = (function() {
         return { error: 'Email and password are required.' };
       }
 
+      const activeTenant = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || 
+        (typeof window !== 'undefined' && window.location.hostname.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
+
       // 1. Try serverless login API first (auto-provisions missing auth.users and confirms email)
       try {
         const res = await fetch('/api/schedule/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: cleanEmail, password })
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-pharmacy-id': activeTenant
+          },
+          body: JSON.stringify({ email: cleanEmail, password, tenant: activeTenant })
         });
 
         const contentType = res.headers.get('content-type') || '';
@@ -999,11 +1014,30 @@ const BriskDB = (function() {
         resolvedRole = 'owner';
       }
 
+      // Multi-store owner clearance & Store isolation check
+      const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+      const hasMultiStoreAccess = MULTI_STORE_WHITELIST.some(w => cleanEmail.includes(w));
+      const userPharmacyId = (userProfile?.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+
+      if (!hasMultiStoreAccess) {
+        if (activeTenant === 'budgewoi_dds' && userPharmacyId !== 'budgewoi_dds') {
+          await supabase.auth.signOut();
+          return { error: 'Access Denied: Your account is registered with Amcal Pharmacy Woy Woy. Please access your roster at https://woywoyamcalroster.vercel.app' };
+        }
+        if (activeTenant === 'amcal_woywoy' && userPharmacyId === 'budgewoi_dds') {
+          await supabase.auth.signOut();
+          return { error: 'Access Denied: Your account is registered with Budgewoi Discount Drug Stores. Please access your roster at https://budgewoiddsroster.vercel.app' };
+        }
+      }
+
       const session = {
         email: data.user.email,
         role: resolvedRole,
         employeeId: userProfile ? (userProfile.employee_id || null) : null,
         name: userProfile?.name || data.user.user_metadata?.name || cleanEmail.split('@')[0] || 'Staff Member',
+        pharmacyId: userPharmacyId,
+        hasMultiStoreAccess: hasMultiStoreAccess,
+        activeStore: hasMultiStoreAccess ? activeTenant : userPharmacyId,
         token: (data.session && data.session.access_token) ? data.session.access_token : ''
       };
 

@@ -3408,3 +3408,105 @@ body.stamp-mode-active .calendar-grid-cell:hover {
     background: #f8fafc !important;
   }
 }
+
+/* ==========================================================================
+   MULTI-STORE SWITCHER (Peter Kim & Katherine Nguyen Executive Clearance)
+   ========================================================================== */
+.store-switcher-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.store-switcher-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.32rem 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.store-switcher-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 12px rgba(var(--brand-primary), 0.25);
+}
+
+.store-badge-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  box-shadow: 0 0 8px var(--brand-primary);
+  flex-shrink: 0;
+}
+
+.store-switcher-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 270px;
+  background: #141923;
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6);
+  z-index: 1100;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+}
+
+.store-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.store-menu-item:last-child {
+  border-bottom: none;
+}
+
+.store-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.store-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.store-dot.dot-amcal {
+  background: #0066cc;
+  box-shadow: 0 0 6px #0066cc;
+}
+
+.store-dot.dot-budgewoi {
+  background: #008752;
+  box-shadow: 0 0 6px #008752;
+}
+
+.store-text strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.store-text small {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
