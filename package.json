@@ -80,7 +80,9 @@
     "restore:index": "git checkout index.html",
     "vercel-help": "vercel link --help",
     "create:version": "node -e \"const fs=require('fs'); fs.writeFileSync('version.json', JSON.stringify({version:'10.3.8', name:'Amcal Pharmacy Woy Woy Rosters', buildTime:new Date().toISOString()}, null, 2)); console.log('version.json created');\"",
-    "vercel-git-help": "vercel git connect --help"
+    "vercel-git-help": "vercel git connect --help",
+    "git:remote": "git remote -v",
+    "domain:alias": "vercel alias set woywoyamcalroster.vercel.app budgewoiddsroster.vercel.app"
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",
