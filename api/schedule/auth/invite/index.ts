@@ -111,8 +111,12 @@ async function sendInviteEmail(toEmail: string, code: string, inviteUrl: string,
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
   const origin = req.headers.origin || '';
-  const allowedOrigins = ['https://woywoyamcalroster.vercel.app', 'http://localhost:3000', 'http://localhost:3002'];
-  res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes(origin) ? origin : 'https://woywoyamcalroster.vercel.app');
+  const allowedOrigins = ['https://woywoyamcalroster.vercel.app', 'https://budgewoiddsroster.vercel.app', 'http://localhost:3000', 'http://localhost:3002'];
+  if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', 'https://woywoyamcalroster.vercel.app');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();

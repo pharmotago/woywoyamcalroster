@@ -494,6 +494,8 @@ if (fs.existsSync(indexHtmlPath)) {
   const htmlCode = fs.readFileSync(indexHtmlPath, 'utf8');
   hasBrandLogosInHtml = htmlCode.includes('id="login-brand-logo"') && 
                         htmlCode.includes('id="login-brand-subtitle"') && 
+                        htmlCode.includes('id="register-brand-logo"') &&
+                        htmlCode.includes('id="register-brand-subtitle"') &&
                         htmlCode.includes('id="sidebar-brand-logo"');
   hasWatermarkInHtml = htmlCode.includes('POWERED BY') && htmlCode.includes('PKROSTERS');
 }
@@ -517,11 +519,15 @@ if (fs.existsSync(pkgJsonPath)) {
   }
 }
 
+const htmlCodeForAmcalCheck = fs.existsSync(indexHtmlPath) ? fs.readFileSync(indexHtmlPath, 'utf8') : '';
+const noHardcodedAmcalInRegister = !htmlCodeForAmcalCheck.includes('<h2>AMCAL</h2>');
+
 assertTest('Tenant Configuration & Dictionary in app.js', hasTenantConfig, 'TENANT_CONFIGS missing or incomplete in js/app.js.');
 assertTest('Dynamic Tenant Detection & Application (URL / Hostname / Storage)', hasTenantDetection, 'detectAndApplyTenant missing from js/app.js.');
 assertTest('Budgewoi DDS Signature Theme (Royal Purple #7a2682 & Orange #ff6b00)', hasDdsTheme, 'Budgewoi DDS theme variables missing in css/styles.css.');
 assertTest('Amcal Woy Woy Classic Theme (Royal Blue #0066cc & Cyan)', hasAmcalTheme, 'Amcal Woy Woy theme variables missing in css/styles.css.');
-assertTest('Dynamic Multi-Tenant Brand Placeholders in index.html', hasBrandLogosInHtml, 'Dynamic brand logo/subtitle IDs missing in index.html.');
+assertTest('Dynamic Multi-Tenant Brand Placeholders in index.html (Login & Register)', hasBrandLogosInHtml, 'Dynamic brand logo/subtitle IDs missing in index.html.');
+assertTest('Register Card Dynamic Multi-Tenant Branding (No Hardcoded AMCAL)', noHardcodedAmcalInRegister, 'Found hardcoded <h2>AMCAL</h2> in register-card.');
 assertTest('PKRosters Brand Watermark in Sidebar Footer', hasWatermarkInHtml, 'POWERED BY PKROSTERS footer watermark missing in index.html.');
 assertTest('PWA Manifest & Package Metadata PKRosters Rebrand', manifestHasPkRosters && pkgHasPkRosters, 'manifest.json or package.json missing PKRosters rebranding.');
 

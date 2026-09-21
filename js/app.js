@@ -116,6 +116,12 @@ export function detectAndApplyTenant() {
     const loginSub = document.getElementById('login-brand-subtitle');
     if (loginSub) loginSub.textContent = tenant.subtitle;
 
+    // Update Register Screen Elements
+    const registerLogo = document.getElementById('register-brand-logo');
+    if (registerLogo) registerLogo.innerHTML = tenant.logoSvg;
+    const registerSub = document.getElementById('register-brand-subtitle');
+    if (registerSub) registerSub.textContent = tenant.key === 'budgewoi' ? 'Discount Drug Stores Staff Registration' : 'Pharmacy Staff Registration';
+
     // Update Sidebar Brand Elements
     const sidebarLogo = document.getElementById('sidebar-brand-logo');
     if (sidebarLogo) sidebarLogo.innerHTML = tenant.logoSvg;
@@ -1778,11 +1784,17 @@ function showLoginScreen() {
 function showLoginCard() {
   document.getElementById('login-card').classList.remove('hide');
   document.getElementById('register-card').classList.add('hide');
+  if (typeof detectAndApplyTenant === 'function') {
+    detectAndApplyTenant();
+  }
 }
 
 function showRegisterCard() {
   document.getElementById('login-card').classList.add('hide');
   document.getElementById('register-card').classList.remove('hide');
+  if (typeof detectAndApplyTenant === 'function') {
+    detectAndApplyTenant();
+  }
 }
 
 async function handleLoginSubmit(event) {

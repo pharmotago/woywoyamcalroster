@@ -235,11 +235,34 @@
 
     <!-- Register Card -->
     <div id="register-card" class="glass-card login-card hide">
-      <div class="login-header text-center">
-        <div class="brand-icon" style="margin: 0 auto 12px;"><i class="fa-solid fa-user-plus"></i></div>
-        <h2>AMCAL</h2>
-        <span>Pharmacy Staff Registration</span>
+      <div class="login-header text-center" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+        <div class="brand-icon" style="margin: 0 auto 4px;"><i class="fa-solid fa-user-plus"></i></div>
+        <div id="register-brand-logo" style="display: flex; align-items: center; justify-content: center; min-height: 38px;">
+          <svg width="180" height="42" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
+            <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+            <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+            <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+          </svg>
+        </div>
+        <span id="register-brand-subtitle" style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Pharmacy Staff Registration</span>
       </div>
+      <script>
+        (function() {
+          try {
+            var h = (window.location && window.location.hostname) ? window.location.hostname.toLowerCase() : '';
+            var sp = new URLSearchParams(window.location.search);
+            var t = sp.get('tenant') || sp.get('store') || (localStorage.getItem('pkrosters_active_tenant') || '').toLowerCase();
+            if (h.includes('budgewoi') || h.includes('dds') || t.includes('budgewoi') || t.includes('dds')) {
+              var rLogo = document.getElementById('register-brand-logo');
+              if (rLogo) {
+                rLogo.innerHTML = '<svg width="185" height="35" viewBox="0 0 185 35" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="translate(2, 2)"><rect x="0" y="1" width="29" height="29" rx="8" fill="#7A2682" /><circle cx="14.5" cy="15.5" r="5" fill="#FFFFFF" /><circle cx="14.5" cy="15.5" r="2.5" fill="#FF6B00" /><path d="M14.5 5.5 L14.5 8.5 M14.5 22.5 L14.5 25.5 M4.5 15.5 L7.5 15.5 M21.5 15.5 L24.5 15.5 M7.5 8.5 L9.8 10.8 M19.2 20.2 L21.5 22.5 M7.5 22.5 L9.8 20.2 M19.2 10.8 L21.5 8.5" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" /></g><text x="37" y="19" font-family="\'Outfit\', \'Inter\', system-ui, sans-serif" font-weight="900" font-size="16" fill="#FFFFFF" letter-spacing="-0.3px">discount</text><text x="103" y="19" font-family="\'Outfit\', \'Inter\', system-ui, sans-serif" font-weight="900" font-size="16" fill="#FF6B00" letter-spacing="-0.3px">DRUG</text><text x="37" y="30" font-family="\'Outfit\', \'Inter\', system-ui, sans-serif" font-weight="800" font-size="9.5" fill="#FF6B00" letter-spacing="1.6px">STORES</text><text x="84" y="30" font-family="\'Outfit\', \'Inter\', system-ui, sans-serif" font-style="italic" font-size="7.5" fill="#D8B4E2" letter-spacing="0.2px">more than just low prices</text></svg>';
+              }
+              var rSub = document.getElementById('register-brand-subtitle');
+              if (rSub) rSub.textContent = 'Discount Drug Stores Staff Registration';
+            }
+          } catch (_) {}
+        })();
+      </script>
       <form id="register-form" onsubmit="handleRegisterSubmit(event)" style="margin-top: 1.5rem;">
         <div class="form-group" id="invite-code-group">
           <label for="reg-invite-code">Invitation Code</label>
