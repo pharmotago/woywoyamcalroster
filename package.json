@@ -60,6 +60,7 @@
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",
+    "commit:clean": "git add package.json && git commit -m \"chore: update live test scripts [auto]\" && git push origin main",
     "release:dds-branding": "git add -A && git commit -m \"feat(theme): official Discount Drug Stores royal purple #7A2682 & orange #FF6B00 branding [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "release:isolation-fix": "git add -A && git commit -m \"fix(tenant): resolve pharmacy_id mismatch & enforce zero Amcal staff leakage on Budgewoi roster [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:split-polish": "git add -A && git commit -m \"polish(roster): split segment role select vertical alignment and 34px input balance [auto]\" && git push origin main && vercel --prod --yes --cwd .",
@@ -87,6 +88,7 @@
     "domain:alias": "vercel alias set woywoyamcalroster.vercel.app budgewoiddsroster.vercel.app",
     "vercel:protection-disable-sso": "vercel project protection disable woywoyamcalroster --sso",
     "test:live-urls": "node -e \"Promise.all([fetch('https://woywoyamcalroster.vercel.app'), fetch('https://budgewoiddsroster.vercel.app')]).then(([r1, r2]) => console.log('Amcal Status:', r1.status, '| Budgewoi Status:', r2.status)).catch(console.error)\"",
+    "test:live-theme": "node -e \"(async () => { const t = Date.now(); const css = await (await fetch('https://budgewoiddsroster.vercel.app/css/styles.css?t=' + t)).text(); const js = await (await fetch('https://budgewoiddsroster.vercel.app/js/app.js?t=' + t)).text(); console.log('Live CSS Purple #7a2682 present:', css.includes('#7a2682'), '| Orange #ff6b00 present:', css.includes('#ff6b00')); console.log('Live JS SVG Purple #7A2682 present:', js.includes('#7A2682'), '| Orange #FF6B00 present:', js.includes('#FF6B00')); })()\"",
     "test:sync-live": "node -e \"(async () => { for (const id of ['budgewoi', 'budgewoi_dds', 'amcal_woywoy']) { const r = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pharmacy-id': id }, body: JSON.stringify({ pharmacyId: id }) }); const d = await r.json(); console.log('ID:', id, '| status:', r.status, '| employees:', d.employees?.length, '| shifts:', d.shifts?.length); } })()\""
   },
   "dependencies": {
