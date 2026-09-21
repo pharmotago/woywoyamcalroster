@@ -24,7 +24,9 @@ import './modules/dispensary-handover.js';
 // ==========================================
 export const TENANT_CONFIGS = {
   woywoy: {
-    id: 'woywoy',
+    id: 'amcal_woywoy',
+    pharmacyId: 'amcal_woywoy',
+    key: 'woywoy',
     name: 'Amcal Pharmacy Woy Woy',
     banner: 'Amcal+',
     theme: 'amcal',
@@ -42,7 +44,9 @@ export const TENANT_CONFIGS = {
     </svg>`
   },
   budgewoi: {
-    id: 'budgewoi',
+    id: 'budgewoi_dds',
+    pharmacyId: 'budgewoi_dds',
+    key: 'budgewoi',
     name: 'Budgewoi Discount Drug Stores',
     banner: 'Discount Drug Stores',
     theme: 'budgewoi',
@@ -71,13 +75,16 @@ export function detectAndApplyTenant() {
     tenantParam = searchParams.get('tenant') || searchParams.get('store');
   } catch (_) {}
 
+  const isBudgewoiHost = host.includes('budgewoi') || host.includes('dds');
+  const isBudgewoiParam = tenantParam === 'budgewoi' || tenantParam === 'dds' || tenantParam === 'budgewoi_dds';
+
   let tenantKey = 'woywoy';
-  if (host.includes('budgewoi') || tenantParam === 'budgewoi' || tenantParam === 'dds') {
+  if (isBudgewoiHost || isBudgewoiParam) {
     tenantKey = 'budgewoi';
   } else {
     try {
-      const stored = localStorage.getItem('pkrosters_active_tenant');
-      if (stored === 'budgewoi' && !tenantParam) {
+      const stored = (localStorage.getItem('pkrosters_active_tenant') || '').toLowerCase();
+      if ((stored.includes('budgewoi') || stored.includes('dds')) && !tenantParam) {
         tenantKey = 'budgewoi';
       }
     } catch (_) {}
@@ -111,7 +118,7 @@ export function detectAndApplyTenant() {
     const mobileLogo = document.getElementById('mobile-brand-logo');
     if (mobileLogo) mobileLogo.innerHTML = tenant.logoSmallSvg;
     const mobileSub = document.getElementById('mobile-brand-subtitle');
-    if (mobileSub) mobileSub.textContent = tenant.id === 'budgewoi' ? 'Budgewoi' : 'Woy Woy';
+    if (mobileSub) mobileSub.textContent = tenant.key === 'budgewoi' ? 'Budgewoi' : 'Woy Woy';
   }
 
   return tenant;
@@ -129,8 +136,8 @@ export function updateMultiStoreSwitcherVisibility() {
 
   if (hasAccess) {
     container.style.display = 'inline-flex';
-    const activeTenantKey = localStorage.getItem('pkrosters_active_tenant') || 
-      (window.location.hostname.includes('budgewoi') ? 'budgewoi' : 'woywoy');
+    const activeTenantKey = (localStorage.getItem('pkrosters_active_tenant') || 
+      (window.location.hostname.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy')).toLowerCase();
     const isBudgewoi = activeTenantKey.includes('budgewoi') || activeTenantKey.includes('dds');
     
     const label = document.getElementById('store-switcher-current-name');
@@ -153,13 +160,14 @@ export async function switchStoreTenant(targetStoreId) {
   const menu = document.getElementById('store-switcher-menu');
   if (menu) menu.style.display = 'none';
 
-  const normalized = targetStoreId.includes('budgewoi') ? 'budgewoi' : 'woywoy';
-  localStorage.setItem('pkrosters_active_tenant', normalized);
+  const isBudgewoi = targetStoreId.includes('budgewoi') || targetStoreId.includes('dds');
+  const targetId = isBudgewoi ? 'budgewoi_dds' : 'amcal_woywoy';
+  localStorage.setItem('pkrosters_active_tenant', targetId);
   detectAndApplyTenant();
   updateMultiStoreSwitcherVisibility();
 
   if (typeof showToast === 'function') {
-    showToast(`Switched active roster to ${normalized === 'budgewoi' ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'}`, 'info');
+    showToast(`Switched active roster to ${isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'}`, 'info');
   }
 
   // Trigger re-sync from server for the selected store
@@ -167,11 +175,8 @@ export async function switchStoreTenant(targetStoreId) {
     try {
       const user = (window.state && window.state.currentUser) || window.BriskDB.getSession();
       await window.BriskDB.syncFromServer(user?.email, true);
-      if (typeof window.renderAll === 'function') {
-        window.renderAll();
-      } else if (typeof window.renderScheduler === 'function') {
-        window.renderScheduler();
-      }
+      loadDataFromState();
+      renderActivePanel();
     } catch (err) {
       console.warn('[StoreSwitcher] Re-sync notice:', err);
     }
@@ -2828,6 +2833,27 @@ function getEffectiveShiftHourlyRate(shift) {
     if (!weekShiftsMap.has(k)) weekShiftsMap.set(k, []);
     weekShiftsMap.get(k).push(s);
   });
+
+  // If store has no employees registered yet, show clean empty state
+  if (activeEmployees.length === 0) {
+    const isManagerOrOwner = hasManagerPermissions(state.currentUser);
+    const trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = `
+      <td colspan="9" style="text-align:center; padding: 48px 16px; color: var(--text-muted);">
+        <i class="fa-solid fa-users-slash" style="font-size: 2.2rem; margin-bottom: 12px; opacity: 0.45; display:block;"></i>
+        <strong style="font-size: 1.05rem; color: var(--text-primary); display:block; margin-bottom: 6px;">No Employees Registered for this Store</strong>
+        <p style="font-size: 0.85rem; max-width: 480px; margin: 0 auto 16px; color: var(--text-secondary);">
+          ${window.currentTenant?.name || 'This pharmacy'} does not have any employees listed yet. Use the button below to add team members to this store's roster.
+        </p>
+        ${isManagerOrOwner ? `
+          <button class="btn btn-primary" onclick="openAddEmployeeModal()">
+            <i class="fa-solid fa-user-plus"></i> Add Staff to ${window.currentTenant?.key === 'budgewoi' ? 'Budgewoi' : 'Amcal'}
+          </button>
+        ` : ''}
+      </td>
+    `;
+    tbody.appendChild(trEmpty);
+  }
 
   // If user is employee, they see all staff rosters, but cannot click to add or edit
   activeEmployees.forEach((emp, empIdx) => {

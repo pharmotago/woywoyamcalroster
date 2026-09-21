@@ -135,21 +135,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const systemRolesEmp = allEmployees.find((e: any) => e.email === 'system_roles@brisk.internal');
     const employees = allEmployees.filter((e: any) => e.email !== 'system_roles@brisk.internal');
 
+function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
+  if (!raw) return 'amcal_woywoy';
+  const s = String(raw).toLowerCase().trim();
+  if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+  return 'amcal_woywoy';
+}
+
     // Multi-store executive clearance: Peter Kim, Katherine Nguyen, Glen Kanawati
     const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
     const isMultiStoreExecutive = MULTI_STORE_WHITELIST.some(w => (caller.email || '').includes(w));
 
-    // Resolve target pharmacy
-    const targetPharmacy = (
+    // Resolve target pharmacy canonically ('amcal_woywoy' vs 'budgewoi_dds')
+    const targetPharmacy = normalizePharmacyId(
       (req.headers['x-pharmacy-id'] as string) || 
       req.body?.pharmacyId || 
-      (origin.includes('budgewoi') || origin.includes('dds') ? 'budgewoi_dds' : 'amcal_woywoy')
-    ).toLowerCase().trim();
+      origin
+    );
 
     // Security Guard: Prevent Amcal staff from querying Budgewoi, and vice versa
     if (!isMultiStoreExecutive && caller.email) {
       const callerEmp = employees.find((e: any) => e.email && e.email.toLowerCase().trim() === caller.email);
-      const callerPharmacyId = (callerEmp?.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+      const callerPharmacyId = normalizePharmacyId(callerEmp?.pharmacy_id);
       if (callerPharmacyId !== targetPharmacy) {
         return jsonRes(res, {
           error: `Access Denied: You are registered with ${callerPharmacyId === 'budgewoi_dds' ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'} and cannot view ${targetPharmacy === 'budgewoi_dds' ? 'Budgewoi' : 'Amcal'} roster records.`
@@ -157,18 +164,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Defensive store isolation filter
+    // Strict store isolation filter: amcal legacy records (null pharmacy_id) map exclusively to amcal_woywoy
     const matchesPharmacy = (item: any) => {
-      const pId = (item.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
-      return targetPharmacy === 'budgewoi_dds' 
-        ? pId === 'budgewoi_dds' 
-        : (pId === 'amcal_woywoy' || !item.pharmacy_id);
+      const pId = normalizePharmacyId(item.pharmacy_id);
+      return pId === targetPharmacy;
     };
 
     const storeEmployees = employees.filter(matchesPharmacy);
     const storeShifts = (shiftRes.data || []).filter(matchesPharmacy);
     const storeTimecards = (tcRes.data || []).filter(matchesPharmacy);
     const storeLeave = (leaveRes.data || []).filter(matchesPharmacy);
+
+    // Store-specific settings
+    const BUDGEWOI_TRADING_HOURS = {
+      "1": { "open": "08:30", "close": "18:00", "closed": false },
+      "2": { "open": "08:30", "close": "18:00", "closed": false },
+      "3": { "open": "08:30", "close": "18:00", "closed": false },
+      "4": { "open": "08:30", "close": "18:00", "closed": false },
+      "5": { "open": "08:30", "close": "18:00", "closed": false },
+      "6": { "open": "08:30", "close": "13:00", "closed": false },
+      "0": { "open": "00:00", "close": "00:00", "closed": true }
+    };
+
+    const defaultSettings = settingsRes.data || {};
+    const storeSettings = {
+      ...defaultSettings,
+      company_name: targetPharmacy === 'budgewoi_dds' 
+        ? 'Budgewoi Discount Drug Stores Rosters' 
+        : (defaultSettings.company_name || 'Amcal Pharmacy Woywoy Rosters'),
+      trading_hours: targetPharmacy === 'budgewoi_dds'
+        ? BUDGEWOI_TRADING_HOURS
+        : (defaultSettings.trading_hours || undefined)
+    };
 
     // Security: Only Owners & Peter Kim receive unmasked pay rates and contract tiers
     const safeEmployees = caller.isOwnerOrPeter
@@ -193,11 +220,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return jsonRes(res, {
       success: true,
+      pharmacyId: targetPharmacy,
       employees: safeEmployees,
       shifts: storeShifts,
       timecards: storeTimecards,
       leaveRequests: storeLeave,
-      settings: settingsRes.data || null,
+      settings: storeSettings,
       systemRoles: systemRolesEmp?.availability || null
     }, 200);
   } catch (err) {

@@ -60,6 +60,7 @@
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",
+    "release:isolation-fix": "git add -A && git commit -m \"fix(tenant): resolve pharmacy_id mismatch & enforce zero Amcal staff leakage on Budgewoi roster [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:split-polish": "git add -A && git commit -m \"polish(roster): split segment role select vertical alignment and 34px input balance [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "copy:screen-split": "powershell -Command \"Copy-Item C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/.system_generated/steps/291/media_0.png C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/split_shift_verified_award_break.png -Force\"",
     "copy:screens": "powershell -Command \"Copy-Item C:/Users/Sung/.gemini/antigravity/brain/8366db3e-22d1-448a-8ea4-cac36ae417a0/.system_generated/steps/3722/media_0.png C:/Users/Sung/.gemini/antigravity/brain/8366db3e-22d1-448a-8ea4-cac36ae417a0/weekly_scheduler_clean_shift_cards_v1036.png -Force\"",
@@ -83,7 +84,9 @@
     "create:version": "node -e \"const fs=require('fs'); fs.writeFileSync('version.json', JSON.stringify({version:'10.3.8', name:'Amcal Pharmacy Woy Woy Rosters', buildTime:new Date().toISOString()}, null, 2)); console.log('version.json created');\"",
     "vercel-git-help": "vercel git connect --help",
     "domain:alias": "vercel alias set woywoyamcalroster.vercel.app budgewoiddsroster.vercel.app",
-    "vercel:protection-disable-sso": "vercel project protection disable woywoyamcalroster --sso"
+    "vercel:protection-disable-sso": "vercel project protection disable woywoyamcalroster --sso",
+    "test:live-urls": "node -e \"Promise.all([fetch('https://woywoyamcalroster.vercel.app'), fetch('https://budgewoiddsroster.vercel.app')]).then(([r1, r2]) => console.log('Amcal Status:', r1.status, '| Budgewoi Status:', r2.status)).catch(console.error)\"",
+    "test:sync-live": "node -e \"(async () => { for (const id of ['budgewoi', 'budgewoi_dds', 'amcal_woywoy']) { const r = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pharmacy-id': id }, body: JSON.stringify({ pharmacyId: id }) }); const d = await r.json(); console.log('ID:', id, '| status:', r.status, '| employees:', d.employees?.length, '| shifts:', d.shifts?.length); } })()\""
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",

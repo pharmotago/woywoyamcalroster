@@ -162,17 +162,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
     const hasMultiStoreAccess = MULTI_STORE_WHITELIST.some(w => cleanEmail.includes(w));
 
-    const targetStore = (
+    function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
+      if (!raw) return 'amcal_woywoy';
+      const s = String(raw).toLowerCase().trim();
+      if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+      return 'amcal_woywoy';
+    }
+
+    const targetStore = normalizePharmacyId(
       (req.headers['x-pharmacy-id'] as string) ||
       req.body?.tenant ||
       req.body?.store ||
-      (origin.includes('budgewoi') || origin.includes('dds') ? 'budgewoi_dds' : 'amcal_woywoy')
-    ).toLowerCase().trim();
+      origin
+    );
 
-    const userPharmacyId = (
+    const userPharmacyId = normalizePharmacyId(
       userProfile?.pharmacy_id ||
       'amcal_woywoy'
-    ).toLowerCase().trim();
+    );
 
     // STRICT STORE ISOLATION: Amcal staff cannot access Budgewoi, and Budgewoi staff cannot access Amcal
     if (!hasMultiStoreAccess) {

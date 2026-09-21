@@ -110,6 +110,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isManagerOrOwner && !callerEmail) {
       return jsonRes(res, { error: 'Unauthorized: Missing valid session credentials.' }, 401);
     }
+    function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
+      if (!raw) return 'amcal_woywoy';
+      const s = String(raw).toLowerCase().trim();
+      if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+      return 'amcal_woywoy';
+    }
+
+    const targetPharmacy = normalizePharmacyId(
+      (req.headers['x-pharmacy-id'] as string) || 
+      body.pharmacyId || 
+      body.pharmacy_id || 
+      origin
+    );
+
     const entity = body.entity || body.type;
     const action = body.action;
 
@@ -141,7 +155,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           availability: avail,
           active: empData.active !== undefined ? !!empData.active : true,
           employment_type: empType,
-          award_level: awdLevel
+          award_level: awdLevel,
+          pharmacy_id: targetPharmacy
         };
         if (empData.id) newObj.id = empData.id;
 
@@ -265,7 +280,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           end_time: formatTimeHHmm(s.end_time || s.endTime),
           role: s.role || 'Pharmacy Assistant',
           notes: s.notes || '',
-          status: s.status || 'published'
+          status: s.status || 'published',
+          pharmacy_id: targetPharmacy
         };
         if (s.unpaid_meal_mins !== undefined || s.unpaidMealMins !== undefined) {
           newObj.unpaid_meal_mins = s.unpaid_meal_mins !== undefined ? s.unpaid_meal_mins : s.unpaidMealMins;
@@ -441,7 +457,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           status: isManagerOrOwner ? (lrData.status || 'Pending') : 'Pending', // Employees cannot auto-approve
           leave_duration_type: body.leave?.leaveDurationType || body.leave?.leave_duration_type || 'full_day',
           unavailable_from: body.leave?.unavailableFrom || body.leave?.unavailable_from || null,
-          unavailable_until: body.leave?.unavailableUntil || body.leave?.unavailable_until || null
+          unavailable_until: body.leave?.unavailableUntil || body.leave?.unavailable_until || null,
+          pharmacy_id: targetPharmacy
         };
 
         let insertedRecord = null;
@@ -535,7 +552,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           breaks: tcData.breaks || [],
           total_hours: tcData.total_hours != null ? tcData.total_hours : (tcData.totalHours != null ? tcData.totalHours : 0),
           approved: isManagerOrOwner ? !!(tcData.approved) : false, // Employees cannot self-approve
-          approved_by: isManagerOrOwner ? (tcData.approved_by || tcData.approvedBy || null) : null
+          approved_by: isManagerOrOwner ? (tcData.approved_by || tcData.approvedBy || null) : null,
+          pharmacy_id: targetPharmacy
         };
 
         const { data, error } = await supabaseAdmin.from('brisk_timecards').upsert([obj]).select().maybeSingle();

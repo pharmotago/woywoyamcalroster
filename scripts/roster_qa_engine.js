@@ -531,6 +531,7 @@ assertTest('PWA Manifest & Package Metadata PKRosters Rebrand', manifestHasPkRos
 console.log('\n🔍 [Suite 17: Multi-Store Clearance & Store Isolation Guard]');
 const loginApiIndexPath = path.join(rootDir, 'api/schedule/auth/login/index.ts');
 const syncApiIndexPath = path.join(rootDir, 'api/schedule/sync/index.ts');
+const databaseJsPath = path.join(rootDir, 'js/database.js');
 
 let loginHasIsolation = false;
 let loginHasPeterKatherine = false;
@@ -583,10 +584,20 @@ if (fs.existsSync(stylesCssPath)) {
                   code.includes('.store-switcher-menu');
 }
 
+let hasCanonicalNormalization = false;
+if (fs.existsSync(syncApiIndexPath) && fs.existsSync(databaseJsPath)) {
+  const syncCode = fs.readFileSync(syncApiIndexPath, 'utf8');
+  const dbCode = fs.readFileSync(databaseJsPath, 'utf8');
+  hasCanonicalNormalization = syncCode.includes('normalizePharmacyId') &&
+                             dbCode.includes('normalizePharmacyId') &&
+                             syncCode.includes('targetPharmacy = normalizePharmacyId');
+}
+
 assertTest('Login Endpoint Strict Store Isolation Gate', loginHasIsolation, 'api/schedule/auth/login missing strict store boundary isolation.');
 assertTest('Login Multi-Store Clearance for Peter Kim & Katherine', loginHasPeterKatherine, 'MULTI_STORE_WHITELIST missing Peter Kim / Katherine clearance in login API.');
 assertTest('Sync API Data Partitioning by Pharmacy ID', syncHasIsolation, 'api/schedule/sync missing matchesPharmacy isolation filter.');
 assertTest('Sync API Multi-Store Clearance for Peter Kim & Katherine', syncHasPeterKatherine, 'MULTI_STORE_WHITELIST missing Peter Kim / Katherine clearance in sync API.');
+assertTest('Canonical Pharmacy ID Normalization & Zero-Leakage Guard', hasCanonicalNormalization, 'Missing normalizePharmacyId in sync API or database.js.');
 assertTest('Executive Multi-Store Switcher Elements in index.html', switcherInHtml, 'multi-store-switcher-container missing from index.html.');
 assertTest('Executive Multi-Store Switcher Controller in app.js', switcherInAppJs, 'updateMultiStoreSwitcherVisibility or switchStoreTenant missing from app.js.');
 assertTest('Executive Multi-Store Switcher Styles in styles.css', switcherInCss, 'store-switcher styles missing from css/styles.css.');

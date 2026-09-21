@@ -30,6 +30,19 @@ const BriskDB = (function() {
     });
   }
 
+  function normalizePharmacyId(raw) {
+    if (!raw) return 'amcal_woywoy';
+    const s = String(raw).toLowerCase().trim();
+    if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+    return 'amcal_woywoy';
+  }
+
+  function getActiveTenant() {
+    const fromStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || '';
+    const fromHost = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+    return normalizePharmacyId(fromStorage || fromHost);
+  }
+
   const DEFAULT_TRADING_HOURS = {
     "1": { "open": "08:30", "close": "17:30", "closed": false },
     "2": { "open": "08:30", "close": "17:30", "closed": false },
@@ -165,7 +178,8 @@ const BriskDB = (function() {
       availability: avail,
       active: emp.active !== undefined ? emp.active : true,
       employment_type: empType,
-      award_level: awdLevel
+      award_level: awdLevel,
+      pharmacy_id: emp.pharmacy_id || emp.pharmacyId || getActiveTenant()
     };
     
     // Only include hourly_rate if explicitly provided or fallback to existing
@@ -197,7 +211,8 @@ const BriskDB = (function() {
       dob: avail.dob || emp.dob || null,
       certificates: Array.isArray(avail.certificates) ? avail.certificates : (Array.isArray(emp.certificates) ? emp.certificates : []),
       availability: avail,
-      active: (emp.active !== undefined && emp.active !== null) ? !!emp.active : true
+      active: (emp.active !== undefined && emp.active !== null) ? !!emp.active : true,
+      pharmacyId: emp.pharmacy_id || 'amcal_woywoy'
     };
   }
 
@@ -214,7 +229,8 @@ const BriskDB = (function() {
       start_time: formatTimeHHmm(shift.startTime),
       end_time: formatTimeHHmm(shift.endTime),
       role: shift.role || 'Pharmacy Assistant',
-      notes: shift.notes || ''
+      notes: shift.notes || '',
+      pharmacy_id: shift.pharmacy_id || shift.pharmacyId || getActiveTenant()
     };
     if (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null && !isNaN(Number(shift.unpaidMealMins))) {
       obj.unpaid_meal_mins = Number(shift.unpaidMealMins);
@@ -238,7 +254,8 @@ const BriskDB = (function() {
       status: shift.status || 'draft',
       unpaidMealMins: (shift.unpaid_meal_mins !== undefined && shift.unpaid_meal_mins !== null && !isNaN(Number(shift.unpaid_meal_mins))) ? Number(shift.unpaid_meal_mins) : null,
       color: shift.color,
-      notes: shift.notes
+      notes: shift.notes,
+      pharmacyId: shift.pharmacy_id || 'amcal_woywoy'
     };
   }
 
@@ -251,7 +268,8 @@ const BriskDB = (function() {
       breaks: tc.breaks,
       total_hours: tc.totalHours,
       approved: tc.approved,
-      approved_by: tc.approvedBy
+      approved_by: tc.approvedBy,
+      pharmacy_id: tc.pharmacy_id || tc.pharmacyId || getActiveTenant()
     };
     if (tc.id) obj.id = tc.id;
     return obj;
@@ -268,7 +286,8 @@ const BriskDB = (function() {
       breaks: tc.breaks,
       totalHours: (tc.total_hours != null && !isNaN(parseFloat(tc.total_hours))) ? parseFloat(tc.total_hours) : 0,
       approved: !!tc.approved,
-      approvedBy: tc.approved_by
+      approvedBy: tc.approved_by,
+      pharmacyId: tc.pharmacy_id || 'amcal_woywoy'
     };
   }
 
@@ -281,7 +300,8 @@ const BriskDB = (function() {
       status: lr.status,
       leave_duration_type: lr.leaveDurationType || 'full_day',
       unavailable_from: lr.unavailableFrom || null,
-      unavailable_until: lr.unavailableUntil || null
+      unavailable_until: lr.unavailableUntil || null,
+      pharmacy_id: lr.pharmacy_id || lr.pharmacyId || getActiveTenant()
     };
     if (lr.id) obj.id = lr.id;
     return obj;
@@ -314,7 +334,8 @@ const BriskDB = (function() {
       status: lr.status,
       leaveDurationType: durationType,
       unavailableFrom: unavailFrom,
-      unavailableUntil: unavailUntil
+      unavailableUntil: unavailUntil,
+      pharmacyId: lr.pharmacy_id || 'amcal_woywoy'
     };
   }
 
@@ -732,8 +753,7 @@ const BriskDB = (function() {
   async function syncFromServer(candidateEmail, force) {
     const session = getSession() || {};
     const emailToUse = candidateEmail || session.email || '';
-    const activeTenant = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || 
-      (typeof window !== 'undefined' && window.location.hostname.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
+    const activeTenant = getActiveTenant();
 
     // 1. Primary Strategy: Serverless Data Sync (100% reliable, zero token expiry / RLS lockouts)
     try {
@@ -814,8 +834,8 @@ const BriskDB = (function() {
 
     try {
       const matchesStore = (item) => {
-        const pId = (item.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
-        return activeTenant === 'budgewoi_dds' ? pId === 'budgewoi_dds' : (pId === 'amcal_woywoy' || !item.pharmacy_id);
+        const pId = normalizePharmacyId(item.pharmacy_id);
+        return pId === activeTenant;
       };
 
       const { data: emps, error: empErr } = await supabase.from('brisk_employees').select('*');
@@ -870,8 +890,7 @@ const BriskDB = (function() {
         return { error: 'Email and password are required.' };
       }
 
-      const activeTenant = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || 
-        (typeof window !== 'undefined' && window.location.hostname.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
+      const activeTenant = getActiveTenant();
 
       // 1. Try serverless login API first (auto-provisions missing auth.users and confirms email)
       try {
@@ -1017,7 +1036,7 @@ const BriskDB = (function() {
       // Multi-store owner clearance & Store isolation check
       const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
       const hasMultiStoreAccess = MULTI_STORE_WHITELIST.some(w => cleanEmail.includes(w));
-      const userPharmacyId = (userProfile?.pharmacy_id || 'amcal_woywoy').toLowerCase().trim();
+      const userPharmacyId = normalizePharmacyId(userProfile?.pharmacy_id);
 
       if (!hasMultiStoreAccess) {
         if (activeTenant === 'budgewoi_dds' && userPharmacyId !== 'budgewoi_dds') {
