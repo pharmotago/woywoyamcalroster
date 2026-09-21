@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Amcal Pharmacy Woy Woy Rosters — Staff Scheduler & Time Clock</title>
-  <meta name="description" content="Local-first employee scheduling, auto scheduling algorithm, time tracking, and leave management system.">
+  <title>Amcal Pharmacy Woy Woy Rosters — Staff Scheduler & Time Clock | PKRosters</title>
+  <meta name="description" content="PKRosters - Premium Australian Pharmacy Employee Scheduling, Award Compliance & Time Clock System.">
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -205,12 +205,14 @@
     <!-- Login Card -->
     <div id="login-card" class="glass-card login-card">
       <div class="login-header text-center" style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-        <svg width="180" height="42" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
-          <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
-          <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
-          <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
-        </svg>
-        <span style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Woy Woy Rosters</span>
+        <div id="login-brand-logo" style="display: flex; align-items: center; justify-content: center;">
+          <svg width="180" height="42" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto;">
+            <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+            <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+            <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+          </svg>
+        </div>
+        <span id="login-brand-subtitle" style="font-size: 0.85rem; color: var(--accent-gold); letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; margin-top: 2px;">Woy Woy Rosters</span>
       </div>
       <form id="login-form" onsubmit="handleLoginSubmit(event)" style="margin-top: 1.5rem;">
         <div class="form-group">
@@ -276,12 +278,14 @@
     <!-- Mobile Header -->
     <div class="mobile-header">
     <div class="brand" style="display: flex; align-items: center; gap: 8px;">
-      <svg width="65" height="18" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
-        <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
-        <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
-      </svg>
-      <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 2px;">Rosters</span>
+      <div id="mobile-brand-logo" style="display: flex; align-items: center;">
+        <svg width="65" height="18" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+          <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+          <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+        </svg>
+      </div>
+      <span id="mobile-brand-subtitle" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-left: 2px;">Rosters</span>
     </div>
     <div class="live-clock mobile-clock" id="mobile-live-clock">--:--:--</div>
     <button class="mobile-menu-btn" aria-label="Toggle Menu" onclick="toggleSidebar()">
@@ -291,12 +295,14 @@
 
     <aside class="sidebar">
       <div class="sidebar-brand" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 2rem;">
-        <svg width="150" height="35" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
-          <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
-          <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
-        </svg>
-        <span style="font-size: 0.75rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; font-weight: 600; padding-left: 30px; margin-top: -6px;">Woywoy Rosters</span>
+        <div id="sidebar-brand-logo" style="display: flex; align-items: center;">
+          <svg width="150" height="35" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+            <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+            <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+          </svg>
+        </div>
+        <span id="sidebar-brand-subtitle" style="font-size: 0.75rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; font-weight: 600; padding-left: 30px; margin-top: -6px;">Woywoy Rosters</span>
       </div>
 
       <nav class="sidebar-menu" role="tablist">
@@ -342,6 +348,9 @@
           <button class="btn btn-icon" title="Change Password" onclick="openChangePasswordModal()" style="font-size: 11px; padding: 4px; color: var(--text-muted); opacity: 0.7; transition: opacity var(--transition-fast);" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
             <i class="fa-solid fa-key"></i>
           </button>
+        </div>
+        <div style="font-size: 0.64rem; color: var(--text-muted); text-align: center; opacity: 0.65; margin-top: 10px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;">
+          POWERED BY <span style="color: var(--accent-gold); font-weight: 800;">PKROSTERS</span>
         </div>
       </div>
     </aside>

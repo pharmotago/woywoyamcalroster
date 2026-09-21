@@ -457,6 +457,75 @@ assertTest('All-Hands Deck Presentation Modal & Slide View in index.html', hasDe
 assertTest('Dispensary Handover & All-Hands Deck Topbar Trigger Buttons', hasHandoverButtons, 'btn-dispensary-handover or btn-allhands-deck missing from index.html.');
 
 // ---------------------------------------------------------
+// Test Suite 16: PKRosters Brand Identity & Multi-Tenant Theming Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 16: PKRosters Brand Identity & Multi-Tenant Theming Guard]');
+const manifestJsonPath = path.join(rootDir, 'manifest.json');
+const pkgJsonPath = path.join(rootDir, 'package.json');
+
+let hasTenantConfig = false;
+let hasTenantDetection = false;
+let hasDdsTheme = false;
+let hasAmcalTheme = false;
+let hasBrandLogosInHtml = false;
+let hasWatermarkInHtml = false;
+let manifestHasPkRosters = false;
+let pkgHasPkRosters = false;
+
+if (fs.existsSync(appJsPath)) {
+  const appCode = fs.readFileSync(appJsPath, 'utf8');
+  hasTenantConfig = appCode.includes('TENANT_CONFIGS') && 
+                    appCode.includes('budgewoi') && 
+                    appCode.includes('Discount Drug Stores');
+  hasTenantDetection = appCode.includes('detectAndApplyTenant') && 
+                       appCode.includes('pkrosters_active_tenant');
+}
+
+if (fs.existsSync(stylesCssPath)) {
+  const cssCode = fs.readFileSync(stylesCssPath, 'utf8');
+  hasDdsTheme = cssCode.includes('[data-theme="budgewoi"]') && 
+                cssCode.includes('--brand-primary: #008752') && 
+                cssCode.includes('--brand-accent: #ff7a00');
+  hasAmcalTheme = cssCode.includes('[data-theme="amcal"]') || 
+                  cssCode.includes('--brand-primary: #0066cc');
+}
+
+if (fs.existsSync(indexHtmlPath)) {
+  const htmlCode = fs.readFileSync(indexHtmlPath, 'utf8');
+  hasBrandLogosInHtml = htmlCode.includes('id="login-brand-logo"') && 
+                        htmlCode.includes('id="login-brand-subtitle"') && 
+                        htmlCode.includes('id="sidebar-brand-logo"');
+  hasWatermarkInHtml = htmlCode.includes('POWERED BY') && htmlCode.includes('PKROSTERS');
+}
+
+if (fs.existsSync(manifestJsonPath)) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestJsonPath, 'utf8'));
+    manifestHasPkRosters = (manifest.name && manifest.name.includes('PKRosters')) && 
+                           (manifest.short_name === 'PKRosters');
+  } catch (e) {
+    manifestHasPkRosters = false;
+  }
+}
+
+if (fs.existsSync(pkgJsonPath)) {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+    pkgHasPkRosters = pkg.name === 'pk-rosters' && pkg.description.includes('PKRosters');
+  } catch (e) {
+    pkgHasPkRosters = false;
+  }
+}
+
+assertTest('Tenant Configuration & Dictionary in app.js', hasTenantConfig, 'TENANT_CONFIGS missing or incomplete in js/app.js.');
+assertTest('Dynamic Tenant Detection & Application (URL / Hostname / Storage)', hasTenantDetection, 'detectAndApplyTenant missing from js/app.js.');
+assertTest('Budgewoi DDS Signature Theme (Emerald Green #008752 & Orange #ff7a00)', hasDdsTheme, 'Budgewoi DDS theme variables missing in css/styles.css.');
+assertTest('Amcal Woy Woy Classic Theme (Royal Blue #0066cc & Cyan)', hasAmcalTheme, 'Amcal Woy Woy theme variables missing in css/styles.css.');
+assertTest('Dynamic Multi-Tenant Brand Placeholders in index.html', hasBrandLogosInHtml, 'Dynamic brand logo/subtitle IDs missing in index.html.');
+assertTest('PKRosters Brand Watermark in Sidebar Footer', hasWatermarkInHtml, 'POWERED BY PKROSTERS footer watermark missing in index.html.');
+assertTest('PWA Manifest & Package Metadata PKRosters Rebrand', manifestHasPkRosters && pkgHasPkRosters, 'manifest.json or package.json missing PKRosters rebranding.');
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

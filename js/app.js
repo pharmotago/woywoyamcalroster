@@ -18,7 +18,108 @@ import './modules/compliance.js';
 import './modules/payroll-engine.js';
 import './modules/ai-ops.js';
 import './modules/dispensary-handover.js';
-// Toast Notification System
+
+// ==========================================
+// PKROSTERS MULTI-TENANT ARCHITECTURE & BRANDING
+// ==========================================
+export const TENANT_CONFIGS = {
+  woywoy: {
+    id: 'woywoy',
+    name: 'Amcal Pharmacy Woy Woy',
+    banner: 'Amcal+',
+    theme: 'amcal',
+    title: 'Amcal Pharmacy Woy Woy Rosters — Staff Scheduler & Time Clock | PKRosters',
+    subtitle: 'Woywoy Rosters',
+    logoSvg: `<svg width="150" height="35" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+      <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+      <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+    </svg>`,
+    logoSmallSvg: `<svg width="65" height="18" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
+      <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
+      <text x="30" y="25" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="24" fill="#3CA7E1" letter-spacing="-0.5px">Amcal+</text>
+    </svg>`
+  },
+  budgewoi: {
+    id: 'budgewoi',
+    name: 'Budgewoi Discount Drug Stores',
+    banner: 'Discount Drug Stores',
+    theme: 'budgewoi',
+    title: 'Budgewoi Discount Drug Stores Rosters — Staff Scheduler & Time Clock | PKRosters',
+    subtitle: 'Budgewoi DDS Rosters',
+    logoSvg: `<svg width="160" height="35" viewBox="0 0 160 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="11" width="20" height="7" rx="2" fill="#FF7A00" />
+      <rect x="8.5" y="4.5" width="7" height="20" rx="2" fill="#00A866" />
+      <text x="28" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="18" fill="#00A866" letter-spacing="-0.3px">DDS</text>
+      <text x="68" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="800" font-size="14" fill="#FF7A00" letter-spacing="0.5px">DRUG STORES</text>
+    </svg>`,
+    logoSmallSvg: `<svg width="70" height="18" viewBox="0 0 160 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="11" width="20" height="7" rx="2" fill="#FF7A00" />
+      <rect x="8.5" y="4.5" width="7" height="20" rx="2" fill="#00A866" />
+      <text x="28" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="18" fill="#00A866" letter-spacing="-0.3px">DDS</text>
+    </svg>`
+  }
+};
+window.TENANT_CONFIGS = TENANT_CONFIGS;
+
+export function detectAndApplyTenant() {
+  const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname.toLowerCase() : '';
+  let tenantParam = null;
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    tenantParam = searchParams.get('tenant') || searchParams.get('store');
+  } catch (_) {}
+
+  let tenantKey = 'woywoy';
+  if (host.includes('budgewoi') || tenantParam === 'budgewoi' || tenantParam === 'dds') {
+    tenantKey = 'budgewoi';
+  } else {
+    try {
+      const stored = localStorage.getItem('pkrosters_active_tenant');
+      if (stored === 'budgewoi' && !tenantParam) {
+        tenantKey = 'budgewoi';
+      }
+    } catch (_) {}
+  }
+
+  const tenant = TENANT_CONFIGS[tenantKey] || TENANT_CONFIGS.woywoy;
+  window.currentTenant = tenant;
+  try {
+    localStorage.setItem('pkrosters_active_tenant', tenant.id);
+  } catch (_) {}
+
+  if (typeof document !== 'undefined') {
+    // Apply Theme Attribute on HTML element
+    document.documentElement.setAttribute('data-theme', tenant.theme);
+    document.documentElement.setAttribute('data-tenant', tenant.id);
+    document.title = tenant.title;
+
+    // Update Login Screen Elements
+    const loginLogo = document.getElementById('login-brand-logo');
+    if (loginLogo) loginLogo.innerHTML = tenant.logoSvg;
+    const loginSub = document.getElementById('login-brand-subtitle');
+    if (loginSub) loginSub.textContent = tenant.subtitle;
+
+    // Update Sidebar Brand Elements
+    const sidebarLogo = document.getElementById('sidebar-brand-logo');
+    if (sidebarLogo) sidebarLogo.innerHTML = tenant.logoSvg;
+    const sidebarSub = document.getElementById('sidebar-brand-subtitle');
+    if (sidebarSub) sidebarSub.textContent = tenant.subtitle;
+
+    // Update Mobile Header Elements
+    const mobileLogo = document.getElementById('mobile-brand-logo');
+    if (mobileLogo) mobileLogo.innerHTML = tenant.logoSmallSvg;
+    const mobileSub = document.getElementById('mobile-brand-subtitle');
+    if (mobileSub) mobileSub.textContent = tenant.id === 'budgewoi' ? 'Budgewoi' : 'Woy Woy';
+  }
+
+  return tenant;
+}
+window.detectAndApplyTenant = detectAndApplyTenant;
+
+// Run immediate tenant detection on module evaluation
+detectAndApplyTenant();
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;

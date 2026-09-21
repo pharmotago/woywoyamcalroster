@@ -46,6 +46,103 @@
   --transition-normal: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ========================================================
+   PKRosters Multi-Tenant Dynamic Theming Engine
+   ======================================================== */
+
+/* 1. Amcal Woy Woy (Default Amcal Blue & Cyan Palette) */
+:root,
+html[data-theme="amcal"],
+body[data-theme="amcal"] {
+  --hue-primary: 206;
+  --border-active: hsla(206, 100%, 34%, 0.6);
+  --accent-gold: hsl(201, 74%, 56%);
+  --accent-amber: hsl(206, 100%, 34%);
+  --accent-cyan: hsl(201, 74%, 56%);
+  --brand-primary: #0066cc;
+  --brand-accent: #dc2626;
+  --brand-highlight: #3ca7e1;
+  --brand-badge-bg: rgba(60, 167, 225, 0.12);
+  --brand-badge-border: rgba(60, 167, 225, 0.3);
+  --brand-badge-text: #3ca7e1;
+}
+
+/* 2. Budgewoi Discount Drug Stores (DDS Emerald Green & Vivid Orange Palette) */
+html[data-theme="budgewoi"],
+html[data-theme="dds"],
+body[data-theme="budgewoi"],
+body[data-theme="dds"] {
+  --hue-primary: 156;
+  --border-active: hsla(156, 100%, 34%, 0.65);
+  --accent-gold: hsl(28, 100%, 50%);   /* DDS Brand Vivid Orange #ff7a00 */
+  --accent-amber: hsl(156, 100%, 26%); /* DDS Brand Deep Green #008752 */
+  --accent-cyan: hsl(156, 75%, 48%);   /* Mint Green Glow #22c55e */
+  --accent-purple: hsl(38, 100%, 50%); /* Amber Glow */
+  --brand-primary: #008752;            /* Signature DDS Green */
+  --brand-accent: #ff7a00;             /* Signature DDS Orange */
+  --brand-highlight: #22c55e;
+  --brand-badge-bg: rgba(0, 135, 82, 0.15);
+  --brand-badge-border: rgba(0, 135, 82, 0.4);
+  --brand-badge-text: #34d399;
+}
+
+/* DDS Specific UI Element Styling */
+html[data-theme="budgewoi"] .btn-primary,
+html[data-theme="dds"] .btn-primary {
+  background: linear-gradient(135deg, #008752 0%, #005f3a 100%) !important;
+  border-color: #00a866 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(0, 135, 82, 0.35) !important;
+}
+
+html[data-theme="budgewoi"] .btn-primary:hover,
+html[data-theme="dds"] .btn-primary:hover {
+  background: linear-gradient(135deg, #00a866 0%, #008752 100%) !important;
+  box-shadow: 0 6px 20px rgba(0, 135, 82, 0.5) !important;
+}
+
+html[data-theme="budgewoi"] .btn-neon,
+html[data-theme="dds"] .btn-neon {
+  background: linear-gradient(135deg, #ff7a00 0%, #d96200 100%) !important;
+  border-color: #ff9833 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(255, 122, 0, 0.35) !important;
+}
+
+html[data-theme="budgewoi"] .btn-neon:hover,
+html[data-theme="dds"] .btn-neon:hover {
+  background: linear-gradient(135deg, #ff9833 0%, #ff7a00 100%) !important;
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.5) !important;
+}
+
+html[data-theme="budgewoi"] .menu-item.active,
+html[data-theme="dds"] .menu-item.active {
+  background: linear-gradient(90deg, rgba(0, 135, 82, 0.22) 0%, rgba(0, 135, 82, 0.05) 100%) !important;
+  border-left: 3px solid #ff7a00 !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="budgewoi"] .menu-item.active i,
+html[data-theme="dds"] .menu-item.active i {
+  color: #ff7a00 !important;
+}
+
+html[data-theme="budgewoi"] .orb-1,
+html[data-theme="dds"] .orb-1 {
+  background: radial-gradient(circle, rgba(0, 135, 82, 0.35), transparent 70%) !important;
+}
+
+html[data-theme="budgewoi"] .orb-3,
+html[data-theme="dds"] .orb-3 {
+  background: radial-gradient(circle, rgba(255, 122, 0, 0.25), transparent 70%) !important;
+}
+
+html[data-theme="budgewoi"] body,
+html[data-theme="dds"] body {
+  background-image: radial-gradient(circle at 15% 50%, rgba(0, 135, 82, 0.05), transparent 50%),
+                    radial-gradient(circle at 85% 30%, rgba(255, 122, 0, 0.04), transparent 50%) !important;
+}
+
 /* Reset & Base Styles */
 * {
   box-sizing: border-box;
