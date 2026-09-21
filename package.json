@@ -60,6 +60,7 @@
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",
+    "release:dds-branding": "git add -A && git commit -m \"feat(theme): official Discount Drug Stores royal purple #7A2682 & orange #FF6B00 branding [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "release:isolation-fix": "git add -A && git commit -m \"fix(tenant): resolve pharmacy_id mismatch & enforce zero Amcal staff leakage on Budgewoi roster [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:split-polish": "git add -A && git commit -m \"polish(roster): split segment role select vertical alignment and 34px input balance [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "copy:screen-split": "powershell -Command \"Copy-Item C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/.system_generated/steps/291/media_0.png C:/Users/Sung/.gemini/antigravity/brain/5d154729-0e34-4d75-add3-76faeb6ed1a3/split_shift_verified_award_break.png -Force\"",

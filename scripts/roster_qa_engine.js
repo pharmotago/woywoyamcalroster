@@ -484,8 +484,8 @@ if (fs.existsSync(appJsPath)) {
 if (fs.existsSync(stylesCssPath)) {
   const cssCode = fs.readFileSync(stylesCssPath, 'utf8');
   hasDdsTheme = cssCode.includes('[data-theme="budgewoi"]') && 
-                cssCode.includes('--brand-primary: #008752') && 
-                cssCode.includes('--brand-accent: #ff7a00');
+                (cssCode.includes('--brand-primary: #7a2682') || cssCode.includes('--brand-primary: #7A2682')) && 
+                (cssCode.includes('--brand-accent: #ff6b00') || cssCode.includes('--brand-accent: #FF6B00'));
   hasAmcalTheme = cssCode.includes('[data-theme="amcal"]') || 
                   cssCode.includes('--brand-primary: #0066cc');
 }
@@ -519,7 +519,7 @@ if (fs.existsSync(pkgJsonPath)) {
 
 assertTest('Tenant Configuration & Dictionary in app.js', hasTenantConfig, 'TENANT_CONFIGS missing or incomplete in js/app.js.');
 assertTest('Dynamic Tenant Detection & Application (URL / Hostname / Storage)', hasTenantDetection, 'detectAndApplyTenant missing from js/app.js.');
-assertTest('Budgewoi DDS Signature Theme (Emerald Green #008752 & Orange #ff7a00)', hasDdsTheme, 'Budgewoi DDS theme variables missing in css/styles.css.');
+assertTest('Budgewoi DDS Signature Theme (Royal Purple #7a2682 & Orange #ff6b00)', hasDdsTheme, 'Budgewoi DDS theme variables missing in css/styles.css.');
 assertTest('Amcal Woy Woy Classic Theme (Royal Blue #0066cc & Cyan)', hasAmcalTheme, 'Amcal Woy Woy theme variables missing in css/styles.css.');
 assertTest('Dynamic Multi-Tenant Brand Placeholders in index.html', hasBrandLogosInHtml, 'Dynamic brand logo/subtitle IDs missing in index.html.');
 assertTest('PKRosters Brand Watermark in Sidebar Footer', hasWatermarkInHtml, 'POWERED BY PKROSTERS footer watermark missing in index.html.');

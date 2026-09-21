@@ -52,16 +52,24 @@ export const TENANT_CONFIGS = {
     theme: 'budgewoi',
     title: 'Budgewoi Discount Drug Stores Rosters — Staff Scheduler & Time Clock | PKRosters',
     subtitle: 'Budgewoi DDS Rosters',
-    logoSvg: `<svg width="160" height="35" viewBox="0 0 160 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="11" width="20" height="7" rx="2" fill="#FF7A00" />
-      <rect x="8.5" y="4.5" width="7" height="20" rx="2" fill="#00A866" />
-      <text x="28" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="18" fill="#00A866" letter-spacing="-0.3px">DDS</text>
-      <text x="68" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="800" font-size="14" fill="#FF7A00" letter-spacing="0.5px">DRUG STORES</text>
+    logoSvg: `<svg width="185" height="35" viewBox="0 0 185 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g transform="translate(2, 2)">
+        <rect x="0" y="1" width="29" height="29" rx="8" fill="#7A2682" />
+        <circle cx="14.5" cy="15.5" r="5" fill="#FFFFFF" />
+        <circle cx="14.5" cy="15.5" r="2.5" fill="#FF6B00" />
+        <path d="M14.5 5.5 L14.5 8.5 M14.5 22.5 L14.5 25.5 M4.5 15.5 L7.5 15.5 M21.5 15.5 L24.5 15.5 M7.5 8.5 L9.8 10.8 M19.2 20.2 L21.5 22.5 M7.5 22.5 L9.8 20.2 M19.2 10.8 L21.5 8.5" stroke="#FF6B00" stroke-width="2" stroke-linecap="round" />
+      </g>
+      <text x="37" y="19" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="16" fill="#FFFFFF" letter-spacing="-0.3px">discount</text>
+      <text x="103" y="19" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="16" fill="#FF6B00" letter-spacing="-0.3px">DRUG</text>
+      <text x="37" y="30" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="800" font-size="9.5" fill="#FF6B00" letter-spacing="1.6px">STORES</text>
+      <text x="84" y="30" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-style="italic" font-size="7.5" fill="#D8B4E2" letter-spacing="0.2px">more than just low prices</text>
     </svg>`,
-    logoSmallSvg: `<svg width="70" height="18" viewBox="0 0 160 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="2" y="11" width="20" height="7" rx="2" fill="#FF7A00" />
-      <rect x="8.5" y="4.5" width="7" height="20" rx="2" fill="#00A866" />
-      <text x="28" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="18" fill="#00A866" letter-spacing="-0.3px">DDS</text>
+    logoSmallSvg: `<svg width="85" height="20" viewBox="0 0 115 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="1" width="24" height="24" rx="6" fill="#7A2682" />
+      <circle cx="12" cy="13" r="3.8" fill="#FFFFFF" />
+      <path d="M12 5 L12 8 M12 18 L12 21 M4 13 L7 13 M17 13 L20 13" stroke="#FF6B00" stroke-width="1.8" stroke-linecap="round" />
+      <text x="28" y="14" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="13" fill="#FFFFFF">discount</text>
+      <text x="28" y="24" font-family="'Outfit', 'Inter', system-ui, sans-serif" font-weight="900" font-size="9" fill="#FF6B00" letter-spacing="0.8px">DRUG STORES</text>
     </svg>`
   }
 };
@@ -146,8 +154,8 @@ export function updateMultiStoreSwitcherVisibility() {
       label.textContent = isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy';
     }
     if (badge) {
-      badge.style.background = isBudgewoi ? '#008752' : '#0066cc';
-      badge.style.boxShadow = isBudgewoi ? '0 0 8px #008752' : '0 0 8px #0066cc';
+      badge.style.background = isBudgewoi ? '#7a2682' : '#0066cc';
+      badge.style.boxShadow = isBudgewoi ? '0 0 8px #ff6b00' : '0 0 8px #0066cc';
     }
   } else {
     container.style.display = 'none';
