@@ -83,22 +83,38 @@ export function detectAndApplyTenant() {
     tenantParam = searchParams.get('tenant') || searchParams.get('store');
   } catch (_) {}
 
-  const isBudgewoiHost = host.includes('budgewoi') || host.includes('dds');
+  const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) || 
+                      (window.BriskDB && typeof window.BriskDB.getSession === 'function' && window.BriskDB.getSession()) || null;
+  const email = String(currentUser?.email || '').toLowerCase().trim();
+  const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+  const isExecutive = MULTI_STORE_WHITELIST.some(w => email.includes(w)) || (currentUser?.hasMultiStoreAccess === true);
+
   const isBudgewoiParam = tenantParam === 'budgewoi' || tenantParam === 'dds' || tenantParam === 'budgewoi_dds';
-  const isAmcalHost = host.includes('woywoy') || host.includes('amcal');
+  const isAmcalParam = tenantParam === 'woywoy' || tenantParam === 'amcal' || tenantParam === 'amcal_woywoy';
 
   let tenantKey = 'woywoy';
-  if (isBudgewoiHost || isBudgewoiParam) {
+  if (isBudgewoiParam) {
     tenantKey = 'budgewoi';
-  } else if (isAmcalHost) {
+  } else if (isAmcalParam) {
     tenantKey = 'woywoy';
-  } else {
+  } else if (isExecutive) {
+    // Executive user: honor explicit store switcher choice in localStorage
     try {
       const stored = (localStorage.getItem('pkrosters_active_tenant') || '').toLowerCase();
-      if ((stored.includes('budgewoi') || stored.includes('dds')) && !tenantParam) {
+      if (stored.includes('budgewoi') || stored.includes('dds')) {
         tenantKey = 'budgewoi';
+      } else if (stored.includes('woywoy') || stored.includes('amcal')) {
+        tenantKey = 'woywoy';
+      } else {
+        tenantKey = (host.includes('budgewoi') || host.includes('dds')) ? 'budgewoi' : 'woywoy';
       }
-    } catch (_) {}
+    } catch (_) {
+      tenantKey = (host.includes('budgewoi') || host.includes('dds')) ? 'budgewoi' : 'woywoy';
+    }
+  } else {
+    // Non-executive (standard staff): strictly bound to domain hostname
+    const isBudgewoiHost = host.includes('budgewoi') || host.includes('dds');
+    tenantKey = isBudgewoiHost ? 'budgewoi' : 'woywoy';
   }
 
   const tenant = TENANT_CONFIGS[tenantKey] || TENANT_CONFIGS.woywoy;

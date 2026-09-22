@@ -64,6 +64,7 @@
     "release:v10.5.4": "git add -A && git commit -m \"fix(tenant): v10.5.4 - store pharmacy_id in JSONB availability to prevent missing column schema errors [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.5": "git add -A && git commit -m \"fix(isolation): v10.5.5 - enforce complete bi-directional store isolation for Amcal & Budgewoi DDS [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.6": "git add -A && git commit -m \"fix(roster): v10.5.6 - dynamic all-hands deck per store, shift camelCase filter & budgewoi mutation tagging [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "release:v10.5.7": "git add -A && git commit -m \"fix(switcher): v10.5.7 - executive in-app store switcher precedence for Peter Kim & Katherine [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",

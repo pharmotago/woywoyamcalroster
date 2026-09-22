@@ -44,7 +44,24 @@ const BriskDB = (function() {
         const urlStore = sp.get('tenant') || sp.get('store');
         if (urlStore) return normalizePharmacyId(urlStore);
       } catch (_) {}
+    }
 
+    // Executive Clearance Override (Peter Kim, Katherine Nguyen, Glen Kanawati)
+    try {
+      const session = (typeof getSession === 'function') ? getSession() : null;
+      const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) || session;
+      const email = String(currentUser?.email || '').toLowerCase().trim();
+      const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+      const isExecutive = MULTI_STORE_WHITELIST.some(w => email.includes(w)) || (currentUser?.hasMultiStoreAccess === true);
+
+      if (isExecutive && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('pkrosters_active_tenant');
+        if (stored) return normalizePharmacyId(stored);
+      }
+    } catch (_) {}
+
+    // Strict Domain Hostname Binding for Non-Executive Staff
+    if (typeof window !== 'undefined' && window.location) {
       const h = (window.location.hostname || '').toLowerCase();
       if (h.includes('budgewoi') || h.includes('dds')) return 'budgewoi_dds';
       if (h.includes('woywoy') || h.includes('amcal')) return 'amcal_woywoy';
@@ -146,6 +163,7 @@ const BriskDB = (function() {
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(session));
     } else {
       localStorage.removeItem(STORAGE_KEYS.SESSION);
+      try { localStorage.removeItem('pkrosters_active_tenant'); } catch (_) {}
       // Clear data on logout
       _employees = [];
       _shifts = [];

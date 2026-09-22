@@ -608,6 +608,17 @@ assertTest('Executive Multi-Store Switcher Elements in index.html', switcherInHt
 assertTest('Executive Multi-Store Switcher Controller in app.js', switcherInAppJs, 'updateMultiStoreSwitcherVisibility or switchStoreTenant missing from app.js.');
 assertTest('Executive Multi-Store Switcher Styles in styles.css', switcherInCss, 'store-switcher styles missing from css/styles.css.');
 
+let switcherPrecedencePass = false;
+if (fs.existsSync(databaseJsPath) && fs.existsSync(appJsPath)) {
+  const dbCode = fs.readFileSync(databaseJsPath, 'utf8');
+  const appCode = fs.readFileSync(appJsPath, 'utf8');
+  switcherPrecedencePass = dbCode.includes('MULTI_STORE_WHITELIST') &&
+                           dbCode.includes('pkrosters_active_tenant') &&
+                           appCode.includes('MULTI_STORE_WHITELIST') &&
+                           appCode.includes('pkrosters_active_tenant');
+}
+assertTest('Executive In-App Store Switcher Precedence Guard', switcherPrecedencePass, 'database.js or app.js missing executive localStorage switcher precedence.');
+
 // ---------------------------------------------------------
 // Test Suite 18: Save Profile Auth & Invite Registration Fix Guard (v10.5.2)
 // ---------------------------------------------------------
