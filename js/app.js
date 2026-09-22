@@ -5483,7 +5483,7 @@ async function handleEmployeeSubmit(event) {
     renderScheduler();
     calculateLaborCostForecast();
   } catch (err) {
-    showToast('Failed to save employee.', 'error');
+    showToast(err.message || 'Failed to save employee.', 'error');
   } finally {
     if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtnText; }
   }

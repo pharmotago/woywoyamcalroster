@@ -1343,17 +1343,20 @@ const BriskDB = (function() {
       try {
         const token = await getMutateAuthToken();
         const callerEmail = getSession()?.email || (typeof window !== 'undefined' && window.state?.currentUser?.email) || '';
+        const activeTenant = getActiveTenant();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'x-user-email': callerEmail
+            'x-user-email': callerEmail,
+            'x-pharmacy-id': dbObj.pharmacy_id || activeTenant
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'create',
             callerEmail: callerEmail,
+            pharmacyId: dbObj.pharmacy_id || activeTenant,
             employee: dbObj
           })
         });
@@ -1385,9 +1388,10 @@ const BriskDB = (function() {
       // 2. Direct Supabase Client fallback
       assertManagerPermissionForFallback();
       let { data, error } = await supabase.from('brisk_employees').insert(dbObj).select().maybeSingle();
-      if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+      if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
         delete dbObj.award_level;
         delete dbObj.employment_type;
+        if (error.message.includes('pharmacy_id')) delete dbObj.pharmacy_id;
         const retry = await supabase.from('brisk_employees').insert(dbObj).select().maybeSingle();
         data = retry.data;
         error = retry.error;
@@ -1424,17 +1428,20 @@ const BriskDB = (function() {
       try {
         const token = await getMutateAuthToken();
         const callerEmail = getSession()?.email || (typeof window !== 'undefined' && window.state?.currentUser?.email) || '';
+        const activeTenant = getActiveTenant();
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'x-user-email': callerEmail
+            'x-user-email': callerEmail,
+            'x-pharmacy-id': dbObj.pharmacy_id || activeTenant
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'update',
             callerEmail: callerEmail,
+            pharmacyId: dbObj.pharmacy_id || activeTenant,
             employee: dbObj
           })
         });
@@ -1466,9 +1473,10 @@ const BriskDB = (function() {
       // 2. Direct Supabase Client fallback
       assertManagerPermissionForFallback();
       let { error } = await supabase.from('brisk_employees').update(dbObj).eq('id', updated.id);
-      if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+      if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
         delete dbObj.award_level;
         delete dbObj.employment_type;
+        if (error.message.includes('pharmacy_id')) delete dbObj.pharmacy_id;
         const retry = await supabase.from('brisk_employees').update(dbObj).eq('id', updated.id);
         error = retry.error;
       }

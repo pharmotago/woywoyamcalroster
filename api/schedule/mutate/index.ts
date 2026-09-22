@@ -121,6 +121,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (req.headers['x-pharmacy-id'] as string) || 
       body.pharmacyId || 
       body.pharmacy_id || 
+      body.employee?.pharmacy_id || 
+      body.employee?.pharmacyId || 
+      body.shift?.pharmacy_id || 
+      body.shift?.pharmacyId || 
       origin
     );
 
@@ -161,14 +165,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (empData.id) newObj.id = empData.id;
 
         let { data, error } = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
-        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
           delete newObj.award_level;
           delete newObj.employment_type;
+          if (error.message.includes('pharmacy_id')) delete newObj.pharmacy_id;
           const retry = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
           data = retry.data;
           error = retry.error;
         }
-        if (error) throw error;
+        if (error) {
+          console.error('[MutateAPI] Employee insert error:', error);
+          return jsonRes(res, { 
+            error: error.message || 'Database insert failed', 
+            details: error.details || error.hint || undefined,
+            code: error.code 
+          }, 400);
+        }
         const safeCreateData = isOwnerOrPeter ? data : {
           ...data,
           hourly_rate: null,
@@ -230,14 +242,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (empData.active !== undefined) updateObj.active = !!empData.active;
 
         let { data, error } = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
-        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type'))) {
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
           delete updateObj.award_level;
           delete updateObj.employment_type;
+          if (error.message.includes('pharmacy_id')) delete updateObj.pharmacy_id;
           const retry = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
           data = retry.data;
           error = retry.error;
         }
-        if (error) throw error;
+        if (error) {
+          console.error('[MutateAPI] Employee update error:', error);
+          return jsonRes(res, { 
+            error: error.message || 'Database update failed', 
+            details: error.details || error.hint || undefined,
+            code: error.code 
+          }, 400);
+        }
         const safeUpdateData = isOwnerOrPeter ? data : {
           ...data,
           hourly_rate: null,
@@ -563,10 +583,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return jsonRes(res, { error: 'Unsupported entity or action.' }, 400);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[MutateAPI] Error:', msg);
-    return jsonRes(res, { error: msg }, 500);
+  } catch (err: any) {
+    const msg = err?.message || (err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err))) || 'Unknown error';
+    console.error('[MutateAPI] Error:', msg, err);
+    return jsonRes(res, { error: msg, details: err?.details || err?.hint || undefined }, 500);
   }
 }
+
 
