@@ -157,6 +157,9 @@ const BriskDB = (function() {
   // --- SQL Mapper Functions to resolve DB Snake Case vs JS Camel Case ---
   function mapEmployeeToDb(emp) {
     const avail = { ...(emp.availability || {}) };
+    const pId = normalizePharmacyId(emp.pharmacy_id || emp.pharmacyId || getActiveTenant());
+    avail.pharmacy_id = pId;
+    avail.pharmacyId = pId;
     if (emp.dob) avail.dob = emp.dob;
     if (Array.isArray(emp.certificates)) avail.certificates = emp.certificates;
     
@@ -178,8 +181,7 @@ const BriskDB = (function() {
       availability: avail,
       active: emp.active !== undefined ? emp.active : true,
       employment_type: empType,
-      award_level: awdLevel,
-      pharmacy_id: emp.pharmacy_id || emp.pharmacyId || getActiveTenant()
+      award_level: awdLevel
     };
     
     // Only include hourly_rate if explicitly provided or fallback to existing
@@ -212,7 +214,7 @@ const BriskDB = (function() {
       certificates: Array.isArray(avail.certificates) ? avail.certificates : (Array.isArray(emp.certificates) ? emp.certificates : []),
       availability: avail,
       active: (emp.active !== undefined && emp.active !== null) ? !!emp.active : true,
-      pharmacyId: emp.pharmacy_id || 'amcal_woywoy'
+      pharmacyId: emp.pharmacy_id || avail.pharmacy_id || avail.pharmacyId || 'amcal_woywoy'
     };
   }
 
@@ -223,14 +225,18 @@ const BriskDB = (function() {
   }
 
   function mapShiftToDb(shift) {
+    const pId = normalizePharmacyId(shift.pharmacy_id || shift.pharmacyId || getActiveTenant());
+    let notes = shift.notes || '';
+    if (pId === 'budgewoi_dds' && !notes.includes('budgewoi')) {
+      notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+    }
     const obj = {
       employee_id: shift.employeeId || null,
       date: shift.date,
       start_time: formatTimeHHmm(shift.startTime),
       end_time: formatTimeHHmm(shift.endTime),
       role: shift.role || 'Pharmacy Assistant',
-      notes: shift.notes || '',
-      pharmacy_id: shift.pharmacy_id || shift.pharmacyId || getActiveTenant()
+      notes: notes
     };
     if (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null && !isNaN(Number(shift.unpaidMealMins))) {
       obj.unpaid_meal_mins = Number(shift.unpaidMealMins);
@@ -255,7 +261,7 @@ const BriskDB = (function() {
       unpaidMealMins: (shift.unpaid_meal_mins !== undefined && shift.unpaid_meal_mins !== null && !isNaN(Number(shift.unpaid_meal_mins))) ? Number(shift.unpaid_meal_mins) : null,
       color: shift.color,
       notes: shift.notes,
-      pharmacyId: shift.pharmacy_id || 'amcal_woywoy'
+      pharmacyId: shift.pharmacy_id || (shift.notes && shift.notes.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy')
     };
   }
 
@@ -268,8 +274,7 @@ const BriskDB = (function() {
       breaks: tc.breaks,
       total_hours: tc.totalHours,
       approved: tc.approved,
-      approved_by: tc.approvedBy,
-      pharmacy_id: tc.pharmacy_id || tc.pharmacyId || getActiveTenant()
+      approved_by: tc.approvedBy
     };
     if (tc.id) obj.id = tc.id;
     return obj;
@@ -300,8 +305,7 @@ const BriskDB = (function() {
       status: lr.status,
       leave_duration_type: lr.leaveDurationType || 'full_day',
       unavailable_from: lr.unavailableFrom || null,
-      unavailable_until: lr.unavailableUntil || null,
-      pharmacy_id: lr.pharmacy_id || lr.pharmacyId || getActiveTenant()
+      unavailable_until: lr.unavailableUntil || null
     };
     if (lr.id) obj.id = lr.id;
     return obj;
@@ -834,7 +838,8 @@ const BriskDB = (function() {
 
     try {
       const matchesStore = (item) => {
-        const pId = normalizePharmacyId(item.pharmacy_id);
+        const raw = item.pharmacy_id || item.availability?.pharmacy_id || item.availability?.pharmacyId || (item.notes && item.notes.includes('budgewoi') ? 'budgewoi_dds' : null);
+        const pId = normalizePharmacyId(raw);
         return pId === activeTenant;
       };
 

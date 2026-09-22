@@ -164,16 +164,35 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
       }
     }
 
-    // Strict store isolation filter: amcal legacy records (null pharmacy_id) map exclusively to amcal_woywoy
+    // Strict store isolation filter: checks pharmacy_id or availability.pharmacy_id (JSONB)
     const matchesPharmacy = (item: any) => {
-      const pId = normalizePharmacyId(item.pharmacy_id);
+      const raw = item.pharmacy_id || item.availability?.pharmacy_id || item.availability?.pharmacyId;
+      const pId = normalizePharmacyId(raw);
       return pId === targetPharmacy;
     };
 
     const storeEmployees = employees.filter(matchesPharmacy);
-    const storeShifts = (shiftRes.data || []).filter(matchesPharmacy);
-    const storeTimecards = (tcRes.data || []).filter(matchesPharmacy);
-    const storeLeave = (leaveRes.data || []).filter(matchesPharmacy);
+    const storeEmpIds = new Set(storeEmployees.map((e: any) => e.id));
+
+    const storeShifts = (shiftRes.data || []).filter((s: any) => {
+      if (s.pharmacy_id) return normalizePharmacyId(s.pharmacy_id) === targetPharmacy;
+      if (s.employee_id && storeEmpIds.has(s.employee_id)) return true;
+      if (s.notes && s.notes.includes('budgewoi') && targetPharmacy === 'budgewoi_dds') return true;
+      return targetPharmacy === 'amcal_woywoy' && (!s.employee_id || !storeEmpIds.has(s.employee_id));
+    });
+
+    const storeTimecards = (tcRes.data || []).filter((tc: any) => {
+      if (tc.pharmacy_id) return normalizePharmacyId(tc.pharmacy_id) === targetPharmacy;
+      if (tc.employee_id && storeEmpIds.has(tc.employee_id)) return true;
+      return targetPharmacy === 'amcal_woywoy' && (!tc.employee_id || !storeEmpIds.has(tc.employee_id));
+    });
+
+    const storeLeave = (leaveRes.data || []).filter((lr: any) => {
+      if (lr.pharmacy_id) return normalizePharmacyId(lr.pharmacy_id) === targetPharmacy;
+      if (lr.employee_id && storeEmpIds.has(lr.employee_id)) return true;
+      return targetPharmacy === 'amcal_woywoy' && (!lr.employee_id || !storeEmpIds.has(lr.employee_id));
+    });
+
 
     // Store-specific settings
     const BUDGEWOI_TRADING_HOURS = {

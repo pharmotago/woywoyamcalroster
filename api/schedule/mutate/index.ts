@@ -143,6 +143,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (action === 'create') {
         const avail = { ...(empData.availability || {}) };
+        avail.pharmacy_id = targetPharmacy;
+        avail.pharmacyId = targetPharmacy;
         const empType = isOwnerOrPeter ? (empData.employment_type || empData.employmentType || avail.employment_type || 'permanent') : 'permanent';
         const awdLevel = isOwnerOrPeter ? (empData.award_level || empData.awardLevel || avail.award_level || 'custom') : 'custom';
         const hourlyRate = isOwnerOrPeter ? (empData.hourly_rate != null ? empData.hourly_rate : (empData.hourlyRate || 0)) : 0;
@@ -159,16 +161,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           availability: avail,
           active: empData.active !== undefined ? !!empData.active : true,
           employment_type: empType,
-          award_level: awdLevel,
-          pharmacy_id: targetPharmacy
+          award_level: awdLevel
         };
         if (empData.id) newObj.id = empData.id;
 
         let { data, error } = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
-        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('column'))) {
           delete newObj.award_level;
           delete newObj.employment_type;
-          if (error.message.includes('pharmacy_id')) delete newObj.pharmacy_id;
           const retry = await supabaseAdmin.from('brisk_employees').insert([newObj]).select().maybeSingle();
           data = retry.data;
           error = retry.error;
@@ -225,6 +225,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           hourlyRate = existingRecord?.hourly_rate != null ? Number(existingRecord.hourly_rate) : null;
         }
 
+        if (targetPharmacy) {
+          avail.pharmacy_id = targetPharmacy;
+          avail.pharmacyId = targetPharmacy;
+        }
         avail.employment_type = empType;
         avail.award_level = awdLevel;
 
@@ -242,10 +246,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (empData.active !== undefined) updateObj.active = !!empData.active;
 
         let { data, error } = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
-        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('pharmacy_id'))) {
+        if (error && error.message && (error.message.includes('award_level') || error.message.includes('employment_type') || error.message.includes('column'))) {
           delete updateObj.award_level;
           delete updateObj.employment_type;
-          if (error.message.includes('pharmacy_id')) delete updateObj.pharmacy_id;
           const retry = await supabaseAdmin.from('brisk_employees').update(updateObj).eq('id', targetId).select().maybeSingle();
           data = retry.data;
           error = retry.error;
@@ -293,15 +296,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const s = body.shift || body.data || body;
 
       if (action === 'create') {
+        let notes = s.notes || '';
+        if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
+          notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+        }
         const newObj: Record<string, unknown> = {
           employee_id: s.employee_id || s.employeeId || null,
           date: s.date,
           start_time: formatTimeHHmm(s.start_time || s.startTime),
           end_time: formatTimeHHmm(s.end_time || s.endTime),
           role: s.role || 'Pharmacy Assistant',
-          notes: s.notes || '',
-          status: s.status || 'published',
-          pharmacy_id: targetPharmacy
+          notes: notes,
+          status: s.status || 'published'
         };
         if (s.unpaid_meal_mins !== undefined || s.unpaidMealMins !== undefined) {
           newObj.unpaid_meal_mins = s.unpaid_meal_mins !== undefined ? s.unpaid_meal_mins : s.unpaidMealMins;
@@ -477,8 +483,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           status: isManagerOrOwner ? (lrData.status || 'Pending') : 'Pending', // Employees cannot auto-approve
           leave_duration_type: body.leave?.leaveDurationType || body.leave?.leave_duration_type || 'full_day',
           unavailable_from: body.leave?.unavailableFrom || body.leave?.unavailable_from || null,
-          unavailable_until: body.leave?.unavailableUntil || body.leave?.unavailable_until || null,
-          pharmacy_id: targetPharmacy
+          unavailable_until: body.leave?.unavailableUntil || body.leave?.unavailable_until || null
         };
 
         let insertedRecord = null;
@@ -572,8 +577,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           breaks: tcData.breaks || [],
           total_hours: tcData.total_hours != null ? tcData.total_hours : (tcData.totalHours != null ? tcData.totalHours : 0),
           approved: isManagerOrOwner ? !!(tcData.approved) : false, // Employees cannot self-approve
-          approved_by: isManagerOrOwner ? (tcData.approved_by || tcData.approvedBy || null) : null,
-          pharmacy_id: targetPharmacy
+          approved_by: isManagerOrOwner ? (tcData.approved_by || tcData.approvedBy || null) : null
         };
 
         const { data, error } = await supabaseAdmin.from('brisk_timecards').upsert([obj]).select().maybeSingle();
