@@ -268,7 +268,7 @@ function printDispensaryHandoverHistory() {
 }
 
 /* ==========================================================================
-   PART 2: INTERACTIVE ALL-HANDS STAFF MEETING PRESENTATION DECK ("전사미팅")
+   PART 2: INTERACTIVE ALL-HANDS STAFF MEETING PRESENTATION DECK
    ========================================================================== */
 
 let deckCurrentSlide = 0;

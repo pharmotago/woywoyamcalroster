@@ -417,7 +417,7 @@ assertTest('Non-Blocking Form Novalidate Guard on Shift Form', formNovalidate, '
 // ---------------------------------------------------------
 // Test Suite 15: Dispensary Clinical Handover Board & All-Hands Meeting Presentation Deck
 // ---------------------------------------------------------
-console.log('\n🔍 [Suite 15: Dispensary Handover & All-Hands Deck ("전사미팅")]');
+console.log('\n🔍 [Suite 15: Dispensary Handover & All-Hands Deck]');
 const handoverJsPath = path.join(rootDir, 'js/modules/dispensary-handover.js');
 const handoverModuleExists = fs.existsSync(handoverJsPath);
 
@@ -676,9 +676,9 @@ assertTest(
 );
 
 // ---------------------------------------------------------
-// Test Suite 19: All-Hands Team Meeting Deck ("전사미팅") & Shift Store Isolation Guard (v10.5.6)
+// Test Suite 19: All-Hands Team Meeting Deck & Shift Store Isolation Guard (v10.5.6)
 // ---------------------------------------------------------
-console.log('\n🔍 [Suite 19: All-Hands Team Meeting Deck ("전사미팅") & Shift Store Isolation Guard]');
+console.log('\n🔍 [Suite 19: All-Hands Team Meeting Deck & Shift Store Isolation Guard]');
 
 const suite19_handoverContent = fs.readFileSync(handoverJsPath, 'utf8');
 const suite19_mutateContent = fs.readFileSync(path.join(rootDir, 'api/schedule/mutate/index.ts'), 'utf8');
@@ -728,6 +728,67 @@ assertTest(
   'Database Layer Shift Mutation Store Header & Body Propagation',
   hasDbShiftStoreHeaders,
   'database.js must pass x-pharmacy-id and pharmacyId in addShift, updateShift, deleteShift, and batchUpdateShifts.'
+);
+
+// ---------------------------------------------------------
+// Test Suite 20: 100% English Compliance & Store Trading Hours Isolation Guard (v10.5.8)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 20: 100% English Compliance & Store Trading Hours Isolation]');
+
+// 1. Zero Non-English (Korean) Characters Guard across user-facing assets
+const koreanCharRegex = /[\uac00-\ud7af\u1100-\u11ff\u3130-\u318f]/;
+const appJsContent = fs.readFileSync(path.join(rootDir, 'js/app.js'), 'utf8');
+const dbJsContent = fs.readFileSync(path.join(rootDir, 'js/database.js'), 'utf8');
+const handoverJsContent = fs.readFileSync(path.join(rootDir, 'js/modules/dispensary-handover.js'), 'utf8');
+const indexHtmlLatest = fs.readFileSync(indexHtmlPath, 'utf8');
+
+const hasKoreanInApp = koreanCharRegex.test(appJsContent);
+const hasKoreanInDb = koreanCharRegex.test(dbJsContent);
+const hasKoreanInHandover = koreanCharRegex.test(handoverJsContent);
+const hasKoreanInHtml = koreanCharRegex.test(indexHtmlLatest);
+
+assertTest(
+  'Zero Non-English Characters Guard (100% English Standard)',
+  !hasKoreanInApp && !hasKoreanInDb && !hasKoreanInHandover && !hasKoreanInHtml,
+  `Non-English characters detected: app.js(${hasKoreanInApp}), database.js(${hasKoreanInDb}), handover.js(${hasKoreanInHandover}), index.html(${hasKoreanInHtml}).`
+);
+
+// 2. Amcal Pharmacy Woy Woy Authentic Trading Hours Guard (Mon-Fri 8-8, Sat-Sun 8.30-5)
+const syncTsContent = fs.readFileSync(path.join(rootDir, 'api/schedule/sync/index.ts'), 'utf8');
+const hasAmcalSyncHours = syncTsContent.includes('"1": { "open": "08:00", "close": "20:00", "closed": false }') &&
+                          syncTsContent.includes('"6": { "open": "08:30", "close": "17:00", "closed": false }') &&
+                          syncTsContent.includes('"0": { "open": "08:30", "close": "17:00", "closed": false }');
+
+const hasAmcalDbHours = dbJsContent.includes('"1": { "open": "08:00", "close": "20:00", "closed": false }') &&
+                        dbJsContent.includes('"6": { "open": "08:30", "close": "17:00", "closed": false }') &&
+                        dbJsContent.includes('"0": { "open": "08:30", "close": "17:00", "closed": false }');
+
+assertTest(
+  'Amcal Pharmacy Woy Woy Trading Hours Guard (Mon-Fri 8-8, Sat-Sun 8.30-5)',
+  hasAmcalSyncHours && hasAmcalDbHours,
+  'api/schedule/sync/index.ts and js/database.js must configure Mon-Fri 08:00-20:00 and Sat-Sun 08:30-17:00 for Amcal.'
+);
+
+// 3. Budgewoi DDS Authentic Trading Hours Guard (Mon-Fri 8.30-6, Sat 8.30-1, Sun Closed)
+const hasBudgewoiSyncHours = syncTsContent.includes('const BUDGEWOI_TRADING_HOURS = {') &&
+                             syncTsContent.includes('"1": { "open": "08:30", "close": "18:00", "closed": false }') &&
+                             syncTsContent.includes('"6": { "open": "08:30", "close": "13:00", "closed": false }') &&
+                             syncTsContent.includes('"0": { "open": "00:00", "close": "00:00", "closed": true }');
+
+assertTest(
+  'Budgewoi DDS Trading Hours Guard (Mon-Fri 8.30-6, Sat 8.30-1, Sun Closed)',
+  hasBudgewoiSyncHours,
+  'api/schedule/sync/index.ts must configure Mon-Fri 08:30-18:00, Sat 08:30-13:00, Sun Closed for Budgewoi DDS.'
+);
+
+// 4. Store Trading Hours Isolation Guard (No Cross-Store Contamination)
+const hasStoreIsolation = syncTsContent.includes("isBudgewoi ? BUDGEWOI_TRADING_HOURS : AMCAL_TRADING_HOURS") &&
+                          syncTsContent.includes("isBudgewoi ? 'settings_budgewoi_dds' : 'global_settings'");
+
+assertTest(
+  'Store Trading Hours & Settings Isolation Guard',
+  hasStoreIsolation,
+  'api/schedule/sync/index.ts must isolate storeSettings by targetPharmacy and prevent cross-store hours contamination.'
 );
 
 // ---------------------------------------------------------

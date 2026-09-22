@@ -11,6 +11,7 @@
     "test:syntax": "node -c server.js seed.js js/app.js js/database.js js/scheduler.js js/supabase-client.js js/swaps.js js/opal_roster_workflows.js js/pomelli_roster_broadcaster.js js/mixboard_roster_studio.js js/modules/payroll-engine.js js/modules/dispensary-handover.js sw.js",
     "roster:qa": "node --experimental-vm-modules scripts/roster_qa_engine.js",
     "roster:check": "npm run test:syntax && npm run roster:qa",
+    "scan:korean": "node scripts/scan_korean.js",
     "roster:audit": "npm run roster:check",
     "setup:guide-api": "node scripts/create_guide_api.js",
     "build:guide": "node scripts/generate_pdf_guide.js",
@@ -65,6 +66,7 @@
     "release:v10.5.5": "git add -A && git commit -m \"fix(isolation): v10.5.5 - enforce complete bi-directional store isolation for Amcal & Budgewoi DDS [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.6": "git add -A && git commit -m \"fix(roster): v10.5.6 - dynamic all-hands deck per store, shift camelCase filter & budgewoi mutation tagging [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.7": "git add -A && git commit -m \"fix(switcher): v10.5.7 - executive in-app store switcher precedence for Peter Kim & Katherine [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "release:v10.5.8": "git reset HEAD~1 && git add -A && git commit -m \"fix(trading-hours): v10.5.8 - authentic store operating hours (Amcal Mon-Fri 8-8 Sat-Sun 8.30-5), strict English compliance & store settings isolation [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",
@@ -103,6 +105,9 @@
     "test:live-urls": "node -e \"Promise.all([fetch('https://woywoyamcalroster.vercel.app'), fetch('https://budgewoiddsroster.vercel.app')]).then(([r1, r2]) => console.log('Amcal Status:', r1.status, '| Budgewoi Status:', r2.status)).catch(console.error)\"",
     "test:live-theme": "node -e \"(async () => { const t = Date.now(); const css = await (await fetch('https://budgewoiddsroster.vercel.app/css/styles.css?t=' + t)).text(); const js = await (await fetch('https://budgewoiddsroster.vercel.app/js/app.js?t=' + t)).text(); console.log('Live CSS Purple #7a2682 present:', css.includes('#7a2682'), '| Orange #ff6b00 present:', css.includes('#ff6b00')); console.log('Live JS SVG Purple #7A2682 present:', js.includes('#7A2682'), '| Orange #FF6B00 present:', js.includes('#FF6B00')); })()\"",
     "test:sync-live": "node -e \"(async () => { for (const id of ['budgewoi', 'budgewoi_dds', 'amcal_woywoy']) { const r = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pharmacy-id': id }, body: JSON.stringify({ pharmacyId: id }) }); const d = await r.json(); console.log('ID:', id, '| status:', r.status, '| employees:', d.employees?.length, '| shifts:', d.shifts?.length); } })()\"",
+    "check:settings": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {method:'POST', headers:{'Content-Type':'application/json', 'x-user-email':'pharmotago@gmail.com', 'x-pharmacy-id':'amcal_woywoy'}, body:JSON.stringify({email:'pharmotago@gmail.com', pharmacyId:'amcal_woywoy'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d.settings, null, 2))).catch(console.error)\"",
+    "fix:settings": "node scripts/inspect_and_fix_settings.js",
+    "git:trading": "git log -n 5 -p -S \"DEFAULT_TRADING_HOURS\" js/database.js",
     "test:live-deck": "node -e \"(async () => { const t = Date.now(); const d = await (await fetch('https://budgewoiddsroster.vercel.app/js/modules/dispensary-handover.js?t=' + t)).text(); const v = await (await fetch('https://budgewoiddsroster.vercel.app/version.json?t=' + t)).json(); console.log('Live Version:', v.version, '| Has getSlideData:', d.includes('getSlideData'), '| Has Georgi Peek:', d.includes('Georgi Peek')); })()\""
   },
   "dependencies": {

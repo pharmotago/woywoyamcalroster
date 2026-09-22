@@ -80,23 +80,23 @@ async function fetchWeeklyHoursJson() {
         totalHours: 0,
         totalCost: 0,
         byDay: {
-          'Mon (월)': { hours: 0, count: 0 },
-          'Tue (화)': { hours: 0, count: 0 },
-          'Wed (수)': { hours: 0, count: 0 },
-          'Thu (목)': { hours: 0, count: 0 },
-          'Fri (금)': { hours: 0, count: 0 },
-          'Sat (토)': { hours: 0, count: 0 },
-          'Sun (일)': { hours: 0, count: 0 },
+          'Mon': { hours: 0, count: 0 },
+          'Tue': { hours: 0, count: 0 },
+          'Wed': { hours: 0, count: 0 },
+          'Thu': { hours: 0, count: 0 },
+          'Fri': { hours: 0, count: 0 },
+          'Sat': { hours: 0, count: 0 },
+          'Sun': { hours: 0, count: 0 },
         },
         byEmployee: {}
       };
     }
 
     const dur = getShiftDuration(s.start_time || s.startTime, s.end_time || s.endTime);
-    const emp = empMap[s.employee_id || s.employeeId] || { name: '미배정 (Unassigned)', hourly_rate: 0 };
+    const emp = empMap[s.employee_id || s.employeeId] || { name: 'Unassigned', hourly_rate: 0 };
     const cost = dur * (parseFloat(emp.hourly_rate) || 0);
 
-    const dayNames = ['Sun (일)', 'Mon (월)', 'Tue (화)', 'Wed (수)', 'Thu (목)', 'Fri (금)', 'Sat (토)'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = dayNames[shiftDate.getDay()];
 
     weeks[weekKey].shifts.push(s);

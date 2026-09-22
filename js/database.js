@@ -72,15 +72,15 @@ const BriskDB = (function() {
   if (typeof window !== 'undefined') window.getActiveTenant = getActiveTenant;
 
   const DEFAULT_TRADING_HOURS = {
-    "1": { "open": "08:30", "close": "17:30", "closed": false },
-    "2": { "open": "08:30", "close": "17:30", "closed": false },
-    "3": { "open": "08:30", "close": "17:30", "closed": false },
-    "4": { "open": "08:30", "close": "17:30", "closed": false },
-    "5": { "open": "08:30", "close": "17:30", "closed": false },
-    "6": { "open": "09:00", "close": "13:00", "closed": false },
-    "0": { "open": "00:00", "close": "00:00", "closed": true }
+    "1": { "open": "08:00", "close": "20:00", "closed": false },
+    "2": { "open": "08:00", "close": "20:00", "closed": false },
+    "3": { "open": "08:00", "close": "20:00", "closed": false },
+    "4": { "open": "08:00", "close": "20:00", "closed": false },
+    "5": { "open": "08:00", "close": "20:00", "closed": false },
+    "6": { "open": "08:30", "close": "17:00", "closed": false },
+    "0": { "open": "08:30", "close": "17:00", "closed": false }
   };
-  let _settings = { companyName: 'Amcal Pharmacy Woywoy Rosters', tradingHours: DEFAULT_TRADING_HOURS };
+  let _settings = { companyName: 'Amcal Pharmacy Woy Woy Rosters', tradingHours: DEFAULT_TRADING_HOURS };
   
   let _roles = [];
   const DEFAULT_ROLES = [
@@ -382,7 +382,19 @@ const BriskDB = (function() {
   }
 
   function mapSettingsToDb(settings) {
-    const th = { ...(settings.tradingHours || _settings.tradingHours || DEFAULT_TRADING_HOURS) };
+    const currentTenant = (typeof getActiveTenant === 'function') ? getActiveTenant() : 'amcal_woywoy';
+    const isBudgewoi = currentTenant === 'budgewoi_dds';
+    const storeDefaults = isBudgewoi ? {
+      "1": { "open": "08:30", "close": "18:00", "closed": false },
+      "2": { "open": "08:30", "close": "18:00", "closed": false },
+      "3": { "open": "08:30", "close": "18:00", "closed": false },
+      "4": { "open": "08:30", "close": "18:00", "closed": false },
+      "5": { "open": "08:30", "close": "18:00", "closed": false },
+      "6": { "open": "08:30", "close": "13:00", "closed": false },
+      "0": { "open": "00:00", "close": "00:00", "closed": true }
+    } : DEFAULT_TRADING_HOURS;
+
+    const th = { ...(settings.tradingHours || _settings.tradingHours || storeDefaults) };
     if (settings.salesTargets) {
       th._sales_targets = settings.salesTargets;
     } else if (_settings.salesTargets) {
@@ -397,9 +409,10 @@ const BriskDB = (function() {
     if (Array.isArray(order)) {
       th._employee_order = order;
     }
+    const defaultCompanyName = isBudgewoi ? 'Budgewoi Discount Drug Stores Rosters' : 'Amcal Pharmacy Woy Woy Rosters';
     const payload = {
-      id: 'global_settings',
-      company_name: settings.companyName || _settings.companyName || 'Amcal Pharmacy Woywoy Rosters',
+      id: isBudgewoi ? 'settings_budgewoi_dds' : 'global_settings',
+      company_name: settings.companyName || _settings.companyName || defaultCompanyName,
       trading_hours: th
     };
     return payload;
@@ -407,7 +420,19 @@ const BriskDB = (function() {
 
   function mapSettingsFromDb(settings) {
     if (!settings) return null;
-    const rawTh = settings.trading_hours || DEFAULT_TRADING_HOURS;
+    const currentTenant = (typeof getActiveTenant === 'function') ? getActiveTenant() : 'amcal_woywoy';
+    const isBudgewoi = currentTenant === 'budgewoi_dds';
+    const storeDefaults = isBudgewoi ? {
+      "1": { "open": "08:30", "close": "18:00", "closed": false },
+      "2": { "open": "08:30", "close": "18:00", "closed": false },
+      "3": { "open": "08:30", "close": "18:00", "closed": false },
+      "4": { "open": "08:30", "close": "18:00", "closed": false },
+      "5": { "open": "08:30", "close": "18:00", "closed": false },
+      "6": { "open": "08:30", "close": "13:00", "closed": false },
+      "0": { "open": "00:00", "close": "00:00", "closed": true }
+    } : DEFAULT_TRADING_HOURS;
+
+    const rawTh = settings.trading_hours || storeDefaults;
     let order = rawTh._employee_order || settings.employee_order || [];
     if (!Array.isArray(order) || order.length === 0) {
       try {
@@ -416,8 +441,9 @@ const BriskDB = (function() {
     }
     const salesTargets = rawTh._sales_targets || null;
     const actualPosSales = rawTh._actual_pos_sales || null;
+    const defaultCompanyName = isBudgewoi ? 'Budgewoi Discount Drug Stores Rosters' : 'Amcal Pharmacy Woy Woy Rosters';
     return {
-      companyName: settings.company_name || 'Amcal Pharmacy Woywoy Rosters',
+      companyName: settings.company_name || defaultCompanyName,
       tradingHours: rawTh,
       employeeOrder: order,
       salesTargets: salesTargets,
@@ -945,7 +971,8 @@ const BriskDB = (function() {
         _initialLoadCompleted.leaveRequests = true;
       }
 
-      const { data: sets } = await supabase.from('brisk_settings').select('*').limit(1).maybeSingle();
+      const targetSettingsId = (typeof getActiveTenant === 'function' && getActiveTenant() === 'budgewoi_dds') ? 'settings_budgewoi_dds' : 'global_settings';
+      const { data: sets } = await supabase.from('brisk_settings').select('*').eq('id', targetSettingsId).maybeSingle();
       if (sets) {
         _settings = mapSettingsFromDb(sets);
       }

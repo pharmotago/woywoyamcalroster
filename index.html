@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.5.7">
+  <link rel="stylesheet" href="css/styles.css?v=10.5.8">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -424,7 +424,7 @@
             <i class="fa-solid fa-person-chalkboard text-indigo"></i> <span>All-Hands Deck</span>
           </button>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.7)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.8)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -2316,7 +2316,7 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">Locum Contractor Remittance & Tax Statement</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Woy Woy Amcal Pharmacy 쨌 Contractor Payment Summary</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Woy Woy Amcal Pharmacy &bull; Contractor Payment Summary</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeLocumRemittanceModal()"><i class="fa-solid fa-xmark"></i></button>
@@ -2671,7 +2671,7 @@
   </div>
 
   <!-- ===================================== -->
-  <!-- MODAL: ALL-HANDS TEAM MEETING PRESENTATION DECK ("전사미팅") -->
+  <!-- MODAL: ALL-HANDS TEAM MEETING PRESENTATION DECK -->
   <!-- ===================================== -->
   <div id="modal-all-hands-deck" class="modal" onclick="if(event.target === this) closeAllHandsDeckModal()">
     <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 860px; width: 95%; transition: all 0.3s ease;">
@@ -2686,7 +2686,7 @@
               <h3 id="deck-modal-header-title" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Amcal Woy Woy All-Hands Meeting Deck</h3>
               <span id="deck-slide-badge" class="badge badge-cyan" style="font-size: 0.72rem; font-weight: 700;">Slide 1 of 6</span>
             </div>
-            <span style="font-size: 0.75rem; color: var(--text-muted);">Interactive Executive Presentation Runbook ("전사미팅")</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Interactive Executive Presentation Runbook</span>
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -2741,18 +2741,34 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.7)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.8)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
 
-        <!-- v10.5.7 -->
+        <!-- v10.5.8 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.7 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.8 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Store Trading Hours Restoration & Strict English UI Standard</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">22 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Store Trading Hours Restoration:</strong> Configured Amcal Pharmacy Woy Woy's authentic operating hours (Monday–Friday 8:00 AM – 8:00 PM, Saturday–Sunday 8:30 AM – 5:00 PM) and isolated from Budgewoi Discount Drug Stores (Monday–Friday 8:30 AM – 6:00 PM, Saturday 8:30 AM – 1:00 PM, Sunday Closed) with dedicated database record partitioning.</li>
+            <li><strong>100% Strict English Interface Standard:</strong> Thoroughly purged all non-English characters from application views, presentation decks, modals, update logs, and scripts.</li>
+            <li><strong>Automated Integrity Gate:</strong> Pre-flight verification engine now strictly checks for zero non-English characters and store trading hours isolation on every build.</li>
+          </ul>
+        </div>
+
+        <!-- v10.5.7 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:700;">v10.5.7</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Executive Multi-Store Switching (Peter Kim & Katherine Nguyen)</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">22 Sep 2026</span>
@@ -2769,7 +2785,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-indigo" style="font-size:0.8rem; font-weight:700;">v10.5.6</span>
-              <strong style="color:var(--text-primary); font-size:0.9rem;">Multi-Tenant Store Isolation & Dynamic All-Hands Meeting Deck ("전사미팅")</strong>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Multi-Tenant Store Isolation & Dynamic All-Hands Meeting Deck</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">22 Sep 2026</span>
           </div>
@@ -2785,14 +2801,14 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="badge badge-indigo" style="font-size:0.8rem; font-weight:700;">v10.5.0</span>
-              <strong style="color:var(--text-primary); font-size:0.9rem;">Dispensary Clinical Handover Board & All-Hands Meeting Deck ("전사미팅")</strong>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Dispensary Clinical Handover Board & All-Hands Meeting Deck</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">20 Sep 2026</span>
           </div>
           <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
             <li><strong>Digital Clinical Handover Board:</strong> QCPP Standard compliant Pharmacist-in-Charge shift handover engine tracking doctor queries, owing prescriptions, Webster packs, and staged supply.</li>
             <li><strong>S8 Safe Verification & Cold-Chain Alert:</strong> Mandatory Schedule 8 safe physical count verification and cold-chain fridge temperature monitoring (2.0°C – 8.0°C) with instant out-of-range visual alerts.</li>
-            <li><strong>Interactive All-Hands Staff Meeting Deck ("전사미팅"):</strong> 6 executive presentation slides built directly into the app for owners Glen Kanawati & Katherine Nguyen and staff, covering leadership vision, Fair Work 2026 rights, shift swaps, and 1-click PWA home-screen installation.</li>
+            <li><strong>Interactive All-Hands Staff Meeting Deck:</strong> 6 executive presentation slides built directly into the app for owners Glen Kanawati & Katherine Nguyen and staff, covering leadership vision, Fair Work 2026 rights, shift swaps, and 1-click PWA home-screen installation.</li>
             <li><strong>Digital Handover Audit Log:</strong> Persistent local & cloud handover history with one-click printable clinical records for Pharmacy Council compliance.</li>
           </ul>
         </div>
@@ -3052,11 +3068,11 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.5.7"></script>
+  <script type="module" src="js/app.js?v=10.5.8"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.5.7';
+    const APP_VERSION = '10.5.8';
     window.APP_VERSION = APP_VERSION;
 
     // Global helper to force-purge all caches and reload the latest version

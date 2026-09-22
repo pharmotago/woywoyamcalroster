@@ -365,13 +365,13 @@ window.triggerGlobalRefresh = async function() {
 // --- Trading Hours and Daily View Helpers ---
 
 const DEFAULT_TRADING_HOURS = {
-  "1": { "open": "08:30", "close": "17:30", "closed": false },
-  "2": { "open": "08:30", "close": "17:30", "closed": false },
-  "3": { "open": "08:30", "close": "17:30", "closed": false },
-  "4": { "open": "08:30", "close": "17:30", "closed": false },
-  "5": { "open": "08:30", "close": "17:30", "closed": false },
-  "6": { "open": "09:00", "close": "13:00", "closed": false },
-  "0": { "open": "00:00", "close": "00:00", "closed": true }
+  "1": { "open": "08:00", "close": "20:00", "closed": false },
+  "2": { "open": "08:00", "close": "20:00", "closed": false },
+  "3": { "open": "08:00", "close": "20:00", "closed": false },
+  "4": { "open": "08:00", "close": "20:00", "closed": false },
+  "5": { "open": "08:00", "close": "20:00", "closed": false },
+  "6": { "open": "08:30", "close": "17:00", "closed": false },
+  "0": { "open": "08:30", "close": "17:00", "closed": false }
 };
 
 function timeToDecimal(timeStr) {

@@ -905,14 +905,23 @@ function renderSettingsPanel() {
   if (!hasManagerPermissions(state.currentUser)) {
     return;
   }
-  const DEFAULT_TRADING_HOURS = {
-    '0': { open: '08:30', close: '17:30', closed: false },
+  const isBudgewoi = (window.currentTenant === 'budgewoi_dds') || (typeof getActiveTenant === 'function' && getActiveTenant() === 'budgewoi_dds');
+  const DEFAULT_TRADING_HOURS = isBudgewoi ? {
+    '1': { open: '08:30', close: '18:00', closed: false },
+    '2': { open: '08:30', close: '18:00', closed: false },
+    '3': { open: '08:30', close: '18:00', closed: false },
+    '4': { open: '08:30', close: '18:00', closed: false },
+    '5': { open: '08:30', close: '18:00', closed: false },
+    '6': { open: '08:30', close: '13:00', closed: false },
+    '0': { open: '00:00', close: '00:00', closed: true }
+  } : {
     '1': { open: '08:00', close: '20:00', closed: false },
     '2': { open: '08:00', close: '20:00', closed: false },
     '3': { open: '08:00', close: '20:00', closed: false },
     '4': { open: '08:00', close: '20:00', closed: false },
     '5': { open: '08:00', close: '20:00', closed: false },
-    '6': { open: '08:00', close: '18:00', closed: false }
+    '6': { open: '08:30', close: '17:00', closed: false },
+    '0': { open: '08:30', close: '17:00', closed: false }
   };
   if (!state.settings) state.settings = {};
   if (!state.settings.tradingHours) {
@@ -930,17 +939,18 @@ function renderSettingsPanel() {
     
     if (closedCheckbox) closedCheckbox.checked = !!dayData.closed;
     if (openInput) {
-      openInput.value = dayData.open || '08:30';
+      openInput.value = dayData.open || (d === 0 || d === 6 ? '08:30' : '08:00');
       openInput.disabled = !!dayData.closed;
     }
     if (closeInput) {
-      closeInput.value = dayData.close || '17:30';
+      closeInput.value = dayData.close || (d === 0 || d === 6 ? '17:00' : '20:00');
       closeInput.disabled = !!dayData.closed;
     }
   }
 
+  const defaultName = isBudgewoi ? 'Budgewoi Discount Drug Stores Rosters' : 'Amcal Pharmacy Woy Woy Rosters';
   const settingsName = document.getElementById('settings-company-name');
-  if (settingsName) settingsName.value = state.settings.companyName || 'Amcal Pharmacy Woywoy Rosters';
+  if (settingsName) settingsName.value = state.settings.companyName || defaultName;
 }
 window.renderSettingsPanel = renderSettingsPanel;
 
@@ -5574,7 +5584,7 @@ async function handleEmployeeDelete() {
 
 
 /* ==========================================================================
-   PANEL: TIME CLOCK (출퇴근기록)
+   PANEL: TIME CLOCK
    ========================================================================== */
 
 function renderTimeClockPanel() {

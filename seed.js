@@ -184,7 +184,7 @@ async function seedPeter() {
 
   const email = 'pharmotago@gmail.com';
   
-  // 먼저 기존 auth.users 에 동일 메일이 있으면 삭제 처리 (클리어 목적)
+  // Purge existing auth.users record if matching email exists
   const { data: usersList, error: listError } = await supabase.auth.admin.listUsers();
   if (!listError && usersList && usersList.users) {
     const existingUser = usersList.users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -215,12 +215,12 @@ async function seedPeter() {
   const { error: userError } = await supabase
     .from('brisk_users')
     .insert({
-      id: uid, // Auth user ID와 매핑
+      id: uid, // Mapped to Auth user ID
       email: email,
       password_hash: passwordHash,
       role: 'owner',
       employee_id: employee.id,
-      name: 'Peter Kim' // name 필드 추가
+      name: 'Peter Kim' // Add name field
     });
 
   if (userError) {

@@ -125,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       supabaseAdmin.from('brisk_shifts').select('*').gte('date', windowStr),
       supabaseAdmin.from('brisk_timecards').select('*').gte('date', windowStr),
       supabaseAdmin.from('brisk_leave_requests').select('*').gte('end_date', windowStr),
-      supabaseAdmin.from('brisk_settings').select('*').limit(1).maybeSingle()
+      supabaseAdmin.from('brisk_settings').select('*')
     ]);
 
     if (empRes.error) throw empRes.error;
@@ -199,7 +199,17 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
     });
 
 
-    // Store-specific settings
+    // Store-specific settings (Amcal: Mon-Fri 8-8, Sat-Sun 8.30-5; Budgewoi: Mon-Fri 8.30-6, Sat 8.30-1, Sun Closed)
+    const AMCAL_TRADING_HOURS = {
+      "1": { "open": "08:00", "close": "20:00", "closed": false },
+      "2": { "open": "08:00", "close": "20:00", "closed": false },
+      "3": { "open": "08:00", "close": "20:00", "closed": false },
+      "4": { "open": "08:00", "close": "20:00", "closed": false },
+      "5": { "open": "08:00", "close": "20:00", "closed": false },
+      "6": { "open": "08:30", "close": "17:00", "closed": false },
+      "0": { "open": "08:30", "close": "17:00", "closed": false }
+    };
+
     const BUDGEWOI_TRADING_HOURS = {
       "1": { "open": "08:30", "close": "18:00", "closed": false },
       "2": { "open": "08:30", "close": "18:00", "closed": false },
@@ -210,15 +220,24 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
       "0": { "open": "00:00", "close": "00:00", "closed": true }
     };
 
-    const defaultSettings = settingsRes.data || {};
+    const isBudgewoi = targetPharmacy === 'budgewoi_dds';
+    const baseTradingHours = isBudgewoi ? BUDGEWOI_TRADING_HOURS : AMCAL_TRADING_HOURS;
+    const allSettingsRows = Array.isArray(settingsRes.data) ? settingsRes.data : (settingsRes.data ? [settingsRes.data] : []);
+    const matchingRow = allSettingsRows.find((r: any) => isBudgewoi ? (r.id === 'settings_budgewoi_dds') : (r.id === 'global_settings' || r.id === 'settings_amcal_woywoy')) || allSettingsRows[0] || {};
+    const rawTh = (matchingRow.trading_hours && typeof matchingRow.trading_hours === 'object') ? matchingRow.trading_hours : {};
+
     const storeSettings = {
-      ...defaultSettings,
-      company_name: targetPharmacy === 'budgewoi_dds' 
+      ...matchingRow,
+      id: isBudgewoi ? 'settings_budgewoi_dds' : 'global_settings',
+      company_name: isBudgewoi 
         ? 'Budgewoi Discount Drug Stores Rosters' 
-        : (defaultSettings.company_name || 'Amcal Pharmacy Woywoy Rosters'),
-      trading_hours: targetPharmacy === 'budgewoi_dds'
-        ? BUDGEWOI_TRADING_HOURS
-        : (defaultSettings.trading_hours || undefined)
+        : 'Amcal Pharmacy Woy Woy Rosters',
+      trading_hours: {
+        ...baseTradingHours,
+        ...(rawTh._employee_order ? { _employee_order: rawTh._employee_order } : {}),
+        ...(rawTh._sales_targets ? { _sales_targets: rawTh._sales_targets } : {}),
+        ...(rawTh._actual_pos_sales ? { _actual_pos_sales: rawTh._actual_pos_sales } : {})
+      }
     };
 
     // Security: Only Owners & Peter Kim receive unmasked pay rates and contract tiers
