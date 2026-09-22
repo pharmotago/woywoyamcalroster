@@ -38,9 +38,19 @@ const BriskDB = (function() {
   }
 
   function getActiveTenant() {
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        const urlStore = sp.get('tenant') || sp.get('store');
+        if (urlStore) return normalizePharmacyId(urlStore);
+      } catch (_) {}
+
+      const h = (window.location.hostname || '').toLowerCase();
+      if (h.includes('budgewoi') || h.includes('dds')) return 'budgewoi_dds';
+      if (h.includes('woywoy') || h.includes('amcal')) return 'amcal_woywoy';
+    }
     const fromStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || '';
-    const fromHost = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
-    return normalizePharmacyId(fromStorage || fromHost);
+    return normalizePharmacyId(fromStorage);
   }
 
   const DEFAULT_TRADING_HOURS = {
@@ -575,6 +585,11 @@ const BriskDB = (function() {
           return;
         }
 
+        if (newRec) {
+          const rawStore = newRec.pharmacy_id || newRec.availability?.pharmacy_id || newRec.availability?.pharmacyId;
+          if (normalizePharmacyId(rawStore) !== getActiveTenant()) return;
+        }
+
         const mappedNew = mapEmployeeFromDb(newRec);
         if (mappedNew) {
           const { isManager } = getRealtimeSecurityContext();
@@ -616,6 +631,10 @@ const BriskDB = (function() {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'shifts' } }));
           }
           return;
+        }
+        if (newRec) {
+          const shiftStore = newRec.pharmacy_id || (newRec.notes && newRec.notes.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
+          if (normalizePharmacyId(shiftStore) !== getActiveTenant()) return;
         }
         const mappedNew = mapShiftFromDb(newRec);
         if (mappedNew) {
@@ -1017,15 +1036,21 @@ const BriskDB = (function() {
       }
 
       let resolvedRole = userProfile ? (userProfile.role || 'employee') : 'employee';
-      if (userProfile && userProfile.employee_id) {
+      let empPharmacyId = null;
+      if (userProfile && (userProfile.employee_id || cleanEmail)) {
         try {
-          const { data: empData } = await supabase
-            .from('brisk_employees')
-            .select('role')
-            .eq('id', userProfile.employee_id)
-            .maybeSingle();
-          if (empData && empData.role && empData.role.toLowerCase().trim() === 'pharmacist manager') {
-            resolvedRole = 'manager';
+          let empQuery = supabase.from('brisk_employees').select('role, availability');
+          if (userProfile.employee_id) {
+            empQuery = empQuery.eq('id', userProfile.employee_id);
+          } else {
+            empQuery = empQuery.eq('email', cleanEmail);
+          }
+          const { data: empData } = await empQuery.maybeSingle();
+          if (empData) {
+            if (empData.role && empData.role.toLowerCase().trim() === 'pharmacist manager') {
+              resolvedRole = 'manager';
+            }
+            empPharmacyId = empData.availability?.pharmacy_id || empData.availability?.pharmacyId || null;
           }
         } catch (empRoleErr) {
           console.warn('[BriskDB] Employee role lookup note:', empRoleErr);
@@ -1041,7 +1066,12 @@ const BriskDB = (function() {
       // Multi-store owner clearance & Store isolation check
       const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
       const hasMultiStoreAccess = MULTI_STORE_WHITELIST.some(w => cleanEmail.includes(w));
-      const userPharmacyId = normalizePharmacyId(userProfile?.pharmacy_id);
+      const userPharmacyId = normalizePharmacyId(
+        empPharmacyId || 
+        userProfile?.pharmacy_id || 
+        (activeTenant === 'budgewoi_dds' && isWhitelistedLeader ? 'budgewoi_dds' : null) || 
+        'amcal_woywoy'
+      );
 
       if (!hasMultiStoreAccess) {
         if (activeTenant === 'budgewoi_dds' && userPharmacyId !== 'budgewoi_dds') {
@@ -1054,14 +1084,16 @@ const BriskDB = (function() {
         }
       }
 
+      const finalActiveStore = hasMultiStoreAccess ? activeTenant : userPharmacyId;
+
       const session = {
         email: data.user.email,
         role: resolvedRole,
         employeeId: userProfile ? (userProfile.employee_id || null) : null,
         name: userProfile?.name || data.user.user_metadata?.name || cleanEmail.split('@')[0] || 'Staff Member',
-        pharmacyId: userPharmacyId,
+        pharmacyId: hasMultiStoreAccess ? finalActiveStore : userPharmacyId,
         hasMultiStoreAccess: hasMultiStoreAccess,
-        activeStore: hasMultiStoreAccess ? activeTenant : userPharmacyId,
+        activeStore: finalActiveStore,
         token: (data.session && data.session.access_token) ? data.session.access_token : ''
       };
 

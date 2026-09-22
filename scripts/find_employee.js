@@ -1,71 +1,94 @@
-async function testCreateGeorgi() {
-  console.log('\n--- 1. Creating Georgi Peek (Dispensary Manager) for Budgewoi DDS ---');
-  const payload = {
-    entity: 'employee',
-    action: 'create',
-    callerEmail: 'nguyek@gmail.com',
-    pharmacyId: 'budgewoi_dds',
-    employee: {
-      name: 'Georgi Peek',
-      email: 'georgi.peek6@gmail.com',
-      role: 'Dispensary Manager',
-      phone: '0400 000 000',
-      max_hours: 38,
-      hourly_rate: 28.45,
-      employment_type: 'permanent',
-      award_level: 'custom',
-      pharmacy_id: 'budgewoi_dds',
-      availability: {
-        0: null,
-        1: { start: '09:00', end: '17:00' },
-        2: null, 3: null, 4: null, 5: null, 6: null
-      }
-    }
-  };
+async function testSync() {
+  console.log('======================================================');
+  console.log(' 🛡️  STORE ISOLATION AUTOMATED TEST SUITE');
+  console.log('======================================================');
 
-  const res = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/mutate', {
+  // Test 1: Georgi Peek querying Budgewoi DDS
+  console.log('\n[Test 1] Georgi Peek querying Budgewoi DDS:');
+  const res1 = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-email': 'georgi.peek6@gmail.com',
+      'x-pharmacy-id': 'budgewoi_dds'
+    },
+    body: JSON.stringify({ email: 'georgi.peek6@gmail.com', pharmacyId: 'budgewoi_dds' })
+  });
+  const data1 = await res1.json();
+  console.log('  Status:', res1.status, '| Success:', data1.success);
+  console.log('  Employees returned count:', (data1.employees || []).length);
+  if (data1.employees) {
+    data1.employees.forEach(e => console.log(`   - ${e.name} (${e.email}) | ${e.role}`));
+  }
+  if (data1.error) console.log('  Error:', data1.error);
+
+  // Test 2: Katherine Nguyen querying Budgewoi DDS
+  console.log('\n[Test 2] Katherine Nguyen querying Budgewoi DDS (Multi-store owner):');
+  const res2 = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-user-email': 'nguyek@gmail.com',
       'x-pharmacy-id': 'budgewoi_dds'
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify({ email: 'nguyek@gmail.com', pharmacyId: 'budgewoi_dds' })
   });
+  const data2 = await res2.json();
+  console.log('  Status:', res2.status, '| Success:', data2.success);
+  console.log('  Employees returned count:', (data2.employees || []).length);
+  if (data2.employees) {
+    data2.employees.forEach(e => console.log(`   - ${e.name} (${e.email}) | ${e.role}`));
+  }
 
-  console.log('Mutate Status:', res.status, res.statusText);
-  const text = await res.text();
-  console.log('Mutate Response:', text);
-
-  console.log('\n--- 2. Verifying Budgewoi DDS sync ---');
-  const budgeRes = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', {
+  // Test 3: Peter Kim querying Amcal Pharmacy Woy Woy
+  console.log('\n[Test 3] Peter Kim querying Amcal Woy Woy:');
+  const res3 = await fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-pharmacy-id': 'budgewoi_dds'
-    },
-    body: JSON.stringify({ pharmacyId: 'budgewoi_dds' })
-  });
-  const bData = await budgeRes.json();
-  const bEmps = bData.employees || [];
-  console.log(`Total Budgewoi Employees: ${bEmps.length}`);
-  const foundInBudgewoi = bEmps.find(e => e.name === 'Georgi Peek');
-  console.log('Found Georgi in Budgewoi:', foundInBudgewoi ? `YES (ID: ${foundInBudgewoi.id}, Role: ${foundInBudgewoi.role})` : 'NO');
-
-  console.log('\n--- 3. Verifying Amcal Woy Woy store isolation (should NOT contain Georgi) ---');
-  const amcalRes = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+      'x-user-email': 'pharmotago@gmail.com',
       'x-pharmacy-id': 'amcal_woywoy'
     },
-    body: JSON.stringify({ pharmacyId: 'amcal_woywoy' })
+    body: JSON.stringify({ email: 'pharmotago@gmail.com', pharmacyId: 'amcal_woywoy' })
   });
-  const aData = await amcalRes.json();
-  const aEmps = aData.employees || [];
-  console.log(`Total Amcal Employees: ${aEmps.length}`);
-  const foundInAmcal = aEmps.find(e => e.name === 'Georgi Peek');
-  console.log('Found Georgi in Amcal:', foundInAmcal ? 'LEAKAGE DETECTED!' : 'NO (Perfect store isolation!)');
+  const data3 = await res3.json();
+  console.log('  Status:', res3.status, '| Success:', data3.success);
+  console.log('  Employees returned count:', (data3.employees || []).length);
+  const hasGeorgiInAmcal = (data3.employees || []).some(e => (e.email || '').includes('georgi'));
+  console.log('  Zero Georgi Peek leakage in Amcal:', !hasGeorgiInAmcal);
+
+  // Test 4: Georgi Peek attempting to query Amcal Woy Woy (Should be 403 Forbidden)
+  console.log('\n[Test 4] Georgi Peek attempting unauthorized query to Amcal Woy Woy:');
+  const res4 = await fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-email': 'georgi.peek6@gmail.com',
+      'x-pharmacy-id': 'amcal_woywoy'
+    },
+    body: JSON.stringify({ email: 'georgi.peek6@gmail.com', pharmacyId: 'amcal_woywoy' })
+  });
+  const data4 = await res4.json();
+  console.log('  Status (expect 403):', res4.status);
+  console.log('  Response message:', data4.error || 'UNEXPECTED_SUCCESS');
+
+  // Test 5: Amcal staff (Xander) attempting to query Budgewoi DDS (Should be 403 Forbidden)
+  console.log('\n[Test 5] Amcal staff attempting unauthorized query to Budgewoi DDS:');
+  const res5 = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-email': 'xander.ireland@amcal.internal',
+      'x-pharmacy-id': 'budgewoi_dds'
+    },
+    body: JSON.stringify({ email: 'xander.ireland@amcal.internal', pharmacyId: 'budgewoi_dds' })
+  });
+  const data5 = await res5.json();
+  console.log('  Status (expect 403):', res5.status);
+  console.log('  Response message:', data5.error || 'UNEXPECTED_SUCCESS');
+
+  console.log('\n======================================================');
 }
 
-testCreateGeorgi().catch(console.error);
+testSync().catch(console.error);
+

@@ -71,6 +71,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const uid = authUser.user.id;
 
+    function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
+      if (!raw) return 'amcal_woywoy';
+      const s = String(raw).toLowerCase().trim();
+      if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+      return 'amcal_woywoy';
+    }
+
+    const targetPharmacy = normalizePharmacyId(
+      (req.headers['x-pharmacy-id'] as string) ||
+      req.body?.tenant ||
+      req.body?.store ||
+      req.body?.pharmacyId ||
+      invite.pharmacy_id ||
+      origin
+    );
+
     // 3. Resolve or Create Employee Profile
     let employee: any = null;
     const { data: existingEmp } = await supabaseAdmin
@@ -81,9 +97,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (existingEmp) {
       employee = existingEmp;
+      const updates: any = { active: true };
       if (!existingEmp.name || existingEmp.name === 'Staff Member') {
-        await supabaseAdmin.from('brisk_employees').update({ name, active: true }).eq('id', existingEmp.id);
+        updates.name = name;
       }
+      const curAvail = { ...(existingEmp.availability || {}) };
+      if (!curAvail.pharmacy_id) {
+        curAvail.pharmacy_id = targetPharmacy;
+        curAvail.pharmacyId = targetPharmacy;
+        updates.availability = curAvail;
+      }
+      await supabaseAdmin.from('brisk_employees').update(updates).eq('id', existingEmp.id);
     } else {
       const employeeData = {
         name,
@@ -98,7 +122,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           3: { start: '09:00', end: '17:00' },
           4: { start: '09:00', end: '17:00' },
           5: { start: '09:00', end: '17:00' },
-          6: null
+          6: null,
+          pharmacy_id: targetPharmacy,
+          pharmacyId: targetPharmacy
         },
         active: true
       };

@@ -85,10 +85,13 @@ export function detectAndApplyTenant() {
 
   const isBudgewoiHost = host.includes('budgewoi') || host.includes('dds');
   const isBudgewoiParam = tenantParam === 'budgewoi' || tenantParam === 'dds' || tenantParam === 'budgewoi_dds';
+  const isAmcalHost = host.includes('woywoy') || host.includes('amcal');
 
   let tenantKey = 'woywoy';
   if (isBudgewoiHost || isBudgewoiParam) {
     tenantKey = 'budgewoi';
+  } else if (isAmcalHost) {
+    tenantKey = 'woywoy';
   } else {
     try {
       const stored = (localStorage.getItem('pkrosters_active_tenant') || '').toLowerCase();
@@ -1448,7 +1451,15 @@ function loadDataFromState() {
     ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'].includes(sessionEmail) ||
     sessionEmail.startsWith('pharmotago');
 
-  const rawEmployees = BriskDB.getEmployees();
+  const activeTenantId = (window.currentTenant && window.currentTenant.id) || 
+    ((typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) ? localStorage.getItem('pkrosters_active_tenant') : 'amcal_woywoy');
+
+  const allRawEmployees = BriskDB.getEmployees();
+  const rawEmployees = allRawEmployees.filter(e => {
+    const raw = e.pharmacy_id || e.availability?.pharmacy_id || e.availability?.pharmacyId;
+    const pId = raw && (String(raw).includes('budgewoi') || String(raw).includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy';
+    return pId === activeTenantId;
+  });
 
   let myEmpId = user?.employeeId || null;
   if (!myEmpId && user?.email) {
@@ -1501,7 +1512,23 @@ function loadDataFromState() {
       ? BriskDB.getTimecards().filter(tc => tc.employeeId && tc.employeeId === myEmpId)
       : [];
   }
-  state.shifts = BriskDB.getShifts();
+
+  const allRawShifts = BriskDB.getShifts();
+  const currentStoreEmpIds = new Set(rawEmployees.map(e => e.id));
+  state.shifts = allRawShifts.filter(s => {
+    if (s.pharmacy_id) {
+      const p = String(s.pharmacy_id).toLowerCase();
+      const pId = (p.includes('budgewoi') || p.includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy';
+      return pId === activeTenantId;
+    }
+    if (s.employee_id && currentStoreEmpIds.has(s.employee_id)) return true;
+    if (s.notes && s.notes.includes('budgewoi')) {
+      return activeTenantId === 'budgewoi_dds';
+    }
+    if (activeTenantId === 'budgewoi_dds') return false;
+    return true;
+  });
+
   state.settings = BriskDB.getSettings();
   state.roles = BriskDB.getRoles();
   state.positions = BriskDB.getPositions();

@@ -135,20 +135,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // 4. Resolve final role (cross-check brisk_employees role)
+    // 4. Resolve final role and pharmacy (cross-check brisk_employees)
     let resolvedRole = userProfile?.role || 'employee';
-    if (userProfile?.employee_id && supabaseKey) {
-      const { data: empData } = await supabaseAdmin
-        .from('brisk_employees')
-        .select('role')
-        .eq('id', userProfile.employee_id)
-        .maybeSingle();
-      if (empData?.role && (
-        empData.role.toLowerCase().includes('manager') ||
-        empData.role.toLowerCase().includes('owner') ||
-        empData.role.toLowerCase().includes('admin')
-      )) {
-        resolvedRole = 'manager';
+    let empPharmacyId: string | null = null;
+    if (supabaseKey) {
+      let empQuery = supabaseAdmin.from('brisk_employees').select('id, role, availability');
+      if (userProfile?.employee_id) {
+        empQuery = empQuery.eq('id', userProfile.employee_id);
+      } else {
+        empQuery = empQuery.ilike('email', cleanEmail);
+      }
+      const { data: empData } = await empQuery.maybeSingle();
+      if (empData) {
+        if (empData.role && (
+          empData.role.toLowerCase().includes('manager') ||
+          empData.role.toLowerCase().includes('owner') ||
+          empData.role.toLowerCase().includes('admin')
+        )) {
+          resolvedRole = 'manager';
+        }
+        const avail = empData.availability;
+        empPharmacyId = avail?.pharmacy_id || avail?.pharmacyId || null;
       }
     }
 
@@ -177,7 +184,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const userPharmacyId = normalizePharmacyId(
+      empPharmacyId ||
       userProfile?.pharmacy_id ||
+      (targetStore === 'budgewoi_dds' && isWhitelistedLeader ? 'budgewoi_dds' : null) ||
       'amcal_woywoy'
     );
 
@@ -195,14 +204,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const finalActiveStore = hasMultiStoreAccess 
+      ? (targetStore === 'budgewoi_dds' ? 'budgewoi_dds' : 'amcal_woywoy') 
+      : userPharmacyId;
+
     const sessionPayload = {
       email: signInData.user.email,
       role: resolvedRole,
       employeeId: userProfile?.employee_id || null,
       name: userProfile?.name || signInData.user.user_metadata?.name || cleanEmail.split('@')[0] || 'Staff Member',
-      pharmacyId: userPharmacyId,
+      pharmacyId: hasMultiStoreAccess ? finalActiveStore : userPharmacyId,
       hasMultiStoreAccess: hasMultiStoreAccess,
-      activeStore: hasMultiStoreAccess ? (targetStore === 'budgewoi_dds' ? 'budgewoi_dds' : 'amcal_woywoy') : userPharmacyId,
+      activeStore: finalActiveStore,
       token: signInData.session?.access_token || '',
       refreshToken: signInData.session?.refresh_token || ''
     };

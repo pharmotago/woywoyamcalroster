@@ -156,7 +156,11 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
     // Security Guard: Prevent Amcal staff from querying Budgewoi, and vice versa
     if (!isMultiStoreExecutive && caller.email) {
       const callerEmp = employees.find((e: any) => e.email && e.email.toLowerCase().trim() === caller.email);
-      const callerPharmacyId = normalizePharmacyId(callerEmp?.pharmacy_id);
+      const callerPharmacyId = normalizePharmacyId(
+        callerEmp?.pharmacy_id || 
+        callerEmp?.availability?.pharmacy_id || 
+        callerEmp?.availability?.pharmacyId
+      );
       if (callerPharmacyId !== targetPharmacy) {
         return jsonRes(res, {
           error: `Access Denied: You are registered with ${callerPharmacyId === 'budgewoi_dds' ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'} and cannot view ${targetPharmacy === 'budgewoi_dds' ? 'Budgewoi' : 'Amcal'} roster records.`

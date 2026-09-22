@@ -46,7 +46,7 @@ async function getRequestUser(req: VercelRequest) {
   }
 }
 
-async function sendInviteEmail(toEmail: string, code: string, inviteUrl: string, role: string) {
+async function sendInviteEmail(toEmail: string, code: string, inviteUrl: string, role: string, pharmacyId: string = 'amcal_woywoy') {
   const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
   const smtpPort = parseInt(process.env.SMTP_PORT || '465', 10);
   const smtpUser = process.env.SMTP_USER || '';
@@ -65,29 +65,32 @@ async function sendInviteEmail(toEmail: string, code: string, inviteUrl: string,
   });
 
   const roleName = role === 'manager' ? 'Manager' : 'Staff Member';
+  const isBudgewoi = pharmacyId === 'budgewoi_dds';
+  const pharmacyName = isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy';
+  const gradientHeader = isBudgewoi ? 'linear-gradient(135deg, #7a2682 0%, #ff6b00 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
 
   const mailOptions = {
-    from: `"Amcal Woy Woy Roster" <${smtpUser}>`,
+    from: `"${pharmacyName} Roster" <${smtpUser}>`,
     to: toEmail,
-    subject: `🎉 You're Invited to Join Amcal Woy Woy Roster!`,
-    text: `You have been invited to join Amcal Woy Woy Roster as a ${roleName}.\n\nYour invitation code: ${code}\n\nClick the link below to register:\n${inviteUrl}\n\nOr enter the code manually when registering.\n\nThis invitation is for ${toEmail} only.`,
+    subject: `🎉 You're Invited to Join ${pharmacyName} Roster!`,
+    text: `You have been invited to join ${pharmacyName} Roster as a ${roleName}.\n\nYour invitation code: ${code}\n\nClick the link below to register:\n${inviteUrl}\n\nOr enter the code manually when registering.\n\nThis invitation is for ${toEmail} only.`,
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <div style="background: ${gradientHeader}; padding: 40px 30px; border-radius: 12px 12px 0 0; text-align: center;">
           <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🎉 You're Invited!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Join Amcal Woy Woy Roster as a ${roleName}</p>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Join ${pharmacyName} Roster as a ${roleName}</p>
         </div>
         <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
           <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hello!</p>
-          <p style="color: #374151; font-size: 16px; line-height: 1.6;">You've been invited to join <strong>Amcal Woy Woy Roster</strong> — the employee scheduling system for our pharmacy team.</p>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">You've been invited to join <strong>${pharmacyName} Roster</strong> — the employee scheduling system for our pharmacy team.</p>
           
           <div style="background: #f3f4f6; border-radius: 8px; padding: 20px; margin: 25px 0; text-align: center;">
             <p style="color: #6b7280; font-size: 14px; margin: 0 0 8px 0;">Your Invitation Code</p>
-            <p style="font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 4px; margin: 0;">${code}</p>
+            <p style="font-size: 32px; font-weight: bold; color: ${isBudgewoi ? '#7a2682' : '#667eea'}; letter-spacing: 4px; margin: 0;">${code}</p>
           </div>
 
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${inviteUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">Register Now →</a>
+            <a href="${inviteUrl}" style="display: inline-block; background: ${gradientHeader}; color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 8px; font-size: 16px; font-weight: 600;">Register Now →</a>
           </div>
 
           <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
@@ -128,10 +131,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return jsonRes(res, { error: 'Access denied. Managers or owners only.' }, 403);
     }
 
-    const { email, role } = req.body;
+    const { email, role, store, tenant, pharmacyId } = req.body;
     if (!email || !role) {
       return jsonRes(res, { error: 'Email and role are required.' }, 400);
     }
+
+    function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
+      if (!raw) return 'amcal_woywoy';
+      const s = String(raw).toLowerCase().trim();
+      if (s.includes('budgewoi') || s.includes('dds')) return 'budgewoi_dds';
+      return 'amcal_woywoy';
+    }
+
+    const targetPharmacy = normalizePharmacyId(
+      (req.headers['x-pharmacy-id'] as string) ||
+      store ||
+      tenant ||
+      pharmacyId ||
+      origin
+    );
 
     const dbRole = (role === 'owner' || role === 'manager') ? 'manager' : 'employee';
     const code = crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -148,16 +166,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (error) throw error;
 
-    const origin = req.headers['origin'] || process.env.APP_URL || 'https://woywoyamcalroster.vercel.app';
-    const inviteUrl = `${origin}/?invite=${code}`;
+    const isBudgewoi = targetPharmacy === 'budgewoi_dds';
+    const baseOrigin = isBudgewoi 
+      ? 'https://budgewoiddsroster.vercel.app' 
+      : (origin && !origin.includes('localhost') ? origin : 'https://woywoyamcalroster.vercel.app');
+    const inviteUrl = `${baseOrigin}/?invite=${code}&store=${targetPharmacy}`;
 
     // Send invitation email
-    const emailResult = await sendInviteEmail(targetEmail, code, inviteUrl, dbRole);
+    const emailResult = await sendInviteEmail(targetEmail, code, inviteUrl, dbRole, targetPharmacy);
 
     return jsonRes(res, {
       success: true,
       code,
       inviteUrl,
+      pharmacyId: targetPharmacy,
       emailSent: emailResult.sent,
       emailError: emailResult.sent ? undefined : emailResult.error
     }, 200);
