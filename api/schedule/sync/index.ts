@@ -179,22 +179,23 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
     const storeEmpIds = new Set(storeEmployees.map((e: any) => e.id));
 
     const storeShifts = (shiftRes.data || []).filter((s: any) => {
+      const isBudgewoiNote = s.notes && s.notes.includes('budgewoi');
       if (s.pharmacy_id) return normalizePharmacyId(s.pharmacy_id) === targetPharmacy;
-      if (s.employee_id && storeEmpIds.has(s.employee_id)) return true;
-      if (s.notes && s.notes.includes('budgewoi') && targetPharmacy === 'budgewoi_dds') return true;
-      return targetPharmacy === 'amcal_woywoy' && (!s.employee_id || !storeEmpIds.has(s.employee_id));
+      if (isBudgewoiNote) return targetPharmacy === 'budgewoi_dds';
+      if (s.employee_id) return storeEmpIds.has(s.employee_id);
+      return targetPharmacy === 'amcal_woywoy';
     });
 
     const storeTimecards = (tcRes.data || []).filter((tc: any) => {
       if (tc.pharmacy_id) return normalizePharmacyId(tc.pharmacy_id) === targetPharmacy;
-      if (tc.employee_id && storeEmpIds.has(tc.employee_id)) return true;
-      return targetPharmacy === 'amcal_woywoy' && (!tc.employee_id || !storeEmpIds.has(tc.employee_id));
+      if (tc.employee_id) return storeEmpIds.has(tc.employee_id);
+      return false;
     });
 
     const storeLeave = (leaveRes.data || []).filter((lr: any) => {
       if (lr.pharmacy_id) return normalizePharmacyId(lr.pharmacy_id) === targetPharmacy;
-      if (lr.employee_id && storeEmpIds.has(lr.employee_id)) return true;
-      return targetPharmacy === 'amcal_woywoy' && (!lr.employee_id || !storeEmpIds.has(lr.employee_id));
+      if (lr.employee_id) return storeEmpIds.has(lr.employee_id);
+      return false;
     });
 
 

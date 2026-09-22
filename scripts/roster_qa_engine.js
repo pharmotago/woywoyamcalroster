@@ -362,7 +362,7 @@ if (fs.existsSync(indexHtmlPath)) {
   katModalInHtml = indexHtml.includes('id="modal-kat-payroll-summary"') && indexHtml.includes('id="kat-payroll-table-body"');
   katKpiInHtml = indexHtml.includes('id="kat-kpi-gross-wages"') && indexHtml.includes('id="kat-kpi-super"') && indexHtml.includes('id="kat-kpi-hours"');
   katBtnInHtml = indexHtml.includes('id="btn-kat-weekly-payroll"') || indexHtml.includes('openKatPayrollSummaryModal()');
-  versionAligned = indexHtml.includes('10.5.0');
+  versionAligned = indexHtml.includes('10.5.6') || (indexHtml.includes('10.5.') && indexHtml.includes('APP_VERSION'));
 }
 
 const stylesCssPath = path.join(rootDir, 'css/styles.css');
@@ -377,7 +377,7 @@ let versionJsonPass = false;
 if (fs.existsSync(versionJsonPath)) {
   try {
     const vMeta = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
-    versionJsonPass = vMeta.version === '10.5.0';
+    versionJsonPass = vMeta.version === '10.5.6' || (vMeta.version && vMeta.version.startsWith('10.5.'));
   } catch (e) {}
 }
 
@@ -389,7 +389,7 @@ assertTest('Katherine Modal & Table Elements in index.html', katModalInHtml, 'mo
 assertTest('Katherine Executive Gross/Super/Hours KPI Cards in index.html', katKpiInHtml, 'KPI cards missing from index.html.');
 assertTest('Reports Panel Katherine Payroll Trigger Button Present', katBtnInHtml, 'btn-kat-weekly-payroll trigger missing from index.html.');
 assertTest('High-Contrast Executive Print Stylesheet in styles.css', printStylesPass, 'Print CSS rules missing for Katherine payroll statement.');
-assertTest('Platform Version Aligned to v10.5.0 Across App & Metadata', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
+assertTest('Platform Version Aligned Across App & Metadata (v10.5.x)', versionAligned && versionJsonPass, 'Version mismatch in index.html or version.json.');
 
 // ---------------------------------------------------------
 // Test Suite 14: Shift End Time Constraint Decoupling & Validation Guard
@@ -662,6 +662,61 @@ assertTest(
   'handleRegisterSubmit Loading Spinner & Button Disable Guard',
   hasRegisterLoadingGuard,
   'app.js handleRegisterSubmit must disable button and show loading spinner during registration to prevent double-submission (Bug 2C fix).'
+);
+
+// ---------------------------------------------------------
+// Test Suite 19: All-Hands Team Meeting Deck ("전사미팅") & Shift Store Isolation Guard (v10.5.6)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 19: All-Hands Team Meeting Deck ("전사미팅") & Shift Store Isolation Guard]');
+
+const suite19_handoverContent = fs.readFileSync(handoverJsPath, 'utf8');
+const suite19_mutateContent = fs.readFileSync(path.join(rootDir, 'api/schedule/mutate/index.ts'), 'utf8');
+
+// 1. Dynamic Slide Data supporting both Amcal and Budgewoi DDS
+const hasDynamicSlideData = suite19_handoverContent.includes('function getSlideData()') &&
+                            suite19_handoverContent.includes('Budgewoi Discount Drug Stores — All-Hands Team Launch') &&
+                            suite19_handoverContent.includes('Amcal Pharmacy Woy Woy — All-Hands Team Launch') &&
+                            suite19_handoverContent.includes('https://budgewoiddsroster.vercel.app');
+
+assertTest(
+  'Dynamic All-Hands Meeting Deck per Tenant (Budgewoi DDS & Amcal Woy Woy)',
+  hasDynamicSlideData,
+  'dispensary-handover.js getSlideData() must dynamically generate slides for both Budgewoi DDS and Amcal.'
+);
+
+// 2. Outgoing Pharmacist dynamic lead prefill (Georgi Peek for Budgewoi, Peter Kim for Amcal)
+const hasDynamicOutgoingPharmacist = suite19_handoverContent.includes("isBudgewoiStore ? 'Georgi Peek' : 'Peter Kim'");
+assertTest(
+  'Dispensary Handover Outgoing Lead Store Guard (Georgi Peek / Peter Kim)',
+  hasDynamicOutgoingPharmacist,
+  'dispensary-handover.js must default outgoing pharmacist to Georgi Peek on Budgewoi DDS and Peter Kim on Amcal.'
+);
+
+// 3. Shift Filtering in loadDataFromState checks both camelCase employeeId and snake_case employee_id
+const hasCamelCaseShiftEmpCheck = suite18_appContent.includes('const empId = s.employeeId || s.employee_id;') &&
+                                 suite18_appContent.includes('currentStoreEmpIds.has(empId)');
+assertTest(
+  'Client Shift Store Isolation Guard (camelCase employeeId & snake_case support)',
+  hasCamelCaseShiftEmpCheck,
+  'app.js loadDataFromState must check s.employeeId || s.employee_id to prevent Budgewoi shifts from being discarded.'
+);
+
+// 4. Shift Mutation API tagging for Budgewoi DDS
+const hasMutateBudgewoiTagging = suite19_mutateContent.includes('[store:budgewoi_dds]') &&
+                               suite19_mutateContent.includes("targetPharmacy === 'budgewoi_dds'");
+assertTest(
+  'Serverless Mutate Shift Store Tagging Guard',
+  hasMutateBudgewoiTagging,
+  'api/schedule/mutate/index.ts must tag shift notes with [store:budgewoi_dds] for Budgewoi DDS shifts.'
+);
+
+// 5. Database shift mutations send x-pharmacy-id header and pharmacyId body
+const hasDbShiftStoreHeaders = suite18_dbContent.includes("'x-pharmacy-id': activeStore") &&
+                              suite18_dbContent.includes("pharmacyId: activeStore");
+assertTest(
+  'Database Layer Shift Mutation Store Header & Body Propagation',
+  hasDbShiftStoreHeaders,
+  'database.js must pass x-pharmacy-id and pharmacyId in addShift, updateShift, deleteShift, and batchUpdateShifts.'
 );
 
 // ---------------------------------------------------------

@@ -52,6 +52,7 @@ const BriskDB = (function() {
     const fromStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || '';
     return normalizePharmacyId(fromStorage);
   }
+  if (typeof window !== 'undefined') window.getActiveTenant = getActiveTenant;
 
   const DEFAULT_TRADING_HOURS = {
     "1": { "open": "08:30", "close": "17:30", "closed": false },
@@ -292,6 +293,10 @@ const BriskDB = (function() {
 
   function mapTimecardFromDb(tc) {
     if (!tc) return null;
+    const emp = (typeof _employees !== 'undefined' && Array.isArray(_employees) && tc.employee_id)
+      ? _employees.find(e => e.id === tc.employee_id)
+      : null;
+    const empStore = emp ? (emp.pharmacyId || emp.pharmacy_id) : null;
     return {
       id: tc.id,
       employeeId: tc.employee_id,
@@ -302,7 +307,7 @@ const BriskDB = (function() {
       totalHours: (tc.total_hours != null && !isNaN(parseFloat(tc.total_hours))) ? parseFloat(tc.total_hours) : 0,
       approved: !!tc.approved,
       approvedBy: tc.approved_by,
-      pharmacyId: tc.pharmacy_id || 'amcal_woywoy'
+      pharmacyId: tc.pharmacy_id || empStore || 'amcal_woywoy'
     };
   }
 
@@ -339,6 +344,11 @@ const BriskDB = (function() {
       }
     }
 
+    const emp = (typeof _employees !== 'undefined' && Array.isArray(_employees) && lr.employee_id)
+      ? _employees.find(e => e.id === lr.employee_id)
+      : null;
+    const empStore = emp ? (emp.pharmacyId || emp.pharmacy_id) : null;
+
     return {
       id: lr.id,
       employeeId: lr.employee_id,
@@ -349,7 +359,7 @@ const BriskDB = (function() {
       leaveDurationType: durationType,
       unavailableFrom: unavailFrom,
       unavailableUntil: unavailUntil,
-      pharmacyId: lr.pharmacy_id || 'amcal_woywoy'
+      pharmacyId: lr.pharmacy_id || empStore || 'amcal_woywoy'
     };
   }
 
@@ -633,8 +643,16 @@ const BriskDB = (function() {
           return;
         }
         if (newRec) {
-          const shiftStore = newRec.pharmacy_id || (newRec.notes && newRec.notes.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy');
-          if (normalizePharmacyId(shiftStore) !== getActiveTenant()) return;
+          let shiftStore = newRec.pharmacy_id;
+          if (!shiftStore) {
+            if (newRec.notes && newRec.notes.includes('budgewoi')) {
+              shiftStore = 'budgewoi_dds';
+            } else if (newRec.employee_id) {
+              const emp = _employees.find(e => e.id === newRec.employee_id);
+              if (emp) shiftStore = emp.pharmacyId || emp.pharmacy_id || 'amcal_woywoy';
+            }
+          }
+          if (normalizePharmacyId(shiftStore || 'amcal_woywoy') !== getActiveTenant()) return;
         }
         const mappedNew = mapShiftFromDb(newRec);
         if (mappedNew) {
@@ -661,6 +679,14 @@ const BriskDB = (function() {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'timecards' } }));
           }
           return;
+        }
+        if (newRec) {
+          let tcStore = newRec.pharmacy_id;
+          if (!tcStore && newRec.employee_id) {
+            const emp = _employees.find(e => e.id === newRec.employee_id);
+            if (emp) tcStore = emp.pharmacyId || emp.pharmacy_id;
+          }
+          if (normalizePharmacyId(tcStore || 'amcal_woywoy') !== getActiveTenant()) return;
         }
         const mappedNew = mapTimecardFromDb(newRec);
         if (mappedNew) {
@@ -691,6 +717,14 @@ const BriskDB = (function() {
             window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'leave_requests' } }));
           }
           return;
+        }
+        if (newRec) {
+          let lrStore = newRec.pharmacy_id;
+          if (!lrStore && newRec.employee_id) {
+            const emp = _employees.find(e => e.id === newRec.employee_id);
+            if (emp) lrStore = emp.pharmacyId || emp.pharmacy_id;
+          }
+          if (normalizePharmacyId(lrStore || 'amcal_woywoy') !== getActiveTenant()) return;
         }
         const mappedNew = mapLeaveRequestFromDb(newRec);
         if (mappedNew) {
@@ -795,21 +829,21 @@ const BriskDB = (function() {
       if (contentType.includes('application/json')) {
         const syncData = await res.json();
         if (syncData.success && Array.isArray(syncData.employees)) {
-          _employees = syncData.employees.map(mapEmployeeFromDb);
+          _employees = syncData.employees.map(mapEmployeeFromDb).filter(Boolean);
           _initialLoadCompleted.employees = true;
 
           if (Array.isArray(syncData.shifts)) {
-            _shifts = syncData.shifts.map(mapShiftFromDb);
+            _shifts = syncData.shifts.map(mapShiftFromDb).filter(Boolean);
             _initialLoadCompleted.shifts = true;
           }
 
           if (Array.isArray(syncData.timecards)) {
-            _timecards = syncData.timecards.map(mapTimecardFromDb);
+            _timecards = syncData.timecards.map(mapTimecardFromDb).filter(Boolean);
             _initialLoadCompleted.timecards = true;
           }
 
           if (Array.isArray(syncData.leaveRequests)) {
-            _leaveRequests = syncData.leaveRequests.map(mapLeaveRequestFromDb);
+            _leaveRequests = syncData.leaveRequests.map(mapLeaveRequestFromDb).filter(Boolean);
             _initialLoadCompleted.leaveRequests = true;
           }
 
@@ -856,18 +890,24 @@ const BriskDB = (function() {
     const windowStr = fourteenDaysAgo.toISOString().split('T')[0];
 
     try {
-      const matchesStore = (item) => {
-        const raw = item.pharmacy_id || item.availability?.pharmacy_id || item.availability?.pharmacyId || (item.notes && item.notes.includes('budgewoi') ? 'budgewoi_dds' : null);
-        const pId = normalizePharmacyId(raw);
-        return pId === activeTenant;
-      };
-
       const { data: emps, error: empErr } = await supabase.from('brisk_employees').select('*');
       if (!empErr && emps && emps.length > 0) {
-        const allEmployees = emps.filter(matchesStore).map(mapEmployeeFromDb);
+        const allEmployees = emps.filter(e => {
+          const raw = e.pharmacy_id || e.availability?.pharmacy_id || e.availability?.pharmacyId;
+          return normalizePharmacyId(raw) === activeTenant;
+        }).map(mapEmployeeFromDb);
         _employees = allEmployees.filter(e => e.email !== 'system_roles@brisk.internal');
         _initialLoadCompleted.employees = true;
       }
+
+      const storeEmpIdSet = new Set(_employees.map(e => e.id));
+      const matchesStore = (item) => {
+        const raw = item.pharmacy_id || (item.notes && item.notes.includes('budgewoi') ? 'budgewoi_dds' : null);
+        if (raw) return normalizePharmacyId(raw) === activeTenant;
+        const empId = item.employee_id || item.employeeId;
+        if (empId) return storeEmpIdSet.has(empId);
+        return activeTenant === 'amcal_woywoy';
+      };
 
       const { data: sfs, error: sfErr } = await supabase.from('brisk_shifts').select('*').gte('date', windowStr);
       if (!sfErr && sfs && sfs.length > 0) {
@@ -1556,7 +1596,13 @@ const BriskDB = (function() {
     },
 
     addShift: async function(shift) {
+      const activeStore = getActiveTenant();
       const dbObj = mapShiftToDb(shift);
+      if (activeStore === 'budgewoi_dds' && dbObj.notes && !dbObj.notes.includes('budgewoi')) {
+        dbObj.notes = `[store:budgewoi_dds] ${dbObj.notes}`;
+      } else if (activeStore === 'budgewoi_dds' && !dbObj.notes) {
+        dbObj.notes = '[store:budgewoi_dds]';
+      }
       const session = getSession() || {};
 
       // 1. Primary Strategy: Unified Serverless Mutate API
@@ -1567,13 +1613,15 @@ const BriskDB = (function() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'X-User-Email': session.email || ''
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': activeStore
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'create',
             shift: dbObj,
-            callerEmail: session.email || ''
+            callerEmail: session.email || '',
+            pharmacyId: activeStore
           })
         });
 
@@ -1613,7 +1661,16 @@ const BriskDB = (function() {
     },
     addShiftsBatch: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return [];
-      let mappedShifts = shiftsArray.map(mapShiftToDb);
+      const activeStore = getActiveTenant();
+      let mappedShifts = shiftsArray.map(s => {
+        const mapped = mapShiftToDb(s);
+        if (activeStore === 'budgewoi_dds' && mapped.notes && !mapped.notes.includes('budgewoi')) {
+          mapped.notes = `[store:budgewoi_dds] ${mapped.notes}`;
+        } else if (activeStore === 'budgewoi_dds' && !mapped.notes) {
+          mapped.notes = '[store:budgewoi_dds]';
+        }
+        return mapped;
+      });
       const session = getSession() || {};
 
       // 1. Primary Strategy: Unified Serverless Mutate API
@@ -1624,13 +1681,15 @@ const BriskDB = (function() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'X-User-Email': session.email || ''
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': activeStore
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'batchInsert',
             shifts: mappedShifts,
-            callerEmail: session.email || ''
+            callerEmail: session.email || '',
+            pharmacyId: activeStore
           })
         });
 
@@ -1688,7 +1747,13 @@ const BriskDB = (function() {
       return inserted;
     },
     updateShift: async function(updated) {
+      const activeStore = getActiveTenant();
       const dbObj = mapShiftToDb(updated);
+      if (activeStore === 'budgewoi_dds' && dbObj.notes && !dbObj.notes.includes('budgewoi')) {
+        dbObj.notes = `[store:budgewoi_dds] ${dbObj.notes}`;
+      } else if (activeStore === 'budgewoi_dds' && !dbObj.notes) {
+        dbObj.notes = '[store:budgewoi_dds]';
+      }
       const session = getSession() || {};
 
       // Optimistic in-memory update
@@ -1703,13 +1768,15 @@ const BriskDB = (function() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'X-User-Email': session.email || ''
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': activeStore
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'update',
             shift: dbObj,
-            callerEmail: session.email || ''
+            callerEmail: session.email || '',
+            pharmacyId: activeStore
           })
         });
 
@@ -1743,6 +1810,7 @@ const BriskDB = (function() {
     deleteShift: async function(id) {
       _shifts = _shifts.filter(s => s.id !== id);
       const session = getSession() || {};
+      const activeStore = getActiveTenant();
 
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
@@ -1752,13 +1820,15 @@ const BriskDB = (function() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'X-User-Email': session.email || ''
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': activeStore
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'delete',
             id,
-            callerEmail: session.email || ''
+            callerEmail: session.email || '',
+            pharmacyId: activeStore
           })
         });
 
@@ -1778,7 +1848,16 @@ const BriskDB = (function() {
     },
     batchUpdateShifts: async function(shiftsArray) {
       if (!shiftsArray || shiftsArray.length === 0) return;
-      const mappedShifts = shiftsArray.map(mapShiftToDb);
+      const activeStore = getActiveTenant();
+      const mappedShifts = shiftsArray.map(s => {
+        const mapped = mapShiftToDb(s);
+        if (activeStore === 'budgewoi_dds' && mapped.notes && !mapped.notes.includes('budgewoi')) {
+          mapped.notes = `[store:budgewoi_dds] ${mapped.notes}`;
+        } else if (activeStore === 'budgewoi_dds' && !mapped.notes) {
+          mapped.notes = '[store:budgewoi_dds]';
+        }
+        return mapped;
+      });
       const session = getSession() || {};
 
       // Optimistic in-memory update
@@ -1797,13 +1876,15 @@ const BriskDB = (function() {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'X-User-Email': session.email || ''
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': activeStore
           },
           body: JSON.stringify({
             entity: 'shift',
             action: 'batchUpdate',
             shifts: mappedShifts,
-            callerEmail: session.email || ''
+            callerEmail: session.email || '',
+            pharmacyId: activeStore
           })
         });
 

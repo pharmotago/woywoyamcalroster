@@ -128,6 +128,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       origin
     );
 
+    // Multi-store boundary check: Non-executives can only mutate their own registered store
+    const MULTI_STORE_WHITELIST = ['peter', 'katherine', 'glen', 'pharmotago', 'nguyek', 'glenkanawati'];
+    const isMultiStoreExecutive = MULTI_STORE_WHITELIST.some(w => (callerEmail || '').includes(w));
+
+    if (!isMultiStoreExecutive && callerEmail) {
+      const { data: callerEmp } = await supabaseAdmin
+        .from('brisk_employees')
+        .select('id, availability')
+        .eq('email', callerEmail)
+        .maybeSingle();
+      if (callerEmp) {
+        const callerStore = normalizePharmacyId(
+          callerEmp.availability?.pharmacy_id || 
+          callerEmp.availability?.pharmacyId
+        );
+        if (callerStore !== targetPharmacy) {
+          return jsonRes(res, {
+            error: `Forbidden: You are registered with ${callerStore === 'budgewoi_dds' ? 'Budgewoi DDS' : 'Amcal Woy Woy'} and cannot modify records for ${targetPharmacy === 'budgewoi_dds' ? 'Budgewoi' : 'Amcal'}.`
+          }, 403);
+        }
+      }
+    }
+
     const entity = body.entity || body.type;
     const action = body.action;
 
@@ -225,10 +248,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           hourlyRate = existingRecord?.hourly_rate != null ? Number(existingRecord.hourly_rate) : null;
         }
 
-        if (targetPharmacy) {
-          avail.pharmacy_id = targetPharmacy;
-          avail.pharmacyId = targetPharmacy;
-        }
+        const explicitStore = empData.pharmacy_id || empData.pharmacyId || empData.availability?.pharmacy_id || empData.availability?.pharmacyId;
+        const assignedStore = explicitStore 
+          ? normalizePharmacyId(explicitStore) 
+          : (existingRecord?.availability?.pharmacy_id || existingRecord?.availability?.pharmacyId || targetPharmacy);
+        avail.pharmacy_id = assignedStore;
+        avail.pharmacyId = assignedStore;
         avail.employment_type = empType;
         avail.award_level = awdLevel;
 
@@ -338,7 +363,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           updateObj.end_time = formatTimeHHmm(s.end_time || s.endTime);
         }
         if (s.role !== undefined) updateObj.role = s.role;
-        if (s.notes !== undefined) updateObj.notes = s.notes || '';
+        if (s.notes !== undefined) {
+          let notes = s.notes || '';
+          if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
+            notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+          }
+          updateObj.notes = notes;
+        }
         if (s.status !== undefined) updateObj.status = s.status;
         if (s.unpaid_meal_mins !== undefined) updateObj.unpaid_meal_mins = s.unpaid_meal_mins;
         else if (s.unpaidMealMins !== undefined) updateObj.unpaid_meal_mins = s.unpaidMealMins;
@@ -359,16 +390,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (action === 'batchUpdate' || action === 'batchInsert' || Array.isArray(body.shifts)) {
         const shiftsArray = body.shifts || [];
-        const mappedShifts = shiftsArray.map((sh: any) => ({
-          ...(sh.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sh.id) ? { id: sh.id } : {}),
-          employee_id: sh.employee_id !== undefined ? sh.employee_id : (sh.employeeId || null),
-          date: sh.date,
-          start_time: formatTimeHHmm(sh.start_time || sh.startTime),
-          end_time: formatTimeHHmm(sh.end_time || sh.endTime),
-          role: sh.role || 'Pharmacy Assistant',
-          notes: sh.notes || '',
-          status: sh.status || 'published'
-        }));
+        const mappedShifts = shiftsArray.map((sh: any) => {
+          let notes = sh.notes || '';
+          if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
+            notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+          }
+          return {
+            ...(sh.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sh.id) ? { id: sh.id } : {}),
+            employee_id: sh.employee_id !== undefined ? sh.employee_id : (sh.employeeId || null),
+            date: sh.date,
+            start_time: formatTimeHHmm(sh.start_time || sh.startTime),
+            end_time: formatTimeHHmm(sh.end_time || sh.endTime),
+            role: sh.role || 'Pharmacy Assistant',
+            notes: notes,
+            status: sh.status || 'published'
+          };
+        });
 
         const { data, error } = await supabaseAdmin.from('brisk_shifts').upsert(mappedShifts).select();
         if (error) throw error;

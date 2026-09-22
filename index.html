@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.5.0">
+  <link rel="stylesheet" href="css/styles.css?v=10.5.6">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -424,7 +424,7 @@
             <i class="fa-solid fa-person-chalkboard text-indigo"></i> <span>All-Hands Deck</span>
           </button>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.0)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.6)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -2683,7 +2683,7 @@
           </div>
           <div>
             <div style="display: flex; align-items: center; gap: 8px;">
-              <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700;">Amcal Woy Woy All-Hands Meeting Deck</h3>
+              <h3 id="deck-modal-header-title" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Amcal Woy Woy All-Hands Meeting Deck</h3>
               <span id="deck-slide-badge" class="badge badge-cyan" style="font-size: 0.72rem; font-weight: 700;">Slide 1 of 6</span>
             </div>
             <span style="font-size: 0.75rem; color: var(--text-muted);">Interactive Executive Presentation Runbook ("전사미팅")</span>
@@ -2741,18 +2741,34 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.5.0)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.6)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
 
-        <!-- v10.5.0 -->
+        <!-- v10.5.6 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.0 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.6 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Multi-Tenant Store Isolation & Dynamic All-Hands Meeting Deck ("전사미팅")</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">22 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Dynamic All-Hands Meeting Deck:</strong> Slides and team presentations dynamically adapt to Budgewoi DDS vs Amcal Woy Woy, correctly attributing store leadership, goals, and domain.</li>
+            <li><strong>Complete Shift & Roster Isolation:</strong> Shifts, timecards, and leave requests strictly partitioned by store with zero cross-store leakage or dropped shifts.</li>
+            <li><strong>Dispensary Manager Persistence:</strong> Seamless profile saving and store assignment for dispensary leadership and staff.</li>
+          </ul>
+        </div>
+
+        <!-- v10.5.0 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-indigo" style="font-size:0.8rem; font-weight:700;">v10.5.0</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Dispensary Clinical Handover Board & All-Hands Meeting Deck ("전사미팅")</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">20 Sep 2026</span>
@@ -3020,11 +3036,11 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.5.0"></script>
+  <script type="module" src="js/app.js?v=10.5.6"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.5.0';
+    const APP_VERSION = '10.5.6';
     window.APP_VERSION = APP_VERSION;
 
     // Global helper to force-purge all caches and reload the latest version

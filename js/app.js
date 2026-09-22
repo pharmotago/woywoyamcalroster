@@ -1461,6 +1461,8 @@ function loadDataFromState() {
     return pId === activeTenantId;
   });
 
+  const currentStoreEmpIds = new Set(rawEmployees.map(e => e.id));
+
   let myEmpId = user?.employeeId || null;
   if (!myEmpId && user?.email) {
     const matched = rawEmployees.find(e => e.email && e.email.toLowerCase().trim() === user.email.toLowerCase().trim());
@@ -1487,8 +1489,20 @@ function loadDataFromState() {
         };
       });
     }
-    state.leaveRequests = BriskDB.getLeaveRequests();
-    state.timecards = BriskDB.getTimecards();
+    state.leaveRequests = BriskDB.getLeaveRequests().filter(lr => {
+      const empId = lr.employeeId || lr.employee_id;
+      if (empId) return currentStoreEmpIds.has(empId);
+      const p = lr.pharmacyId || lr.pharmacy_id;
+      if (p) return ((String(p).includes('budgewoi') || String(p).includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy') === activeTenantId;
+      return activeTenantId === 'amcal_woywoy';
+    });
+    state.timecards = BriskDB.getTimecards().filter(tc => {
+      const empId = tc.employeeId || tc.employee_id;
+      if (empId) return currentStoreEmpIds.has(empId);
+      const p = tc.pharmacyId || tc.pharmacy_id;
+      if (p) return ((String(p).includes('budgewoi') || String(p).includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy') === activeTenantId;
+      return activeTenantId === 'amcal_woywoy';
+    });
   } else {
     // C-4 & M-1 Guard: Sanitize employee list for non-managers (mask colleague wages, DOB, phone, tax structure)
     state.employees = rawEmployees.map(e => {
@@ -1505,28 +1519,29 @@ function loadDataFromState() {
     });
     // C-4 & M-1 Guard: Non-managers only access their own leave requests in memory
     state.leaveRequests = myEmpId
-      ? BriskDB.getLeaveRequests().filter(lr => lr.employeeId && lr.employeeId === myEmpId)
+      ? BriskDB.getLeaveRequests().filter(lr => (lr.employeeId || lr.employee_id) === myEmpId)
       : [];
     // C-4 & M-1 Guard: Non-managers only access their own timecards in memory
     state.timecards = myEmpId
-      ? BriskDB.getTimecards().filter(tc => tc.employeeId && tc.employeeId === myEmpId)
+      ? BriskDB.getTimecards().filter(tc => (tc.employeeId || tc.employee_id) === myEmpId)
       : [];
   }
 
   const allRawShifts = BriskDB.getShifts();
-  const currentStoreEmpIds = new Set(rawEmployees.map(e => e.id));
   state.shifts = allRawShifts.filter(s => {
-    if (s.pharmacy_id) {
-      const p = String(s.pharmacy_id).toLowerCase();
+    const rawPharmacy = s.pharmacyId || s.pharmacy_id;
+    if (rawPharmacy) {
+      const p = String(rawPharmacy).toLowerCase();
       const pId = (p.includes('budgewoi') || p.includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy';
       return pId === activeTenantId;
     }
-    if (s.employee_id && currentStoreEmpIds.has(s.employee_id)) return true;
-    if (s.notes && s.notes.includes('budgewoi')) {
+    const empId = s.employeeId || s.employee_id;
+    if (empId) return currentStoreEmpIds.has(empId);
+    const isBudgewoiNote = s.notes && s.notes.includes('budgewoi');
+    if (isBudgewoiNote) {
       return activeTenantId === 'budgewoi_dds';
     }
-    if (activeTenantId === 'budgewoi_dds') return false;
-    return true;
+    return activeTenantId === 'amcal_woywoy';
   });
 
   state.settings = BriskDB.getSettings();
@@ -4670,6 +4685,9 @@ async function handleShiftSubmit(event) {
       ? `[Split Shift #${splitGrpId} Part 1/${totalParts}]${cleanNotes ? ' ' + cleanNotes : ''}`
       : cleanNotes;
 
+    const curTenantId = (window.currentTenant && window.currentTenant.id) || 
+      ((typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) ? localStorage.getItem('pkrosters_active_tenant') : 'amcal_woywoy');
+
     const shiftData = {
       employeeId: empId,
       role: role,
@@ -4677,7 +4695,8 @@ async function handleShiftSubmit(event) {
       startTime: start,
       endTime: end,
       unpaidMealMins: primaryUnpaidMeal,
-      notes: primaryNotes
+      notes: primaryNotes,
+      pharmacyId: curTenantId
     };
 
     if (id) {
@@ -4730,7 +4749,8 @@ async function handleShiftSubmit(event) {
             startTime: seg.startTime,
             endTime: seg.endTime,
             unpaidMealMins: segMealMins,
-            notes: segNotes
+            notes: segNotes,
+            pharmacyId: curTenantId
           };
 
           if (seg.existingShiftId) {

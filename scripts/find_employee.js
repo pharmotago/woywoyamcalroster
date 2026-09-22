@@ -21,6 +21,11 @@ async function testSync() {
     data1.employees.forEach(e => console.log(`   - ${e.name} (${e.email}) | ${e.role}`));
   }
   if (data1.error) console.log('  Error:', data1.error);
+  console.log('  Settings returned:', data1.settings);
+  console.log('  Shifts returned count:', (data1.shifts || []).length);
+  if (data1.shifts && data1.shifts.length > 0) {
+    console.log('  Shifts sample:', data1.shifts.slice(0, 3));
+  }
 
   // Test 2: Katherine Nguyen querying Budgewoi DDS
   console.log('\n[Test 2] Katherine Nguyen querying Budgewoi DDS (Multi-store owner):');
