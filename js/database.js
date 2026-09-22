@@ -1104,108 +1104,17 @@ const BriskDB = (function() {
     }
 
     // ═══════════════════════════════════════════════════════
-    // 2. Direct Supabase Client Fallback (100% reliable)
-    //    Uses supabase.auth.signUp() with anon key
+    // Serverless API route is the ONLY valid registration path.
+    // The anon Supabase client cannot:
+    //   - create confirmed auth users (email confirmation required)
+    //   - insert into brisk_employees (RLS blocked)
+    // If the API route fails, surface a clear error. Do NOT fall
+    // through to a broken fallback that creates orphaned accounts.
     // ═══════════════════════════════════════════════════════
-    try {
-      // 2a. Validate invite code FIRST (before creating Auth user)
-      //     This prevents orphaned Auth users if the code is invalid.
-      const { data: invite, error: inviteFindErr } = await supabase
-        .from('brisk_invitations')
-        .select('*')
-        .eq('code', code)
-        .eq('used', false)
-        .maybeSingle();
-
-      if (inviteFindErr || !invite) {
-        return { error: 'Invalid or expired invitation code.' };
-      }
-
-      // Check email match if invite specifies one
-      if (invite.email && invite.email.toLowerCase().trim() !== targetEmail) {
-        return { error: 'This invitation code is registered for a different email address.' };
-      }
-
-      const targetRole = invite.role; // 'manager' or 'employee'
-
-      // 2b. Now it's safe to create the Auth user
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: targetEmail,
-        password: password,
-        options: {
-          data: { name: name },
-          emailRedirectTo: 'https://woywoyamcalroster.vercel.app'
-        }
-      });
-
-      if (signUpErr) {
-        return { error: 'Failed to create account: ' + signUpErr.message };
-      }
-
-      if (!signUpData.user) {
-        return { error: 'Failed to create account. Please try again.' };
-      }
-
-      const uid = signUpData.user.id;
-
-      // 2c. Create Employee Profile
-      const employeeData = {
-        name: name,
-        email: targetEmail,
-        role: targetRole === 'manager' ? 'Pharmacist Manager' : 'Pharmacy Staff',
-        hourly_rate: targetRole === 'manager' ? 85.00 : 25.00,
-        max_hours: 38,
-        availability: {
-          0: null,
-          1: { start: '09:00', end: '17:00' },
-          2: { start: '09:00', end: '17:00' },
-          3: { start: '09:00', end: '17:00' },
-          4: { start: '09:00', end: '17:00' },
-          5: { start: '09:00', end: '17:00' },
-          6: null
-        },
-        active: true
-      };
-
-      const { data: employee, error: empErr } = await supabase
-        .from('brisk_employees')
-        .insert(employeeData)
-        .select()
-        .maybeSingle();
-
-      if (empErr || !employee) {
-        console.error('Employee creation failed:', empErr);
-        return { error: 'Failed to create employee profile: ' + (empErr ? empErr.message : 'Unknown error') };
-      }
-
-      // 2c. Create User Role mapping
-      const { error: roleErr } = await supabase
-        .from('brisk_users')
-        .insert({
-          id: uid,
-          email: targetEmail,
-          password_hash: 'SUPABASE_AUTH_MANAGED',
-          role: targetRole,
-          employee_id: employee.id,
-          name: name
-        });
-
-      if (roleErr) {
-        console.error('User role mapping failed:', roleErr);
-        return { error: 'Failed to set up user permissions: ' + roleErr.message };
-      }
-
-      // 2d. Mark invitation as used
-      await supabase
-        .from('brisk_invitations')
-        .update({ used: true })
-        .eq('code', code);
-
-      return { success: true, message: 'Account registered successfully.' };
-    } catch (fallbackErr) {
-      return { error: 'Registration failed: ' + fallbackErr.message };
-    }
+    return { error: 'Registration service is temporarily unavailable. Please ask your manager to try again in a moment, or contact your pharmacist for assistance.' };
   }
+
+
 
   // Generate Invite (H-6 Guard)
   async function apiGenerateInvite(email, role) {
@@ -1433,17 +1342,18 @@ const BriskDB = (function() {
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const token = await getMutateAuthToken();
+        const callerEmail = getSession()?.email || (typeof window !== 'undefined' && window.state?.currentUser?.email) || '';
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'x-user-email': (getSession()?.email || '')
+            'x-user-email': callerEmail
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'create',
-            callerEmail: (getSession()?.email || ''),
+            callerEmail: callerEmail,
             employee: dbObj
           })
         });
@@ -1458,10 +1368,19 @@ const BriskDB = (function() {
             rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
             return mapped;
           }
+        } else {
+          // Surface API error (e.g. 403 Forbidden) instead of silently falling through
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error: ${res.status}`);
         }
       } catch (apiErr) {
         console.warn('[BriskDB] Serverless addEmployee notice, fallback to Supabase SDK:', apiErr);
+        // Re-throw permission errors — these are definitive, fallback will also fail
+        if (apiErr.message && (apiErr.message.includes('Forbidden') || apiErr.message.includes('Unauthorized') || apiErr.message.includes('Permission denied'))) {
+          throw apiErr;
+        }
       }
+
 
       // 2. Direct Supabase Client fallback
       assertManagerPermissionForFallback();
@@ -1504,17 +1423,18 @@ const BriskDB = (function() {
       // 1. Primary Strategy: Unified Serverless Mutate API
       try {
         const token = await getMutateAuthToken();
+        const callerEmail = getSession()?.email || (typeof window !== 'undefined' && window.state?.currentUser?.email) || '';
         const res = await fetch('/api/schedule/mutate', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': token ? ('Bearer ' + token) : '',
-            'x-user-email': (getSession()?.email || '')
+            'x-user-email': callerEmail
           },
           body: JSON.stringify({
             entity: 'employee',
             action: 'update',
-            callerEmail: (getSession()?.email || ''),
+            callerEmail: callerEmail,
             employee: dbObj
           })
         });
@@ -1529,10 +1449,19 @@ const BriskDB = (function() {
             rebuildIndexes(); if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'employees' } }));
             return _employees[curIdx !== -1 ? curIdx : _employees.length - 1];
           }
+        } else {
+          // Surface API error (e.g. 403 Forbidden) instead of silently falling through
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server error: ${res.status}`);
         }
       } catch (apiErr) {
         console.warn('[BriskDB] Serverless updateEmployee notice, fallback to Supabase SDK:', apiErr);
+        // Re-throw permission errors — these are definitive, fallback will also fail
+        if (apiErr.message && (apiErr.message.includes('Forbidden') || apiErr.message.includes('Unauthorized') || apiErr.message.includes('Permission denied'))) {
+          throw apiErr;
+        }
       }
+
 
       // 2. Direct Supabase Client fallback
       assertManagerPermissionForFallback();

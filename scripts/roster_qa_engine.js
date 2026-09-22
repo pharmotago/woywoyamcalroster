@@ -609,6 +609,62 @@ assertTest('Executive Multi-Store Switcher Controller in app.js', switcherInAppJ
 assertTest('Executive Multi-Store Switcher Styles in styles.css', switcherInCss, 'store-switcher styles missing from css/styles.css.');
 
 // ---------------------------------------------------------
+// Test Suite 18: Save Profile Auth & Invite Registration Fix Guard (v10.5.2)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 18: Save Profile Auth Header & Invite Registration Fix Guard]');
+
+const suite18_dbContent = fs.readFileSync(path.join(rootDir, 'js/database.js'), 'utf8');
+const suite18_appContent = fs.readFileSync(path.join(rootDir, 'js/app.js'), 'utf8');
+
+// Bug 1A: window.state.currentUser.email fallback in mutate headers (addEmployee + updateEmployee)
+const hasEmailFallbackInMutate = (suite18_dbContent.match(/window\.state\?\.currentUser\?\.email/g) || []).length >= 2;
+assertTest(
+  'Mutate API x-user-email Fallback Guard (window.state.currentUser.email)',
+  hasEmailFallbackInMutate,
+  'database.js addEmployee/updateEmployee must use window.state?.currentUser?.email as fallback in x-user-email header (Bug 1A fix).'
+);
+
+// Bug 1B: 403/non-ok API error surfacing (not silent swallow) in addEmployee + updateEmployee
+const hasErrorSurfacing = suite18_dbContent.includes('errData.error') && suite18_dbContent.includes('res.status');
+assertTest(
+  'Mutate API 403 Error Surfacing Guard (no silent swallow)',
+  hasErrorSurfacing,
+  'database.js addEmployee/updateEmployee must surface non-ok API errors (403/401) instead of silently falling through to SDK fallback (Bug 1B fix).'
+);
+
+// Bug 1C: Permission error re-throw guard in addEmployee + updateEmployee
+const hasPermissionRethrow = (suite18_dbContent.match(/Re-throw permission errors/g) || []).length >= 2;
+assertTest(
+  'Mutate API Permission Error Re-throw Guard',
+  hasPermissionRethrow,
+  'database.js addEmployee/updateEmployee must re-throw Forbidden/Unauthorized errors to prevent misleading SDK fallback attempts.'
+);
+
+// Bug 2A: Broken anon signUp fallback removed from apiRegister
+const hasNoBrokenFallback = !suite18_dbContent.includes('supabase.auth.signUp(');
+assertTest(
+  'apiRegister Anon signUp Fallback Removal Guard (Bug 2 Fix)',
+  hasNoBrokenFallback,
+  'database.js apiRegister must NOT use supabase.auth.signUp() anon fallback — it creates unconfirmed accounts blocked by RLS (Bug 2A fix).'
+);
+
+// Bug 2B: Clear error message surfaced if serverless route fails
+const hasServiceUnavailableMsg = suite18_dbContent.includes('Registration service is temporarily unavailable');
+assertTest(
+  'apiRegister Clear Error Fallback Message Guard',
+  hasServiceUnavailableMsg,
+  'database.js apiRegister must surface a clear "Registration service is temporarily unavailable" message if serverless API fails.'
+);
+
+// Bug 2C: handleRegisterSubmit has loading guard
+const hasRegisterLoadingGuard = suite18_appContent.includes('Registering...');
+assertTest(
+  'handleRegisterSubmit Loading Spinner & Button Disable Guard',
+  hasRegisterLoadingGuard,
+  'app.js handleRegisterSubmit must disable button and show loading spinner during registration to prevent double-submission (Bug 2C fix).'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

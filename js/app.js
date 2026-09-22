@@ -1840,29 +1840,46 @@ async function handleRegisterSubmit(event) {
   const email = document.getElementById('reg-email').value;
   const password = document.getElementById('reg-password').value;
 
-  const res = await BriskDB.apiRegister(email, password, name, inviteCode);
-
-  if (res.error) {
-    showToast(res.error, 'error');
-    return;
+  const btn = event.target ? event.target.querySelector('button[type="submit"]') : null;
+  const origText = btn ? btn.innerHTML : 'Register';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Registering...';
   }
 
-  showToast('Registration successful! Logging you in...', 'success');
-  
-  // Call apiLogin to get proper session data
-  const loginRes = await BriskDB.apiLogin(email, password);
-  if (loginRes.error) {
-    showToast(loginRes.error, 'error');
-    return;
-  }
-  
-  state.currentUser = loginRes;
+  try {
+    const res = await BriskDB.apiRegister(email, password, name, inviteCode);
 
-  document.getElementById('register-form').reset();
-  document.getElementById('invite-code-group').classList.remove('hide'); // restore field
-  if (!window._modulesLoaded) { await window.bootModularSystem(); window._modulesLoaded = true; }
-      await bootApplication();
+    if (res.error) {
+      showToast(res.error, 'error');
+      return;
+    }
+
+    showToast('Registration successful! Logging you in...', 'success');
+
+    // Call apiLogin to get proper session data
+    const loginRes = await BriskDB.apiLogin(email, password);
+    if (loginRes.error) {
+      showToast(loginRes.error, 'error');
+      return;
+    }
+
+    state.currentUser = loginRes;
+
+    document.getElementById('register-form').reset();
+    document.getElementById('invite-code-group').classList.remove('hide'); // restore field
+    if (!window._modulesLoaded) { await window.bootModularSystem(); window._modulesLoaded = true; }
+    await bootApplication();
+  } catch (err) {
+    showToast(err.message || 'Registration failed. Please try again.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
 }
+
 
 function handleLogout() {
   if (confirm('Are you sure you want to log out?')) {
