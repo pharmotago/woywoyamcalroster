@@ -108,7 +108,10 @@
     "check:settings": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {method:'POST', headers:{'Content-Type':'application/json', 'x-user-email':'pharmotago@gmail.com', 'x-pharmacy-id':'amcal_woywoy'}, body:JSON.stringify({email:'pharmotago@gmail.com', pharmacyId:'amcal_woywoy'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d.settings, null, 2))).catch(console.error)\"",
     "fix:settings": "node scripts/inspect_and_fix_settings.js",
     "git:trading": "git log -n 5 -p -S \"DEFAULT_TRADING_HOURS\" js/database.js",
-    "test:live-deck": "node -e \"(async () => { const t = Date.now(); const d = await (await fetch('https://budgewoiddsroster.vercel.app/js/modules/dispensary-handover.js?t=' + t)).text(); const v = await (await fetch('https://budgewoiddsroster.vercel.app/version.json?t=' + t)).json(); console.log('Live Version:', v.version, '| Has getSlideData:', d.includes('getSlideData'), '| Has Georgi Peek:', d.includes('Georgi Peek')); })()\""
+    "test:live-deck": "node -e \"(async () => { const t = Date.now(); const d = await (await fetch('https://budgewoiddsroster.vercel.app/js/modules/dispensary-handover.js?t=' + t)).text(); const v = await (await fetch('https://budgewoiddsroster.vercel.app/version.json?t=' + t)).json(); console.log('Live Version:', v.version, '| Has getSlideData:', d.includes('getSlideData'), '| Has Georgi Peek:', d.includes('Georgi Peek')); })()\"",
+    "check:employees": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {method:'POST', headers:{'Content-Type':'application/json', 'x-user-email':'pharmotago@gmail.com', 'x-pharmacy-id':'amcal_woywoy'}, body:JSON.stringify({email:'pharmotago@gmail.com', pharmacyId:'amcal_woywoy'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d.employees.map(e=>({name:e.name, role:e.role, position:e.position, dept:e.department, certs:e.certificates, avail:e.availability})), null, 2))).catch(console.error)\"",
+    "update:webster": "node scripts/update_webster_staff.js",
+    "release:v10.5.9": "git add -A && git commit -m \"fix(roster): v10.5.9 - exclude unassigned shifts from scheduled hours & resolve Webster Care department staff [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd ."
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",

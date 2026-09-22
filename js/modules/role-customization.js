@@ -1208,6 +1208,7 @@ function renderDailyPanel() {
     // Sum active pharmacist hours
     let totalPharmHours = 0;
     dayShifts.forEach(s => {
+      if (!s.employeeId || s.employeeId === 'unassigned') return;
       const r = (s.role || '').toLowerCase();
       if (r.includes('pharmacist') || r.includes('pic') || r.includes('locum') || r.includes('manager')) {
         totalPharmHours += calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);

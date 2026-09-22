@@ -2556,16 +2556,90 @@ window.moveEmployeeOrder = moveEmployeeOrder;
 
 function getEmployeeDepartment(emp) {
   if (!emp) return 'retail';
+
+  // 1. Explicit department override on employee object (or availability)
+  const explicitDept = (emp.department || (emp.availability && emp.availability.department) || '').toLowerCase().trim();
+  if (explicitDept === 'webster' || explicitDept === 'webster care') return 'webster';
+  if (explicitDept === 'dispensary') return 'dispensary';
+  if (explicitDept === 'retail' || explicitDept === 'floor' || explicitDept === 'tills' || explicitDept === 'floor & tills') return 'retail';
+
+  // 2. Direct role / position strings
   const role = (emp.role || emp.position || '').toLowerCase();
-  if (role.includes('pharmacist') || role.includes('pic') || role.includes('locum') || role.includes('technician') || role.includes('dispensary') || role.includes('manager') || role.includes('owner') || role.includes('partner')) {
-    return 'dispensary';
-  }
   if (role.includes('webster')) {
     return 'webster';
   }
+
+  // 3. Award level check (Level 3 is Webster under Pharmacy Award MA000084)
+  const award = (emp.awardLevel || emp.award_level || (emp.availability && emp.availability.award_level) || '').toLowerCase();
+  if (award.includes('pa3') || award.includes('webster')) {
+    return 'webster';
+  }
+
+  // 4. Certificates / Competencies check
+  const certs = Array.isArray(emp.certificates) ? emp.certificates : (emp.availability && Array.isArray(emp.availability.certificates) ? emp.availability.certificates : []);
+  if (certs.some(c => typeof c === 'string' && c.toLowerCase().includes('webster'))) {
+    return 'webster';
+  }
+
+  // 5. Active roster check: if employee has Webster shifts or is predominantly rostered for Webster
+  if (typeof state !== 'undefined' && Array.isArray(state.shifts)) {
+    const empShifts = state.shifts.filter(s => s.employeeId === emp.id);
+    const websterShifts = empShifts.filter(s => (s.role || '').toLowerCase().includes('webster'));
+    if (websterShifts.length > 0) {
+      let hasWebsterThisWeek = false;
+      if (state.currentWeekStart) {
+        const mon = new Date(state.currentWeekStart);
+        const sun = new Date(mon);
+        sun.setDate(mon.getDate() + 6);
+        const monStr = formatDateISO(mon);
+        const sunStr = formatDateISO(sun);
+        hasWebsterThisWeek = websterShifts.some(s => s.date >= monStr && s.date <= sunStr);
+      }
+      if (hasWebsterThisWeek || websterShifts.length >= 2) {
+        return 'webster';
+      }
+    }
+  }
+
+  // 6. Dispensary check (Pharmacists, PIC, Locums, Technicians, Dispensary Leads, Managers)
+  if (role.includes('pharmacist') || role.includes('pic') || role.includes('locum') || role.includes('technician') || role.includes('dispensary') || role.includes('manager') || role.includes('owner') || role.includes('partner')) {
+    return 'dispensary';
+  }
+
   return 'retail';
 }
 window.getEmployeeDepartment = getEmployeeDepartment;
+
+function getEmployeeDepartments(emp) {
+  if (!emp) return ['retail'];
+  const depts = new Set();
+  const primary = getEmployeeDepartment(emp);
+  depts.add(primary);
+
+  // If employee has shifts in other departments in the current week, also tag them
+  if (typeof state !== 'undefined' && Array.isArray(state.shifts) && state.currentWeekStart) {
+    const mon = new Date(state.currentWeekStart);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const monStr = formatDateISO(mon);
+    const sunStr = formatDateISO(sun);
+
+    const weekEmpShifts = state.shifts.filter(s => s.employeeId === emp.id && s.date >= monStr && s.date <= sunStr);
+    weekEmpShifts.forEach(s => {
+      const r = (s.role || '').toLowerCase();
+      if (r.includes('dispensary') || r.includes('pharmacist') || r.includes('pic') || r.includes('technician')) {
+        depts.add('dispensary');
+      } else if (r.includes('webster')) {
+        depts.add('webster');
+      } else {
+        depts.add('retail');
+      }
+    });
+  }
+
+  return Array.from(depts);
+}
+window.getEmployeeDepartments = getEmployeeDepartments;
 
 function updateDepartmentCounts() {
   const activeEmployees = (typeof getOrderedActiveEmployees === 'function') ? getOrderedActiveEmployees() : (state.employees || []).filter(e => e.active);
@@ -2592,11 +2666,12 @@ function setDepartmentFilter(dept) {
   });
   const rows = document.querySelectorAll('#scheduler-grid-body tr');
   rows.forEach(tr => {
-    const rowDept = tr.getAttribute('data-dept');
-    if (!rowDept || dept === 'all' || rowDept === dept) {
+    const rowDeptStr = tr.getAttribute('data-dept');
+    if (!rowDeptStr || dept === 'all') {
       tr.style.display = '';
     } else {
-      tr.style.display = 'none';
+      const depts = rowDeptStr.split(/\s+/);
+      tr.style.display = depts.includes(dept) ? '' : 'none';
     }
   });
 }
@@ -2907,7 +2982,11 @@ function getEffectiveShiftHourlyRate(shift) {
     else if (dayOfWeek === 6) penaltyMultiplier = 1.25; // Saturday 125%
     
     dayShifts.forEach(s => {
-      const hours = calculateShiftHours(s.startTime, s.endTime);
+      // Guard: Unassigned shifts must NEVER count towards total scheduled hours or labor costs
+      const isUnassigned = !s.employeeId || s.employeeId === 'unassigned' || !state.employees.some(e => e.id === s.employeeId && e.active);
+      if (isUnassigned) return;
+
+      const hours = calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
       const emp = state.employees.find(e => e.id === s.employeeId);
       let fullyLoadedCost = 0;
       if (emp) {
@@ -2963,9 +3042,9 @@ function getEffectiveShiftHourlyRate(shift) {
   // If user is employee, they see all staff rosters, but cannot click to add or edit
   activeEmployees.forEach((emp, empIdx) => {
     const tr = document.createElement('tr');
-    const empDept = getEmployeeDepartment(emp);
-    tr.setAttribute('data-dept', empDept);
-    if (state.activeDeptFilter && state.activeDeptFilter !== 'all' && empDept !== state.activeDeptFilter) {
+    const empDepts = (typeof getEmployeeDepartments === 'function') ? getEmployeeDepartments(emp) : [getEmployeeDepartment(emp)];
+    tr.setAttribute('data-dept', empDepts.join(' '));
+    if (state.activeDeptFilter && state.activeDeptFilter !== 'all' && !empDepts.includes(state.activeDeptFilter)) {
       tr.style.display = 'none';
     }
     
@@ -3653,8 +3732,12 @@ function getEffectiveShiftHourlyRate(shift) {
       
       const dayAllShifts = state.shifts.filter(s => s.date === dateStr);
       dayAllShifts.forEach(s => {
-        const hours = calculateShiftHours(s.startTime, s.endTime);
-        const roleLower = s.role.toLowerCase();
+        // Guard: Unassigned shifts must NEVER count towards total scheduled hours
+        const isUnassigned = !s.employeeId || s.employeeId === 'unassigned' || !state.employees.some(e => e.id === s.employeeId && e.active);
+        if (isUnassigned) return;
+
+        const hours = calculateShiftHours(s.startTime, s.endTime, s.unpaidMealMins);
+        const roleLower = (s.role || '').toLowerCase();
         
         if (roleLower.includes('dispensary') || roleLower.includes('pharmacist') || roleLower.includes('technician')) {
           dispHours += hours;
@@ -5380,6 +5463,9 @@ function openAddEmployeeModal() {
     roleSelect.appendChild(opt);
   });
 
+  const deptSelect = document.getElementById('emp-department');
+  if (deptSelect) deptSelect.value = '';
+
   const defaultAvail = {
     0: null,
     1: { start: '09:00', end: '17:00' },
@@ -5417,6 +5503,9 @@ function openEditEmployeeModal(empId) {
   document.getElementById('emp-phone').value = emp.phone || '';
   document.getElementById('emp-rate').value = emp.hourlyRate != null ? emp.hourlyRate : '';
   document.getElementById('emp-max-hours').value = emp.maxHours;
+
+  const deptSelect = document.getElementById('emp-department');
+  if (deptSelect) deptSelect.value = emp.department || (emp.availability && emp.availability.department) || '';
 
   const dobInput = document.getElementById('emp-dob');
   if (dobInput) dobInput.value = emp.dob || '';
@@ -5507,9 +5596,12 @@ async function handleEmployeeSubmit(event) {
     }
   }
 
+  const deptVal = document.getElementById('emp-department') ? document.getElementById('emp-department').value : '';
+
   const employeeData = {
     name,
     role,
+    department: deptVal || null,
     email,
     phone,
     maxHours,

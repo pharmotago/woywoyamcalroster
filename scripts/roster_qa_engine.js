@@ -792,6 +792,92 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 21: Unassigned Shifts Hours Exclusion & Webster Care Department Resolution (v10.5.9)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 21: Unassigned Shifts Exclusion & Webster Care Department Resolution]');
+
+// 1. Unassigned Shifts Hours Exclusion in Weekly View
+const hasUnassignedWeeklyGuard = appJsContent.includes('const isUnassigned = !s.employeeId || s.employeeId === \'unassigned\' || !state.employees.some(e => e.id === s.employeeId && e.active);') &&
+                                appJsContent.includes('if (isUnassigned) return;');
+assertTest(
+  'Unassigned Shifts Weekly Hours Exclusion Guard',
+  hasUnassignedWeeklyGuard,
+  'app.js weekly dayShifts loop must exclude unassigned shifts from total scheduled hours and costs.'
+);
+
+// 2. Unassigned Shifts Hours Exclusion in Mobile Day View
+const hasUnassignedMobileGuard = appJsContent.includes('const totalHoursForDay = dispHours + frontHours + websterHours;') &&
+                                appJsContent.includes('dayAllShifts.forEach(s => {') &&
+                                appJsContent.includes('if (isUnassigned) return;');
+assertTest(
+  'Unassigned Shifts Mobile Day Hours Exclusion Guard',
+  hasUnassignedMobileGuard,
+  'app.js mobile timeline dayAllShifts loop must exclude unassigned shifts from totalHoursForDay.'
+);
+
+// 3. Unassigned Shifts Exclusion from Pharmacist Clinical Coverage
+const roleCustJsPath = path.join(rootDir, 'js/modules/role-customization.js');
+let hasUnassignedCoverageGuard = false;
+if (fs.existsSync(roleCustJsPath)) {
+  const roleCode = fs.readFileSync(roleCustJsPath, 'utf8');
+  hasUnassignedCoverageGuard = roleCode.includes('if (!s.employeeId || s.employeeId === \'unassigned\') return;') &&
+                               roleCode.includes('totalPharmHours += calculateShiftHours');
+}
+assertTest(
+  'Unassigned Shifts Pharmacist Clinical Coverage Exclusion Guard',
+  hasUnassignedCoverageGuard,
+  'role-customization.js renderDailyPanel must exclude unassigned shifts from pharmacist clinical coverage.'
+);
+
+// 4. Webster Care Dynamic Classification Engine
+const hasWebsterDeptClassification = appJsContent.includes('explicitDept === \'webster\'') &&
+                                     appJsContent.includes('award.includes(\'pa3\') || award.includes(\'webster\')') &&
+                                     appJsContent.includes('c.toLowerCase().includes(\'webster\')') &&
+                                     appJsContent.includes('const websterShifts = empShifts.filter(s => (s.role || \'\').toLowerCase().includes(\'webster\'));');
+assertTest(
+  'Webster Care Department Classification Engine Guard',
+  hasWebsterDeptClassification,
+  'app.js getEmployeeDepartment must classify Webster staff via explicit dept, PA3 award, certs, and rostered shifts.'
+);
+
+// 5. Multi-Department Tagging for Cross-Functional Staff
+const hasMultiDeptSupport = appJsContent.includes('function getEmployeeDepartments(emp)') &&
+                            appJsContent.includes('empDepts.join(\' \')') &&
+                            appJsContent.includes('depts.includes(dept)');
+assertTest(
+  'Multi-Department Tagging & Filtering Guard',
+  hasMultiDeptSupport,
+  'app.js must support getEmployeeDepartments and space-separated data-dept row filtering.'
+);
+
+// 6. Webster Packer Position in Default Positions
+const hasWebsterPosition = dbJsContent.includes("id: 'pos_webster', name: 'Webster Packer'");
+assertTest(
+  'Webster Packer Default Position Guard',
+  hasWebsterPosition,
+  'database.js DEFAULT_POSITIONS must include pos_webster (Webster Packer).'
+);
+
+// 7. Department Field Cloud Mapping in Database Layer
+const hasDeptDbMapping = dbJsContent.includes('if (emp.department) avail.department = emp.department;') &&
+                         dbJsContent.includes('department: emp.department || avail.department || null');
+assertTest(
+  'Department Field Supabase DB Mapping Guard',
+  hasDeptDbMapping,
+  'database.js mapEmployeeToDb and mapEmployeeFromDb must map department to/from availability.department.'
+);
+
+// 8. Department Selector in Employee Modal
+const hasDeptSelectInHtml = indexHtmlLatest.includes('id="emp-department"') &&
+                            indexHtmlLatest.includes('value="webster"') &&
+                            indexHtmlLatest.includes('Webster Care');
+assertTest(
+  'Department Selector in Employee Profile Modal Guard',
+  hasDeptSelectInHtml,
+  'index.html employee form must include emp-department select with webster option.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

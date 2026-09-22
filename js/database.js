@@ -105,6 +105,7 @@ const BriskDB = (function() {
     { id: 'pos_rm', name: 'Retail Manager' },
     { id: 'pos_dt', name: 'Dispense Technician' },
     { id: 'pos_pa', name: 'Pharmacy Assistant' },
+    { id: 'pos_webster', name: 'Webster Packer' },
     { id: 'pos_ra', name: 'Retail Associate' }
   ];
 
@@ -200,6 +201,7 @@ const BriskDB = (function() {
     
     if (empType) avail.employment_type = empType;
     if (awdLevel) avail.award_level = awdLevel;
+    if (emp.department) avail.department = emp.department;
 
     const obj = {
       name: emp.name,
@@ -234,6 +236,7 @@ const BriskDB = (function() {
       name: emp.name,
       email: emp.email,
       role: emp.role,
+      department: emp.department || avail.department || null,
       phone: emp.phone,
       hourlyRate: (!isNaN(parseFloat(emp.hourly_rate)) && emp.hourly_rate != null) ? parseFloat(emp.hourly_rate) : 0,
       maxHours: parseInt(emp.max_hours || 38) || 38,
