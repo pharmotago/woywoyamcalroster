@@ -113,7 +113,8 @@
     "update:webster": "node scripts/update_webster_staff.js",
     "update:mia": "node scripts/set_mia_tuesday_breaks.js",
     "release:v10.5.9": "git add -A && git commit -m \"fix(roster): v10.5.9 - exclude unassigned shifts from scheduled hours & resolve Webster Care department staff [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
-    "release:v10.5.10": "git add -A && git commit -m \"fix(breaks): v10.5.10 - persistent custom meal breaks via notes tagging & schema resilience [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd ."
+    "release:v10.5.10": "git add -A && git commit -m \"fix(breaks): v10.5.10 - persistent custom meal breaks via notes tagging & schema resilience [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main"
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",
