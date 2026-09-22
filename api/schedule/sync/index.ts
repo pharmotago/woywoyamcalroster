@@ -184,6 +184,19 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
       if (isBudgewoiNote) return targetPharmacy === 'budgewoi_dds';
       if (s.employee_id) return storeEmpIds.has(s.employee_id);
       return targetPharmacy === 'amcal_woywoy';
+    }).map((s: any) => {
+      let mealMins = (s.unpaid_meal_mins !== undefined && s.unpaid_meal_mins !== null && !isNaN(Number(s.unpaid_meal_mins))) ? Number(s.unpaid_meal_mins) : null;
+      if (mealMins === null && s.notes) {
+        const match = s.notes.match(/\[meal:(\d+|crib_paid)\]/i);
+        if (match) {
+          mealMins = match[1] === 'crib_paid' ? 'crib_paid' : parseInt(match[1], 10);
+        }
+      }
+      return {
+        ...s,
+        unpaid_meal_mins: mealMins,
+        unpaidMealMins: mealMins
+      };
     });
 
     const storeTimecards = (tcRes.data || []).filter((tc: any) => {

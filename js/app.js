@@ -3991,6 +3991,8 @@ function stripSplitTag(notes) {
   return notes
     .replace(/\[Split Shift[^\]]*\]\s*/gi, '')
     .replace(/\[Split Role[^\]]*\]\s*/gi, '')
+    .replace(/\[meal:[^\]]*\]\s*/gi, '')
+    .replace(/\[store:[^\]]*\]\s*/gi, '')
     .trim();
 }
 window.stripSplitTag = stripSplitTag;

@@ -262,6 +262,10 @@ const BriskDB = (function() {
     if (pId === 'budgewoi_dds' && !notes.includes('budgewoi')) {
       notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
     }
+    if (shift.unpaidMealMins !== undefined && shift.unpaidMealMins !== null && shift.unpaidMealMins !== 'auto') {
+      notes = notes.replace(/\[meal:[^\]]*\]\s*/gi, '').trim();
+      notes = `[meal:${shift.unpaidMealMins}] ${notes}`.trim();
+    }
     const obj = {
       employee_id: shift.employeeId || null,
       date: shift.date,
@@ -282,6 +286,13 @@ const BriskDB = (function() {
 
   function mapShiftFromDb(shift) {
     if (!shift) return null;
+    let mealVal = (shift.unpaid_meal_mins !== undefined && shift.unpaid_meal_mins !== null && !isNaN(Number(shift.unpaid_meal_mins))) ? Number(shift.unpaid_meal_mins) : null;
+    if (mealVal === null && shift.notes) {
+      const match = shift.notes.match(/\[meal:(\d+|crib_paid)\]/i);
+      if (match) {
+        mealVal = match[1] === 'crib_paid' ? 'crib_paid' : parseInt(match[1], 10);
+      }
+    }
     return {
       id: shift.id,
       employeeId: shift.employee_id,
@@ -290,7 +301,7 @@ const BriskDB = (function() {
       endTime: formatTimeHHmm(shift.end_time),
       role: shift.role,
       status: shift.status || 'draft',
-      unpaidMealMins: (shift.unpaid_meal_mins !== undefined && shift.unpaid_meal_mins !== null && !isNaN(Number(shift.unpaid_meal_mins))) ? Number(shift.unpaid_meal_mins) : null,
+      unpaidMealMins: mealVal,
       color: shift.color,
       notes: shift.notes,
       pharmacyId: shift.pharmacy_id || (shift.notes && shift.notes.includes('budgewoi') ? 'budgewoi_dds' : 'amcal_woywoy')

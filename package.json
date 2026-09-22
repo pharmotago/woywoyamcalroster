@@ -90,7 +90,7 @@
     "env:pull": "vercel env pull .env.prod.local --environment=production --yes",
     "git:status": "git log -n 25 --oneline",
     "git:log:sept": "git log -n 15 --format=\"%h | %ad | %s\" --date=iso",
-    "git:diff:css": "git diff css/styles.css",
+    "git:diff:all": "git diff",
     "git:diff": "git status -s",
     "vercel:projects": "vercel project ls",
     "vercel:domains": "vercel domains ls",
@@ -111,7 +111,9 @@
     "test:live-deck": "node -e \"(async () => { const t = Date.now(); const d = await (await fetch('https://budgewoiddsroster.vercel.app/js/modules/dispensary-handover.js?t=' + t)).text(); const v = await (await fetch('https://budgewoiddsroster.vercel.app/version.json?t=' + t)).json(); console.log('Live Version:', v.version, '| Has getSlideData:', d.includes('getSlideData'), '| Has Georgi Peek:', d.includes('Georgi Peek')); })()\"",
     "check:employees": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {method:'POST', headers:{'Content-Type':'application/json', 'x-user-email':'pharmotago@gmail.com', 'x-pharmacy-id':'amcal_woywoy'}, body:JSON.stringify({email:'pharmotago@gmail.com', pharmacyId:'amcal_woywoy'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d.employees.map(e=>({name:e.name, role:e.role, position:e.position, dept:e.department, certs:e.certificates, avail:e.availability})), null, 2))).catch(console.error)\"",
     "update:webster": "node scripts/update_webster_staff.js",
-    "release:v10.5.9": "git add -A && git commit -m \"fix(roster): v10.5.9 - exclude unassigned shifts from scheduled hours & resolve Webster Care department staff [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd ."
+    "update:mia": "node scripts/set_mia_tuesday_breaks.js",
+    "release:v10.5.9": "git add -A && git commit -m \"fix(roster): v10.5.9 - exclude unassigned shifts from scheduled hours & resolve Webster Care department staff [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "release:v10.5.10": "git add -A && git commit -m \"fix(breaks): v10.5.10 - persistent custom meal breaks via notes tagging & schema resilience [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd ."
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",

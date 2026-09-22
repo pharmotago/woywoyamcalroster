@@ -325,6 +325,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
           notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
         }
+        const mealVal = s.unpaid_meal_mins !== undefined ? s.unpaid_meal_mins : s.unpaidMealMins;
+        if (mealVal !== undefined && mealVal !== null && mealVal !== 'auto') {
+          notes = notes.replace(/\[meal:[^\]]*\]\s*/gi, '').trim();
+          notes = `[meal:${mealVal}] ${notes}`.trim();
+        }
         const newObj: Record<string, unknown> = {
           employee_id: s.employee_id || s.employeeId || null,
           date: s.date,
@@ -334,16 +339,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           notes: notes,
           status: s.status || 'published'
         };
-        if (s.unpaid_meal_mins !== undefined || s.unpaidMealMins !== undefined) {
-          newObj.unpaid_meal_mins = s.unpaid_meal_mins !== undefined ? s.unpaid_meal_mins : s.unpaidMealMins;
+        if (mealVal !== undefined && mealVal !== null && mealVal !== 'auto') {
+          newObj.unpaid_meal_mins = mealVal;
         }
         if (s.color) newObj.color = s.color;
         if (s.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.id)) {
           newObj.id = s.id;
         }
 
-        const { data, error } = await supabaseAdmin.from('brisk_shifts').insert([newObj]).select().maybeSingle();
+        let { data, error } = await supabaseAdmin.from('brisk_shifts').insert([newObj]).select().maybeSingle();
+        if (error && (error.message.includes('unpaid_meal_mins') || error.message.includes('column') || error.code === 'PGRST204')) {
+          delete newObj.unpaid_meal_mins;
+          const retry = await supabaseAdmin.from('brisk_shifts').insert([newObj]).select().maybeSingle();
+          data = retry.data;
+          error = retry.error;
+        }
         if (error) throw error;
+        if (data && mealVal !== undefined) {
+          data.unpaid_meal_mins = mealVal;
+          data.unpaidMealMins = mealVal;
+        }
         return jsonRes(res, { success: true, shift: data }, 200);
       }
 
@@ -351,6 +366,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const targetId = s.id || body.id;
         if (!targetId) return jsonRes(res, { error: 'Shift ID is required.' }, 400);
 
+        const mealVal = s.unpaid_meal_mins !== undefined ? s.unpaid_meal_mins : s.unpaidMealMins;
         const updateObj: Record<string, unknown> = {};
         if (s.employee_id !== undefined || s.employeeId !== undefined) {
           updateObj.employee_id = s.employee_id !== undefined ? s.employee_id : s.employeeId;
@@ -363,20 +379,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           updateObj.end_time = formatTimeHHmm(s.end_time || s.endTime);
         }
         if (s.role !== undefined) updateObj.role = s.role;
-        if (s.notes !== undefined) {
-          let notes = s.notes || '';
-          if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
-            notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
-          }
-          updateObj.notes = notes;
+        
+        let notes = s.notes;
+        if (notes === undefined && s.notes !== null) {
+          // If notes was not explicitly passed, query existing shift notes to preserve tags
+          const { data: curShift } = await supabaseAdmin.from('brisk_shifts').select('notes').eq('id', targetId).maybeSingle();
+          notes = curShift?.notes || '';
+        } else {
+          notes = notes || '';
         }
+
+        if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
+          notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+        }
+        if (mealVal !== undefined && mealVal !== null && mealVal !== 'auto') {
+          notes = notes.replace(/\[meal:[^\]]*\]\s*/gi, '').trim();
+          notes = `[meal:${mealVal}] ${notes}`.trim();
+        }
+        updateObj.notes = notes;
+
         if (s.status !== undefined) updateObj.status = s.status;
-        if (s.unpaid_meal_mins !== undefined) updateObj.unpaid_meal_mins = s.unpaid_meal_mins;
-        else if (s.unpaidMealMins !== undefined) updateObj.unpaid_meal_mins = s.unpaidMealMins;
+        if (mealVal !== undefined && mealVal !== null && mealVal !== 'auto') {
+          updateObj.unpaid_meal_mins = mealVal;
+        }
         if (s.color !== undefined) updateObj.color = s.color;
 
-        const { data, error } = await supabaseAdmin.from('brisk_shifts').update(updateObj).eq('id', targetId).select().maybeSingle();
+        let { data, error } = await supabaseAdmin.from('brisk_shifts').update(updateObj).eq('id', targetId).select().maybeSingle();
+        if (error && (error.message.includes('unpaid_meal_mins') || error.message.includes('column') || error.code === 'PGRST204')) {
+          delete updateObj.unpaid_meal_mins;
+          const retry = await supabaseAdmin.from('brisk_shifts').update(updateObj).eq('id', targetId).select().maybeSingle();
+          data = retry.data;
+          error = retry.error;
+        }
         if (error) throw error;
+        if (data && mealVal !== undefined) {
+          data.unpaid_meal_mins = mealVal;
+          data.unpaidMealMins = mealVal;
+        }
         return jsonRes(res, { success: true, shift: data }, 200);
       }
 
@@ -394,6 +433,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           let notes = sh.notes || '';
           if (targetPharmacy === 'budgewoi_dds' && !notes.includes('budgewoi')) {
             notes = notes ? `[store:budgewoi_dds] ${notes}` : '[store:budgewoi_dds]';
+          }
+          const mVal = sh.unpaid_meal_mins !== undefined ? sh.unpaid_meal_mins : sh.unpaidMealMins;
+          if (mVal !== undefined && mVal !== null && mVal !== 'auto') {
+            notes = notes.replace(/\[meal:[^\]]*\]\s*/gi, '').trim();
+            notes = `[meal:${mVal}] ${notes}`.trim();
           }
           return {
             ...(sh.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sh.id) ? { id: sh.id } : {}),

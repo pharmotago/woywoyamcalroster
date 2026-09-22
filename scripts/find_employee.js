@@ -59,8 +59,15 @@ async function testSync() {
   const data3 = await res3.json();
   console.log('  Status:', res3.status, '| Success:', data3.success);
   console.log('  Employees returned count:', (data3.employees || []).length);
-  const hasGeorgiInAmcal = (data3.employees || []).some(e => (e.email || '').includes('georgi'));
-  console.log('  Zero Georgi Peek leakage in Amcal:', !hasGeorgiInAmcal);
+  const mia = (data3.employees || []).filter(e => e.name.toLowerCase().includes('mia'));
+  console.log('  Matching Mia:', mia);
+  if (mia.length > 0) {
+    const miaId = mia[0].id;
+    const miaShifts = (data3.shifts || []).filter(s => (s.employeeId || s.employee_id) === miaId);
+    console.log(`  Mia Staniland total shifts: ${miaShifts.length}`);
+    const tuesShifts = miaShifts.filter(s => s.date === '2026-09-22' || s.date === '2026-09-29');
+    console.log('  Mia Tuesday shifts:', JSON.stringify(tuesShifts, null, 2));
+  }
 
   // Test 4: Georgi Peek attempting to query Amcal Woy Woy (Should be 403 Forbidden)
   console.log('\n[Test 4] Georgi Peek attempting unauthorized query to Amcal Woy Woy:');

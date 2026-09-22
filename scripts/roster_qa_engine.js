@@ -878,6 +878,71 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 22: Custom Meal Break Persistence & Schema Resilience (v10.5.10)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 22: Custom Meal Break Persistence & Schema Resilience]');
+
+// 1. Mutate API Meal Tag Embed & PGRST204 Fallback
+const mutateTsPath = path.join(rootDir, 'api/schedule/mutate/index.ts');
+let hasMutateMealTag = false;
+let hasMutateMealResilience = false;
+if (fs.existsSync(mutateTsPath)) {
+  const mutateCode = fs.readFileSync(mutateTsPath, 'utf8');
+  hasMutateMealTag = mutateCode.includes('[meal:${mealVal}]') || mutateCode.includes('[meal:${mVal}]');
+  hasMutateMealResilience = mutateCode.includes('unpaid_meal_mins') && mutateCode.includes('PGRST204');
+}
+assertTest(
+  'Mutate API Meal Break Tagging Guard',
+  hasMutateMealTag,
+  'api/schedule/mutate/index.ts must embed [meal:...] tag into shift notes for cloud persistence.'
+);
+assertTest(
+  'Mutate API Schema PGRST204 Resilience Guard',
+  hasMutateMealResilience,
+  'api/schedule/mutate/index.ts must catch missing unpaid_meal_mins column and retry seamlessly.'
+);
+
+// 2. Sync API Meal Break Notes Parsing
+const syncTsPath = path.join(rootDir, 'api/schedule/sync/index.ts');
+let hasSyncMealParsing = false;
+if (fs.existsSync(syncTsPath)) {
+  const syncCode = fs.readFileSync(syncTsPath, 'utf8');
+  hasSyncMealParsing = syncCode.includes('/[meal:(\\d+|crib_paid)\\]/i') || syncCode.includes('[meal:');
+}
+assertTest(
+  'Sync API Meal Break Notes Parsing Guard',
+  hasSyncMealParsing,
+  'api/schedule/sync/index.ts storeShifts must parse [meal:...] tag from notes when column is null.'
+);
+
+// 3. Database Layer Meal Break Serialization & Deserialization
+const hasDbMealTagging = dbJsContent.includes('[meal:${shift.unpaidMealMins}]') &&
+                         dbJsContent.includes('meal:(\\d+|crib_paid)');
+assertTest(
+  'Database Layer Meal Break Serialization Guard',
+  hasDbMealTagging,
+  'database.js mapShiftToDb and mapShiftFromDb must serialize and deserialize [meal:...] tags.'
+);
+
+// 4. UI Cleanliness Tag Stripping Guard
+const hasCleanTagStripping = appJsContent.includes('[meal:[^\\]]*\\]') &&
+                             appJsContent.includes('[store:[^\\]]*\\]');
+assertTest(
+  'UI Tag Stripping Guard (Clean Manager Notes)',
+  hasCleanTagStripping,
+  'app.js stripSplitTag must strip [meal:...] and [store:...] so managers never see internal tags.'
+);
+
+// 5. Zero Lunch Break UI Option Guard
+const hasZeroLunchOption = indexHtmlLatest.includes('value="0">0 Mins (No Lunch Break)</option>') &&
+                           indexHtmlLatest.includes('id="shift-unpaid-break"');
+assertTest(
+  'Zero Lunch Break UI Option Guard',
+  hasZeroLunchOption,
+  'index.html shift-unpaid-break dropdown must contain value="0" (No Lunch Break).'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');
