@@ -1073,6 +1073,76 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 25: Manager Authorization, Trading Hours & Leave Reason Privacy Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 25: Manager Authorization, Trading Hours & Leave Reason Privacy Guard]');
+
+const suite25_mutateContent = fs.existsSync(mutateTsPath) ? fs.readFileSync(mutateTsPath, 'utf8') : '';
+const suite25_syncContent = fs.existsSync(syncTsPath) ? fs.readFileSync(syncTsPath, 'utf8') : '';
+
+// 1. Georgi Peek Leadership & Dispensary Manager RBAC Authorization Guard
+const hasGeorgiInAppJs = appJsContent.includes("'georgi.peek6@gmail.com'") &&
+                         appJsContent.includes("'georgi peek'") &&
+                         appJsContent.includes("'dispensary manager'");
+const hasGeorgiInDbJs = dbJsContent.includes("'georgi.peek6@gmail.com'") &&
+                        dbJsContent.includes("'georgi peek'") &&
+                        dbJsContent.includes("'dispensary manager'");
+const hasGeorgiInMutate = suite25_mutateContent.includes("'georgi.peek6@gmail.com'") &&
+                          suite25_mutateContent.includes("'georgi peek'") &&
+                          suite25_mutateContent.includes("'dispensary manager'");
+const hasGeorgiInSync = suite25_syncContent.includes("'georgi.peek6@gmail.com'") &&
+                        suite25_syncContent.includes("'dispensary manager'");
+
+assertTest(
+  'Georgi Peek Leadership & Dispensary Manager RBAC Authorization Guard',
+  hasGeorgiInAppJs && hasGeorgiInDbJs && hasGeorgiInMutate && hasGeorgiInSync,
+  'Georgi Peek (georgi.peek6@gmail.com) and Dispensary Manager role must be authorized across app.js, database.js, mutate API, and sync API.'
+);
+
+// 2. Weekly Trading Hours Engine & Controller Export Guard
+const hasTradingHoursInAppJs = appJsContent.includes('function saveTradingHours') &&
+                              appJsContent.includes('function toggleTradingDayClosed') &&
+                              appJsContent.includes('function populateTradingHoursForm') &&
+                              appJsContent.includes('window.saveTradingHours = saveTradingHours') &&
+                              appJsContent.includes('window.toggleTradingDayClosed = toggleTradingDayClosed');
+assertTest(
+  'Weekly Trading Hours Engine & Controller Export Guard',
+  hasTradingHoursInAppJs,
+  'app.js must implement and export saveTradingHours, toggleTradingDayClosed, and populateTradingHoursForm.'
+);
+
+// 3. Schedule Leave Reason Privacy Guard
+const hasSanitizedLeaveBadges = appJsContent.includes('leaveDiv.innerHTML = `🏖️ Approved Leave`') &&
+                               appJsContent.includes('pLeaveDiv.innerHTML = `⚠️ Partial Leave') &&
+                               !appJsContent.includes('leaveDiv.innerHTML = `🏖️ On Leave<br><span style="font-size:7.5pt; opacity:0.85;">${leaveInfo.reason');
+assertTest(
+  'Schedule Leave Reason Privacy Guard',
+  hasSanitizedLeaveBadges,
+  'Scheduler grid cell must mask private leave reasons and display clean privacy badges (Approved Leave / Partial Leave).'
+);
+
+// 4. Leave Request Deletion Engine Guard (Mutate API & Client)
+const hasMutateLeaveDelete = suite25_mutateContent.includes("if (action === 'delete')") &&
+                             suite25_mutateContent.includes(".from('brisk_leave_requests')") &&
+                             suite25_mutateContent.includes(".delete()");
+const hasDbLeaveDelete = dbJsContent.includes('deleteLeaveRequest: async function(id)');
+const hasAppLeaveDelete = appJsContent.includes('async function handleDeleteLeaveRequest(reqId)') &&
+                          appJsContent.includes('window.handleDeleteLeaveRequest = handleDeleteLeaveRequest');
+assertTest(
+  'Leave Request Deletion Engine Guard',
+  hasMutateLeaveDelete && hasDbLeaveDelete && hasAppLeaveDelete,
+  'Mutate API, database.js, and app.js must support deleting leave requests with manager authorization.'
+);
+
+// 5. Time Off Panel Delete Button Guard
+const hasTimeOffDeleteBtn = appJsContent.includes("onclick=\"handleDeleteLeaveRequest('${req.id}')\"");
+assertTest(
+  'Time Off Panel 1-Click Delete Button Guard',
+  hasTimeOffDeleteBtn,
+  'Time Off panel must provide a 1-click delete button for pending, approved, and rejected leave requests.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

@@ -47,7 +47,7 @@ async function getRequestUser(req: VercelRequest) {
         .select('role')
         .eq('id', userData.employee_id)
         .maybeSingle();
-      if (empData && empData.role && empData.role.toLowerCase().trim() === 'pharmacist manager') {
+      if (empData && empData.role && ['pharmacist manager', 'pharmacy manager', 'dispensary manager'].includes(empData.role.toLowerCase().trim())) {
         resolvedRole = 'manager';
       }
     }

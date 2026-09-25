@@ -534,9 +534,9 @@ const BriskDB = (function() {
       const role = String(u?.role || '').toLowerCase().trim();
       const email = String(u?.email || '').toLowerCase().trim();
       const name = String(u?.name || '').toLowerCase().trim();
-      const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
-      const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
-      const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+      const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy', 'georgi peek'];
+      const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com', 'georgi.peek6@gmail.com'];
+      const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager', 'dispensary manager'];
       if (
         WHITELIST_NAMES.includes(name) ||
         WHITELIST_EMAILS.includes(email) ||
@@ -2192,6 +2192,54 @@ const BriskDB = (function() {
           throw error;
         }
       }
+    },
+
+    deleteLeaveRequest: async function(id) {
+      if (!id) return;
+      // Optimistic in-memory deletion
+      const idx = _leaveRequests.findIndex(r => r.id === id);
+      if (idx !== -1) _leaveRequests.splice(idx, 1);
+
+      // 1. Primary Strategy: Unified Serverless Mutate API (Bypasses RLS locks)
+      try {
+        const token = await getMutateAuthToken();
+        const session = getSession() || {};
+        const res = await fetch('/api/schedule/mutate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || ''
+          },
+          body: JSON.stringify({
+            entity: 'leave',
+            action: 'delete',
+            id: id,
+            callerEmail: session.email || ''
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'leaveRequests' } }));
+            }
+            return { success: true, id };
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless deleteLeaveRequest notice, fallback to Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
+      assertManagerPermissionForFallback();
+      const { error } = await supabase.from('brisk_leave_requests').delete().eq('id', id);
+      if (error) throw error;
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'leaveRequests' } }));
+      }
+      return { success: true, id };
     },
 
     saveSettings: async function(settings) {

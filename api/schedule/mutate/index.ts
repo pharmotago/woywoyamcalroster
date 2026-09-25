@@ -45,8 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = req.body || {};
     const candidateEmail = ((req.headers['x-user-email'] as string) || body.callerEmail || body.email || '').toLowerCase().trim();
 
-    const MANAGER_NAMES_EXACT = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
-    const MANAGER_EMAILS_EXACT = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
+    const MANAGER_NAMES_EXACT = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy', 'georgi peek'];
+    const MANAGER_EMAILS_EXACT = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com', 'georgi.peek6@gmail.com'];
 
     let callerEmail = candidateEmail;
     let callerRole = '';
@@ -99,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       OWNER_NAMES.some(n => callerName.includes(n));
 
     if (
-      ['owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager'].includes(callerRole) ||
+      ['owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager', 'dispensary manager'].includes(callerRole) ||
       MANAGER_EMAILS_EXACT.includes(callerEmail) ||
       MANAGER_NAMES_EXACT.includes(callerName.trim()) ||
       callerEmail.startsWith('pharmotago')
@@ -462,6 +462,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // =========================================================================
     if (entity === 'leave') {
       const lrData = body.leaveRequest || body.data || body;
+
+      // C-2: Only managers can delete leave requests
+      if (action === 'delete') {
+        if (!isManagerOrOwner) {
+          return jsonRes(res, { error: 'Forbidden: Only managers can delete leave requests.' }, 403);
+        }
+        const targetId = body.id || lrData.id;
+        if (!targetId) {
+          return jsonRes(res, { error: 'Valid leave request ID required for deletion.' }, 400);
+        }
+        const { error: delErr } = await supabaseAdmin
+          .from('brisk_leave_requests')
+          .delete()
+          .eq('id', targetId);
+        if (delErr) throw delErr;
+        return jsonRes(res, { success: true, deletedId: targetId }, 200);
+      }
 
       // C-2: Only managers can approve or reject leave requests
       if (action === 'decide') {

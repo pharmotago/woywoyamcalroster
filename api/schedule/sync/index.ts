@@ -8,11 +8,11 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-const MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+const MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager', 'dispensary manager'];
 const OWNER_ROLES = ['owner', 'co-owner', 'partner', 'superadmin'];
 const OWNER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com'];
 const OWNER_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen'];
-const MANAGER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
+const MANAGER_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com', 'georgi.peek6@gmail.com'];
 
 function jsonRes(res: VercelResponse, data: unknown, status = 200) {
   return res.status(status).json(data);

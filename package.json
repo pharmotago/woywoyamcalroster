@@ -59,6 +59,8 @@
     "check:today": "node scripts/check_today_shifts.js",
     "test:client-budg": "node scripts/test_client_budgewoi.js",
     "find:update-loop": "node scripts/find_update_loop.js",
+    "search:georgi": "node scripts/search_georgi_features.js",
+    "diagnose:georgi": "node scripts/diagnose_georgi_and_budgewoi.js",
     "test:fields": "node scripts/test_employee_fields.js",
     "test:flow": "node scripts/test_full_employee_panel_flow.js",
     "check:detail": "node scripts/check_users_detail.js",
@@ -125,6 +127,7 @@
     "domain:alias": "vercel alias set woywoyamcalroster.vercel.app budgewoiddsroster.vercel.app",
     "vercel:protection-disable-sso": "vercel project protection disable woywoyamcalroster --sso",
     "test:live-urls": "node -e \"Promise.all([fetch('https://woywoyamcalroster.vercel.app'), fetch('https://budgewoiddsroster.vercel.app')]).then(([r1, r2]) => console.log('Amcal Status:', r1.status, '| Budgewoi Status:', r2.status)).catch(console.error)\"",
+    "test:live-prod": "node -e \"(async () => { const t = await (await fetch('https://woywoyamcalroster.vercel.app/?t=' + Date.now())).text(); console.log('Live APP_VERSION 10.5.11:', t.includes('10.5.11'), '| Live Loop Guard:', t.includes('pk_last_hard_update_ts')); })()\"",
     "test:live-theme": "node -e \"(async () => { const t = Date.now(); const css = await (await fetch('https://budgewoiddsroster.vercel.app/css/styles.css?t=' + t)).text(); const js = await (await fetch('https://budgewoiddsroster.vercel.app/js/app.js?t=' + t)).text(); console.log('Live CSS Purple #7a2682 present:', css.includes('#7a2682'), '| Orange #ff6b00 present:', css.includes('#ff6b00')); console.log('Live JS SVG Purple #7A2682 present:', js.includes('#7A2682'), '| Orange #FF6B00 present:', js.includes('#FF6B00')); })()\"",
     "test:sync-live": "node -e \"(async () => { for (const id of ['budgewoi', 'budgewoi_dds', 'amcal_woywoy']) { const r = await fetch('https://budgewoiddsroster.vercel.app/api/schedule/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pharmacy-id': id }, body: JSON.stringify({ pharmacyId: id }) }); const d = await r.json(); console.log('ID:', id, '| status:', r.status, '| employees:', d.employees?.length, '| shifts:', d.shifts?.length); } })()\"",
     "check:settings": "node -e \"fetch('https://woywoyamcalroster.vercel.app/api/schedule/sync', {method:'POST', headers:{'Content-Type':'application/json', 'x-user-email':'pharmotago@gmail.com', 'x-pharmacy-id':'amcal_woywoy'}, body:JSON.stringify({email:'pharmotago@gmail.com', pharmacyId:'amcal_woywoy'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d.settings, null, 2))).catch(console.error)\"",
@@ -138,6 +141,7 @@
     "release:v10.5.10": "git add -A && git commit -m \"fix(breaks): v10.5.10 - persistent custom meal breaks via notes tagging & schema resilience [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.11": "git add -A && git commit -m \"fix(employee-panel): v10.5.11 - store context banner, 1-click store switcher, department pills & dual-binding pharmacy_id normalization [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:loop-fix": "git add -A && git commit -m \"fix(pwa): v10.5.11 - resolve update reload loop, align APP_VERSION and install 5-layer anti-loop guard [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "release:v10.5.12": "git add -A && git commit -m \"fix(georgi-trading-hours): v10.5.12 - authorize Georgi Peek Dispensary Manager, implement trading hours persistence, staff lunch breaks, schedule leave reason privacy & leave deletion [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main"
   },
   "dependencies": {

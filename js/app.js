@@ -1013,7 +1013,9 @@ const AUTHORIZED_MANAGERS = [
   'katherine nguyen',
   'katherine',
   'vicky duffy',
-  'vicky'
+  'vicky',
+  'georgi peek',
+  'georgi'
 ];
 
 function hasManagerPermissions(user = state.currentUser) {
@@ -1024,8 +1026,8 @@ function hasManagerPermissions(user = state.currentUser) {
   const role = String(user.role || '').toLowerCase().trim();
 
   // 1. Explicit Named Whitelist Leaders (Exact Full Name or Verified Emails)
-  const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy'];
-  const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'];
+  const WHITELIST_NAMES = ['peter kim', 'glen kanawati', 'katherine nguyen', 'vicki duffy', 'vicky duffy', 'georgi peek'];
+  const WHITELIST_EMAILS = ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com', 'georgi.peek6@gmail.com'];
   
   const cleanName = name.replace(/^(dr\.|mr\.|mrs\.|ms\.)\s+/i, '').replace(/\s*\([^)]*\)/g, '').trim();
   if (WHITELIST_NAMES.includes(cleanName) || WHITELIST_NAMES.includes(name) || WHITELIST_EMAILS.includes(email) || email.startsWith('peter.kim') || email.startsWith('glen.kanawati') || email.startsWith('pharmotago')) {
@@ -1033,7 +1035,7 @@ function hasManagerPermissions(user = state.currentUser) {
   }
 
   // 2. Explicit Management Roles (Exact Match)
-  const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager'];
+  const VALID_MANAGER_ROLES = ['owner', 'co-owner', 'admin', 'manager', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager', 'dispensary manager'];
   if (VALID_MANAGER_ROLES.includes(role)) {
     return true;
   }
@@ -1473,8 +1475,8 @@ function loadDataFromState() {
   const sessionRole = String(user?.role || '').toLowerCase().trim();
   const sessionEmail = String(user?.email || '').toLowerCase().trim();
   const isManager = hasManagerPermissions(user) ||
-    ['owner', 'manager', 'admin', 'partner', 'managing pharmacist', 'pharmacist manager'].includes(sessionRole) ||
-    ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com'].includes(sessionEmail) ||
+    ['owner', 'manager', 'admin', 'partner', 'managing pharmacist', 'pharmacist manager', 'pharmacy manager', 'dispensary manager'].includes(sessionRole) ||
+    ['pharmotago@gmail.com', 'glenkanawati@gmail.com', 'nguyek@gmail.com', 'vickilorraine75@gmail.com', 'georgi.peek6@gmail.com'].includes(sessionEmail) ||
     sessionEmail.startsWith('pharmotago');
 
   const activeTenantId = (window.currentTenant && window.currentTenant.id) || 
@@ -1594,6 +1596,9 @@ function loadDataFromState() {
   if (sidebarName) sidebarName.textContent = state.settings.companyName || 'Amcal Pharmacy Woywoy Rosters';
   const settingsName = document.getElementById('settings-company-name');
   if (settingsName) settingsName.value = state.settings.companyName || 'Amcal Pharmacy Woywoy Rosters';
+  if (typeof populateTradingHoursForm === 'function') {
+    populateTradingHoursForm(state.settings?.tradingHours);
+  }
 
   if (state.currentUser) {
     if (hasManagerPermissions(state.currentUser)) {
@@ -3228,16 +3233,34 @@ function getEffectiveShiftHourlyRate(shift) {
       if (leaveInfo && leaveInfo.type === 'full_day') {
         const leaveDiv = document.createElement('div');
         leaveDiv.className = 'badge badge-danger';
-        leaveDiv.style.cssText = 'font-size:9px; width:100%; text-align:center; padding:6px 2px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2); margin-top:2px;';
-        leaveDiv.innerHTML = `🏖️ On Leave<br><span style="font-size:7.5pt; opacity:0.85;">${leaveInfo.reason || 'Approved'}</span>`;
+        leaveDiv.style.cssText = 'font-size:9px; width:100%; text-align:center; padding:6px 2px; border-radius:4px; box-shadow:0 1px 3px rgba(0,0,0,0.2); margin-top:2px;' + (isMgr ? ' cursor:pointer;' : '');
+        leaveDiv.innerHTML = `🏖️ Approved Leave`;
+        if (isMgr) {
+          leaveDiv.title = `Approved Leave for ${emp.name} (Click to manage or delete in Time Off panel)`;
+          leaveDiv.onclick = (e) => {
+            e.stopPropagation();
+            if (confirm(`Manage Leave for ${emp.name} (${dateStr})?\n\nClick OK to open the Time Off panel where you can delete or edit this leave request.`)) {
+              switchTab('timeoff');
+            }
+          };
+        }
         tdDay.appendChild(leaveDiv);
       } else {
         // If partial leave, show warning badge at top of cell
         if (leaveInfo && leaveInfo.type !== 'full_day') {
           const pLeaveDiv = document.createElement('div');
           pLeaveDiv.className = 'badge';
-          pLeaveDiv.style.cssText = 'background:rgba(239,68,68,0.15); color:#f87171; border:1px dashed rgba(239,68,68,0.5); font-size:7.5pt; width:100%; text-align:center; padding:3px 2px; border-radius:4px; margin-bottom:4px;';
-          pLeaveDiv.innerHTML = `⚠️ Leave (${leaveInfo.label || leaveInfo.reason || 'Partial'})`;
+          pLeaveDiv.style.cssText = 'background:rgba(239,68,68,0.15); color:#f87171; border:1px dashed rgba(239,68,68,0.5); font-size:7.5pt; width:100%; text-align:center; padding:3px 2px; border-radius:4px; margin-bottom:4px;' + (isMgr ? ' cursor:pointer;' : '');
+          pLeaveDiv.innerHTML = `⚠️ Partial Leave (${leaveInfo.label || 'Unavailable'})`;
+          if (isMgr) {
+            pLeaveDiv.title = `Partial Leave for ${emp.name} (Click to manage or delete in Time Off panel)`;
+            pLeaveDiv.onclick = (e) => {
+              e.stopPropagation();
+              if (confirm(`Manage Leave for ${emp.name} (${dateStr})?\n\nClick OK to open the Time Off panel where you can delete or edit this leave request.`)) {
+                switchTab('timeoff');
+              }
+            };
+          }
           tdDay.appendChild(pLeaveDiv);
         }
 
@@ -6382,17 +6405,28 @@ function renderTimeOffPanel() {
     if (req.status === 'Pending') {
       statusBadge = '<span class="badge badge-warning" style="font-weight:700;">PENDING</span>';
       actionsHtml = `
-        <div class="action-group" style="display:flex; gap:6px; flex-wrap:wrap;">
+        <div class="action-group" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
           <button class="btn btn-success" style="padding: 6px 12px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
           <button class="btn btn-danger" style="padding: 6px 12px; font-size:12px; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
+          <button class="btn btn-outline" style="padding: 6px 8px; font-size:12px; color:#ef4444; border-color:rgba(239,68,68,0.4);" onclick="handleDeleteLeaveRequest('${req.id}')" title="Delete Leave Request"><i class="fa-solid fa-trash"></i></button>
         </div>
       `;
     } else if (req.status === 'Approved') {
       statusBadge = '<span class="badge badge-success" style="font-weight:700;">APPROVED</span>';
-      actionsHtml = `<button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>`;
+      actionsHtml = `
+        <div class="action-group" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>
+          <button class="btn btn-outline" style="padding: 5px 8px; font-size:11px; color:#ef4444; border-color:rgba(239,68,68,0.4);" onclick="handleDeleteLeaveRequest('${req.id}')" title="Delete Leave Request"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `;
     } else {
       statusBadge = '<span class="badge badge-danger" style="font-weight:700;">REJECTED</span>';
-      actionsHtml = `<button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>`;
+      actionsHtml = `
+        <div class="action-group" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button class="btn btn-outline" style="padding: 5px 10px; font-size:11px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" onclick="decideLeaveRequest('${req.id}', 'Pending')"><i class="fa-solid fa-rotate-left"></i> Set Pending</button>
+          <button class="btn btn-outline" style="padding: 5px 8px; font-size:11px; color:#ef4444; border-color:rgba(239,68,68,0.4);" onclick="handleDeleteLeaveRequest('${req.id}')" title="Delete Leave Request"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `;
     }
 
     const certBadge = req.medicalCertSighted ? `<span class="badge" style="background:rgba(16,185,129,0.12); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; margin-top:4px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-file-medical"></i> Cert Sighted</span>` : '';
@@ -6629,6 +6663,47 @@ async function decideLeaveRequest(reqId, decision) {
     showToast('Failed to update leave status: ' + (err.message || err), 'error');
   }
 }
+
+async function handleDeleteLeaveRequest(reqId) {
+  const isManagerOrOwner = hasManagerPermissions(state.currentUser);
+  if (!isManagerOrOwner) {
+    showToast('Permission denied: Only managers can delete leave requests.', 'error');
+    return;
+  }
+  const req = state.leaveRequests.find(r => r.id === reqId);
+  if (!req) return;
+  const emp = state.employees.find(e => e.id === req.employeeId);
+  const empDisplayName = emp ? emp.name : 'Employee';
+
+  if (!confirm(`Are you sure you want to delete the leave request for ${empDisplayName} (${req.startDate} to ${req.endDate})?`)) {
+    return;
+  }
+
+  try {
+    await BriskDB.deleteLeaveRequest(reqId);
+    state.leaveRequests = state.leaveRequests.filter(r => r.id !== reqId);
+    if (typeof BriskDB.logAudit === 'function') {
+      BriskDB.logAudit('LEAVE_DELETE', `Deleted leave request for ${empDisplayName} (${req.startDate} ~ ${req.endDate})`, reqId);
+    }
+    showToast(`Leave request for ${empDisplayName} deleted successfully.`, 'success');
+    loadDataFromState();
+    renderTimeOffPanel();
+    renderScheduler();
+
+    // Background sync to ensure remote parity
+    BriskDB.syncFromServer()
+      .then(() => {
+        loadDataFromState();
+        renderTimeOffPanel();
+        renderScheduler();
+      })
+      .catch(e => console.warn('Background sync after deleting leave failed:', e));
+  } catch (err) {
+    console.error('Failed to delete leave request:', err);
+    showToast('Failed to delete leave request: ' + (err.message || err), 'error');
+  }
+}
+window.handleDeleteLeaveRequest = handleDeleteLeaveRequest;
 
 
 /* ==========================================================================
@@ -7085,6 +7160,84 @@ async function saveCompanySetting() {
   showToast('Organization name saved.', 'success');
 }
 
+function populateTradingHoursForm(hours = state.settings?.tradingHours) {
+  if (!hours) return;
+  for (let d = 0; d < 7; d++) {
+    const dayConfig = hours[d] || hours[String(d)] || { open: '08:30', close: '17:30', closed: false };
+    const chk = document.getElementById(`trading-closed-${d}`);
+    const openInput = document.getElementById(`trading-open-${d}`);
+    const closeInput = document.getElementById(`trading-close-${d}`);
+    const isClosed = !!dayConfig.closed;
+    if (chk) chk.checked = isClosed;
+    if (openInput) {
+      openInput.value = isClosed ? '' : (dayConfig.open || '08:30');
+      openInput.disabled = isClosed;
+    }
+    if (closeInput) {
+      closeInput.value = isClosed ? '' : (dayConfig.close || '17:30');
+      closeInput.disabled = isClosed;
+    }
+  }
+}
+window.populateTradingHoursForm = populateTradingHoursForm;
+
+function toggleTradingDayClosed(day) {
+  const chk = document.getElementById(`trading-closed-${day}`);
+  const openInput = document.getElementById(`trading-open-${day}`);
+  const closeInput = document.getElementById(`trading-close-${day}`);
+  const isClosed = chk ? chk.checked : false;
+  if (openInput) openInput.disabled = isClosed;
+  if (closeInput) closeInput.disabled = isClosed;
+}
+window.toggleTradingDayClosed = toggleTradingDayClosed;
+
+async function saveTradingHours(event) {
+  if (event) event.preventDefault();
+  if (!hasManagerPermissions(state.currentUser)) {
+    showToast('Permission denied: Only managers can update trading hours.', 'error');
+    return;
+  }
+
+  const hours = {};
+  for (let d = 0; d < 7; d++) {
+    const chk = document.getElementById(`trading-closed-${d}`);
+    const openInput = document.getElementById(`trading-open-${d}`);
+    const closeInput = document.getElementById(`trading-close-${d}`);
+    const isClosed = chk ? chk.checked : false;
+    hours[String(d)] = {
+      open: isClosed ? '' : (openInput ? openInput.value : '08:30'),
+      close: isClosed ? '' : (closeInput ? closeInput.value : '17:30'),
+      closed: isClosed
+    };
+  }
+
+  if (!state.settings) state.settings = {};
+  state.settings.tradingHours = hours;
+
+  const btn = document.querySelector('#trading-hours-form button[type="submit"]');
+  const origHtml = btn ? btn.innerHTML : 'Save Trading Hours';
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    }
+    await BriskDB.saveSettings(state.settings);
+    populateTradingHoursForm(hours);
+    if (typeof renderScheduler === 'function') renderScheduler();
+    showToast('Trading hours saved and synced successfully!', 'success');
+  } catch (err) {
+    console.error('Error saving trading hours:', err);
+    showToast('Failed to save trading hours: ' + (err.message || 'Error'), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origHtml;
+    }
+  }
+}
+window.saveTradingHours = saveTradingHours;
+
 async function exportDatabaseFile() {
   const jsonStr = await BriskDB.exportData();
   const blob = new Blob([jsonStr], { type: 'application/json' });
@@ -7288,6 +7441,10 @@ window.sendRosterEmail = sendRosterEmail;
 window.copyInviteUrl = copyInviteUrl;
 window.exportDatabaseFile = exportDatabaseFile;
 window.saveCompanySetting = saveCompanySetting;
+window.saveTradingHours = saveTradingHours;
+window.toggleTradingDayClosed = toggleTradingDayClosed;
+window.populateTradingHoursForm = populateTradingHoursForm;
+window.handleDeleteLeaveRequest = handleDeleteLeaveRequest;
 window.toggleAvailTimeInputs = toggleAvailTimeInputs;
 window.toggleLeaveTimeFields = toggleLeaveTimeFields;
 window.addRoleSplitSegment = addRoleSplitSegment;
