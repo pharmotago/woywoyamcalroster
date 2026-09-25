@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.5.10">
+  <link rel="stylesheet" href="css/styles.css?v=10.5.11">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -3177,22 +3177,45 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.5.10"></script>
+  <script type="module" src="js/app.js?v=10.5.11"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.5.10';
+    const APP_VERSION = '10.5.11';
     window.APP_VERSION = APP_VERSION;
 
-    // Global helper to force-purge all caches and reload the latest version
-    window.forceHardAppUpdate = async function(silent = false) {
+    // Global helper to force-purge all caches and reload the latest version with strict loop protection
+    window.forceHardAppUpdate = async function(silent = false, targetVersion = '') {
+      // Loop protection 1: suppress if a hard update was executed within the last 45 seconds
+      const lastUpdateTs = parseInt(sessionStorage.getItem('pk_last_hard_update_ts') || '0', 10);
+      const timeSinceLastUpdate = Date.now() - lastUpdateTs;
+      if (timeSinceLastUpdate < 45000) {
+        console.warn('[Update] Hard update suppressed by loop guard (executed ' + Math.round(timeSinceLastUpdate / 1000) + 's ago).');
+        return;
+      }
+
+      // Loop protection 2: maximum 2 consecutive reload attempts per tab session
+      const updateAttempts = parseInt(sessionStorage.getItem('pk_update_attempt_count') || '0', 10);
+      if (updateAttempts >= 2) {
+        console.warn('[Update] Maximum reload attempts reached for current session. Aborting auto-reload loop.');
+        if (typeof showToast === 'function') {
+          showToast('A newer version is ready. Please click to refresh.', 'info');
+        }
+        return;
+      }
+
+      sessionStorage.setItem('pk_update_attempt_count', (updateAttempts + 1).toString());
+      sessionStorage.setItem('pk_last_hard_update_ts', Date.now().toString());
+
+      const displayVer = targetVersion || APP_VERSION;
       if (!silent) {
         if (typeof showToast === 'function') {
-          showToast('Updating to latest version (' + APP_VERSION + ')...', 'info');
+          showToast('Updating to latest release (v' + displayVer + ')...', 'info');
         } else {
-          console.log('[Update] Updating to latest version (' + APP_VERSION + ')...');
+          console.log('[Update] Updating to latest release (v' + displayVer + ')...');
         }
       }
+
       try {
         // 1. Unregister all service workers
         if ('serviceWorker' in navigator) {
@@ -3219,7 +3242,7 @@
         }
         // 3. Mark version in localStorage
         try {
-          localStorage.setItem('amcal_app_version', APP_VERSION);
+          localStorage.setItem('amcal_app_version', displayVer);
           localStorage.setItem('amcal_last_force_update', Date.now().toString());
         } catch (e) {}
 
@@ -3232,15 +3255,27 @@
       }
     };
 
-    // Check version against version.json
+    // Check version against version.json with strict throttling and anti-loop guards
     async function checkServerVersion() {
       try {
+        // Anti-loop protection: limit checks to once every 60 seconds
+        const lastCheck = parseInt(sessionStorage.getItem('pk_last_version_check_ts') || '0', 10);
+        if (Date.now() - lastCheck < 60000) {
+          return;
+        }
+        sessionStorage.setItem('pk_last_version_check_ts', Date.now().toString());
+
         const res = await fetch('version.json?_t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
           const meta = await res.json();
-          if (meta && meta.version && meta.version !== APP_VERSION) {
-            console.log(`[Update] Newer version on server: ${meta.version} vs local: ${APP_VERSION}. Triggering hard update...`);
-            window.forceHardAppUpdate(false);
+          if (meta && meta.version) {
+            if (meta.version !== APP_VERSION) {
+              console.log(`[Update] Newer version on server: ${meta.version} vs local: ${APP_VERSION}. Triggering hard update...`);
+              window.forceHardAppUpdate(false, meta.version);
+            } else {
+              // Current version matches server: reset session attempt counters
+              sessionStorage.removeItem('pk_update_attempt_count');
+            }
           }
         }
       } catch (e) {
@@ -3278,11 +3313,17 @@
           .catch(error => console.error('[PWA] ServiceWorker registration failed:', error));
       });
 
-      // Auto reload once when the new Service Worker takes over
+      // Auto reload once when the new Service Worker takes over with anti-loop guard
       let refreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
           refreshing = true;
+          const lastSwReload = parseInt(sessionStorage.getItem('pk_last_sw_reload_ts') || '0', 10);
+          if (Date.now() - lastSwReload < 45000) {
+            console.warn('[SW] Suppressing controllerchange reload loop within 45s.');
+            return;
+          }
+          sessionStorage.setItem('pk_last_sw_reload_ts', Date.now().toString());
           window.location.reload();
         }
       });

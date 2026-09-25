@@ -1012,6 +1012,67 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 24: PWA Version Alignment & Anti-Update-Loop Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 24: PWA Version Alignment & Anti-Update-Loop Guard]');
+
+let rawServerVersion = '';
+if (fs.existsSync(versionJsonPath)) {
+  try {
+    const vParsed = JSON.parse(fs.readFileSync(versionJsonPath, 'utf8'));
+    rawServerVersion = vParsed.version || '';
+  } catch (e) {}
+}
+
+// 1. Exact Version Alignment Guard (version.json vs index.html APP_VERSION)
+const hasExactAppVersionMatch = indexHtmlLatest.includes(`const APP_VERSION = '${rawServerVersion}';`);
+assertTest(
+  'Exact Version Alignment Guard',
+  hasExactAppVersionMatch,
+  `index.html APP_VERSION must exactly match version.json ("${rawServerVersion}"). Prevents infinite update reload loops.`
+);
+
+// 2. Service Worker Cache Name Alignment Guard
+let swCacheAligned = false;
+if (fs.existsSync(swPath)) {
+  const swCode = fs.readFileSync(swPath, 'utf8');
+  swCacheAligned = swCode.includes(`CACHE_NAME = 'amcal-rosters-v${rawServerVersion}';`);
+}
+assertTest(
+  'Service Worker Cache Name Alignment Guard',
+  swCacheAligned,
+  `sw.js CACHE_NAME must match amcal-rosters-v${rawServerVersion}.`
+);
+
+// 3. Asset Query Parameter Alignment Guard (index.html)
+const hasAssetQueryAligned = indexHtmlLatest.includes(`js/app.js?v=${rawServerVersion}`) &&
+                             indexHtmlLatest.includes(`css/styles.css?v=${rawServerVersion}`);
+assertTest(
+  'Asset Query Parameter Alignment Guard',
+  hasAssetQueryAligned,
+  `index.html must load app.js and styles.css with ?v=${rawServerVersion} query params.`
+);
+
+// 4. Anti-Update-Loop Guard in forceHardAppUpdate & checkServerVersion
+const hasAntiUpdateLoopGuards = indexHtmlLatest.includes('pk_last_hard_update_ts') &&
+                               indexHtmlLatest.includes('pk_last_version_check_ts') &&
+                               indexHtmlLatest.includes('pk_update_attempt_count');
+assertTest(
+  'Anti-Update-Loop Throttle Guard',
+  hasAntiUpdateLoopGuards,
+  'index.html must implement pk_last_hard_update_ts, pk_last_version_check_ts, and pk_update_attempt_count to prevent reload thrashing.'
+);
+
+// 5. Service Worker Controller Change Throttle Guard
+const hasSwControllerChangeGuard = indexHtmlLatest.includes('pk_last_sw_reload_ts') &&
+                                   indexHtmlLatest.includes('controllerchange');
+assertTest(
+  'Service Worker Controller Change Throttle Guard',
+  hasSwControllerChangeGuard,
+  'index.html controllerchange listener must guard against rapid successive reloads with pk_last_sw_reload_ts.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

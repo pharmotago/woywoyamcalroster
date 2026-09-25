@@ -58,6 +58,7 @@
     "list:store-emp": "node scripts/list_all_store_employees.js",
     "check:today": "node scripts/check_today_shifts.js",
     "test:client-budg": "node scripts/test_client_budgewoi.js",
+    "find:update-loop": "node scripts/find_update_loop.js",
     "test:fields": "node scripts/test_employee_fields.js",
     "test:flow": "node scripts/test_full_employee_panel_flow.js",
     "check:detail": "node scripts/check_users_detail.js",
@@ -136,6 +137,7 @@
     "release:v10.5.9": "git add -A && git commit -m \"fix(roster): v10.5.9 - exclude unassigned shifts from scheduled hours & resolve Webster Care department staff [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.10": "git add -A && git commit -m \"fix(breaks): v10.5.10 - persistent custom meal breaks via notes tagging & schema resilience [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.11": "git add -A && git commit -m \"fix(employee-panel): v10.5.11 - store context banner, 1-click store switcher, department pills & dual-binding pharmacy_id normalization [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
+    "release:loop-fix": "git add -A && git commit -m \"fix(pwa): v10.5.11 - resolve update reload loop, align APP_VERSION and install 5-layer anti-loop guard [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main"
   },
   "dependencies": {
