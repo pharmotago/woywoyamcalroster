@@ -94,7 +94,7 @@
     "commit:bureau": "git add -A && git commit -m \"refactor(payroll): remove Xero references in favor of external payroll bureau CSV [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "commit:pkrosters": "git add -A && git commit -m \"feat(brand): PKRosters rebrand & Budgewoi DDS multi-tenant theming engine (Suite 16) [auto]\"",
     "commit:isolation": "git add -A && git commit -m \"feat(auth): strict store isolation gate & multi-store clearance for Peter Kim & Katherine (Suite 17) [auto]\"",
-    "commit:clean": "git add package.json && git commit -m \"chore: update live test scripts [auto]\" && git push origin main",
+    "commit:clean": "git add package.json scripts/smoke_v10512.js && git commit -m \"chore: update live smoke test script for v10.5.12 [auto]\" && git push origin main",
     "release:dds-branding": "git add -A && git commit -m \"feat(theme): official Discount Drug Stores royal purple #7A2682 & orange #FF6B00 branding [auto]\" && git push origin main && vercel --prod --yes --cwd .",
     "release:isolation-fix": "git add -A && git commit -m \"fix(tenant): resolve pharmacy_id mismatch & enforce zero Amcal staff leakage on Budgewoi roster [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:reg-branding": "git add -A && git commit -m \"fix(theme): dynamic multi-tenant logo on staff registration card (Budgewoi DDS / Amcal) [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
@@ -142,7 +142,8 @@
     "release:v10.5.11": "git add -A && git commit -m \"fix(employee-panel): v10.5.11 - store context banner, 1-click store switcher, department pills & dual-binding pharmacy_id normalization [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:loop-fix": "git add -A && git commit -m \"fix(pwa): v10.5.11 - resolve update reload loop, align APP_VERSION and install 5-layer anti-loop guard [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.12": "git add -A && git commit -m \"fix(georgi-trading-hours): v10.5.12 - authorize Georgi Peek Dispensary Manager, implement trading hours persistence, staff lunch breaks, schedule leave reason privacy & leave deletion [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
-    "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main"
+    "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main",
+    "smoke:v10.5.12": "node scripts/smoke_v10512.js"
   },
   "dependencies": {
     "@capacitor/core": "^6.0.0",
