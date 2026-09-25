@@ -941,6 +941,75 @@ assertTest(
   hasZeroLunchOption,
   'index.html shift-unpaid-break dropdown must contain value="0" (No Lunch Break).'
 );
+// ---------------------------------------------------------
+// Test Suite 23: Multi-Store Separation & Employee Panel Integrity Guard (v10.5.11)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 23: Multi-Store Separation & Employee Panel Integrity Guard]');
+
+// 1. Employee Panel Store Context Banner Guard
+const hasEmpStoreBanner = indexHtmlLatest.includes('id="emp-store-banner"') &&
+                          indexHtmlLatest.includes('id="emp-store-name"') &&
+                          indexHtmlLatest.includes('id="btn-emp-store-switch"') &&
+                          indexHtmlLatest.includes('id="emp-store-switch-label"');
+assertTest(
+  'Employee Panel Store Context Banner Guard',
+  hasEmpStoreBanner,
+  'index.html panel-employees must include Store Context Banner, Active Store Badge, and Switch Button.'
+);
+
+// 2. Employee Panel Department Filter Pills Guard
+const hasEmpDeptFilters = indexHtmlLatest.includes('btn-dept-filter-emp') &&
+                          indexHtmlLatest.includes('id="emp-dept-count-all"') &&
+                          indexHtmlLatest.includes('id="emp-dept-count-disp"') &&
+                          indexHtmlLatest.includes('id="emp-dept-count-ret"') &&
+                          indexHtmlLatest.includes('id="emp-dept-count-web"');
+assertTest(
+  'Employee Panel Department Filter Pills Guard',
+  hasEmpDeptFilters,
+  'index.html panel-employees must include Department Filter Pills with live count indicators.'
+);
+
+// 3. Employee Panel Inactive Staff Toggle Guard
+const hasInactiveToggle = indexHtmlLatest.includes('id="emp-show-inactive-check"');
+assertTest(
+  'Employee Panel Inactive Staff Toggle Guard',
+  hasInactiveToggle,
+  'index.html panel-employees must include Show Inactive Staff checkbox toggle.'
+);
+
+// 4. Dual-Binding Pharmacy ID Normalization Guard
+const hasDualBindingDb = dbJsContent.includes('pharmacyId: emp.pharmacyId || emp.pharmacy_id') &&
+                         dbJsContent.includes('pharmacy_id: emp.pharmacy_id || emp.pharmacyId');
+const hasDualBindingApp = appJsContent.includes('raw = e.pharmacyId || e.pharmacy_id');
+assertTest(
+  'Dual-Binding Pharmacy ID Normalization Guard',
+  hasDualBindingDb && hasDualBindingApp,
+  'database.js and app.js must check and set both pharmacyId and pharmacy_id to prevent employee loss.'
+);
+
+// 5. Sync API Explicit Pharmacy ID Tagging Guard
+let hasSyncPharmacyTagging = false;
+if (fs.existsSync(syncTsPath)) {
+  const syncCode = fs.readFileSync(syncTsPath, 'utf8');
+  hasSyncPharmacyTagging = syncCode.includes('normalizedEmployees') &&
+                           syncCode.includes('pharmacy_id: targetPharmacy') &&
+                           syncCode.includes('pharmacyId: targetPharmacy');
+}
+assertTest(
+  'Sync API Explicit Pharmacy ID Tagging Guard',
+  hasSyncPharmacyTagging,
+  'api/schedule/sync/index.ts must explicitly attach pharmacy_id and pharmacyId to all returned employees.'
+);
+
+// 6. Employee Panel Controller Export Guard
+const hasEmpControllerExports = appJsContent.includes('window.setEmployeePanelDeptFilter = setEmployeePanelDeptFilter') &&
+                                appJsContent.includes('window.toggleStoreFromEmployeePanel = toggleStoreFromEmployeePanel') &&
+                                appJsContent.includes('window.refreshEmployeePanelSync = refreshEmployeePanelSync');
+assertTest(
+  'Employee Panel Controller Export Guard',
+  hasEmpControllerExports,
+  'app.js must export setEmployeePanelDeptFilter, toggleStoreFromEmployeePanel, and refreshEmployeePanelSync on window.'
+);
 
 // ---------------------------------------------------------
 // Final Summary & Verdict

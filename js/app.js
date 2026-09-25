@@ -1482,7 +1482,7 @@ function loadDataFromState() {
 
   const allRawEmployees = BriskDB.getEmployees();
   const rawEmployees = allRawEmployees.filter(e => {
-    const raw = e.pharmacy_id || e.availability?.pharmacy_id || e.availability?.pharmacyId;
+    const raw = e.pharmacyId || e.pharmacy_id || e.availability?.pharmacy_id || e.availability?.pharmacyId;
     const pId = raw && (String(raw).includes('budgewoi') || String(raw).includes('dds')) ? 'budgewoi_dds' : 'amcal_woywoy';
     return pId === activeTenantId;
   });
@@ -5226,6 +5226,50 @@ window.triggerClearWeek = triggerClearWeek;
    PANEL: EMPLOYEES DIRECTORY
    ========================================================================== */
 
+let employeePanelDeptFilter = 'all';
+
+function setEmployeePanelDeptFilter(dept) {
+  employeePanelDeptFilter = dept;
+  document.querySelectorAll('.btn-dept-filter-emp').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-dept') === dept);
+  });
+  renderEmployeesList();
+}
+window.setEmployeePanelDeptFilter = setEmployeePanelDeptFilter;
+
+async function toggleStoreFromEmployeePanel() {
+  const activeTenantId = (window.currentTenant && window.currentTenant.id) || 
+    ((typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) ? localStorage.getItem('pkrosters_active_tenant') : 'amcal_woywoy');
+  const isBudgewoi = activeTenantId.includes('budgewoi') || activeTenantId.includes('dds');
+  const targetStore = isBudgewoi ? 'amcal_woywoy' : 'budgewoi_dds';
+  await switchStoreTenant(targetStore);
+}
+window.toggleStoreFromEmployeePanel = toggleStoreFromEmployeePanel;
+
+async function refreshEmployeePanelSync() {
+  const btn = document.getElementById('btn-emp-refresh-sync');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  }
+  try {
+    const user = (window.state && window.state.currentUser) || (window.BriskDB && window.BriskDB.getSession());
+    await BriskDB.syncFromServer(user?.email, true);
+    loadDataFromState();
+    renderEmployeesList();
+    showToast('Live team directory synchronized from cloud.', 'success');
+  } catch (err) {
+    console.error('Failed to sync team directory:', err);
+    showToast('Failed to refresh data: ' + err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-arrows-rotate text-emerald"></i>';
+    }
+  }
+}
+window.refreshEmployeePanelSync = refreshEmployeePanelSync;
+
 function renderEmployeesList() {
   const container = document.getElementById('employees-cards-container');
   if (!container) return;
@@ -5236,17 +5280,101 @@ function renderEmployeesList() {
     return;
   }
 
+  const activeTenantId = (window.currentTenant && window.currentTenant.id) || 
+    ((typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) ? localStorage.getItem('pkrosters_active_tenant') : 'amcal_woywoy');
+  const isBudgewoi = activeTenantId.includes('budgewoi') || activeTenantId.includes('dds');
+
+  // Update Store Context Banner Elements
+  const storeNameEl = document.getElementById('emp-store-name');
+  const storeBadgeEl = document.getElementById('emp-store-badge');
+  const storeStatsEl = document.getElementById('emp-store-stats');
+  const storeSwitchLabelEl = document.getElementById('emp-store-switch-label');
+  const storeBannerEl = document.getElementById('emp-store-banner');
+  const storeIconBoxEl = document.getElementById('emp-store-icon-box');
+
+  const totalRegistered = state.employees.length;
+  const activeStaffCount = state.employees.filter(e => e.active !== false).length;
+  const inactiveStaffCount = totalRegistered - activeStaffCount;
+
+  if (storeNameEl) {
+    storeNameEl.textContent = isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy';
+  }
+  if (storeBadgeEl) {
+    storeBadgeEl.textContent = isBudgewoi ? 'Budgewoi DDS' : 'Amcal Woy Woy';
+    storeBadgeEl.style.background = isBudgewoi ? 'rgba(122, 38, 130, 0.25)' : 'rgba(0, 102, 204, 0.2)';
+    storeBadgeEl.style.color = isBudgewoi ? '#ff6b00' : 'var(--accent-cyan)';
+    storeBadgeEl.style.borderColor = isBudgewoi ? 'rgba(255, 107, 0, 0.4)' : 'rgba(0, 102, 204, 0.4)';
+  }
+  if (storeBannerEl) {
+    storeBannerEl.style.borderLeftColor = isBudgewoi ? '#7a2682' : 'var(--accent-cyan)';
+  }
+  if (storeIconBoxEl) {
+    storeIconBoxEl.style.background = isBudgewoi ? 'rgba(122, 38, 130, 0.2)' : 'rgba(0, 102, 204, 0.15)';
+    storeIconBoxEl.style.borderColor = isBudgewoi ? 'rgba(255, 107, 0, 0.3)' : 'rgba(0, 102, 204, 0.3)';
+    storeIconBoxEl.style.color = isBudgewoi ? '#ff6b00' : 'var(--accent-cyan)';
+  }
+  if (storeStatsEl) {
+    storeStatsEl.innerHTML = `Showing <strong>${activeStaffCount} active staff</strong> (${totalRegistered} total on record${inactiveStaffCount > 0 ? `, ${inactiveStaffCount} inactive` : ''}) &bull; ${isBudgewoi ? 'Scenic Drive, Budgewoi NSW' : 'Deepwater Plaza, Woy Woy NSW'}`;
+  }
+  if (storeSwitchLabelEl) {
+    storeSwitchLabelEl.textContent = isBudgewoi ? 'Switch to Amcal Woy Woy (33 Staff)' : 'Switch to Budgewoi DDS (15 Staff)';
+  }
+
+  // Update Department Counts on Filter Pills
+  const counts = { all: totalRegistered, dispensary: 0, retail: 0, webster: 0 };
+  state.employees.forEach(e => {
+    const depts = typeof getEmployeeDepartments === 'function' ? getEmployeeDepartments(e) : [getEmployeeDepartment(e)];
+    if (depts.includes('dispensary')) counts.dispensary++;
+    if (depts.includes('retail')) counts.retail++;
+    if (depts.includes('webster')) counts.webster++;
+  });
+  const elAll = document.getElementById('emp-dept-count-all');
+  const elDisp = document.getElementById('emp-dept-count-disp');
+  const elRet = document.getElementById('emp-dept-count-ret');
+  const elWeb = document.getElementById('emp-dept-count-web');
+  if (elAll) elAll.textContent = counts.all;
+  if (elDisp) elDisp.textContent = counts.dispensary;
+  if (elRet) elRet.textContent = counts.retail;
+  if (elWeb) elWeb.textContent = counts.webster;
+
+  const showInactive = document.getElementById('emp-show-inactive-check')?.checked || false;
   const searchInput = document.getElementById('employee-search-input');
-  const searchVal = searchInput ? searchInput.value.toLowerCase() : '';
-  const orderedActive = getOrderedActiveEmployees(true);
-  
-  const filtered = orderedActive.filter(emp => {
-    return emp.name.toLowerCase().includes(searchVal) || 
-           emp.role.toLowerCase().includes(searchVal);
+  const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  const customOrder = (state.settings && Array.isArray(state.settings.employeeOrder)) ? state.settings.employeeOrder : [];
+
+  let staffToDisplay = state.employees.filter(e => {
+    if (!showInactive && e.active === false) return false;
+    return true;
+  }).sort((a, b) => {
+    const idxA = customOrder.indexOf(a.id);
+    const idxB = customOrder.indexOf(b.id);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  const filtered = staffToDisplay.filter(emp => {
+    // Department filtering
+    if (employeePanelDeptFilter && employeePanelDeptFilter !== 'all') {
+      const depts = typeof getEmployeeDepartments === 'function' ? getEmployeeDepartments(emp) : [getEmployeeDepartment(emp)];
+      if (!depts.includes(employeePanelDeptFilter)) return false;
+    }
+
+    // Search query filtering
+    if (searchVal) {
+      const matchName = emp.name.toLowerCase().includes(searchVal);
+      const matchRole = (emp.role || '').toLowerCase().includes(searchVal);
+      const matchEmail = (emp.email || '').toLowerCase().includes(searchVal);
+      return matchName || matchRole || matchEmail;
+    }
+
+    return true;
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="grid-column: 1/-1;"><div class="empty-state"><i class="fa-solid fa-users-slash"></i><h4>No employees found</h4><p>Add a team member to start building your roster.</p></div></div>`;
+    container.innerHTML = `<div style="grid-column: 1/-1;"><div class="empty-state"><i class="fa-solid fa-users-slash"></i><h4>No team members match this filter</h4><p>Try resetting the search or department filter above.</p></div></div>`;
     return;
   }
 
@@ -5254,16 +5382,21 @@ function renderEmployeesList() {
 
   filtered.forEach(emp => {
     const card = document.createElement('div');
-    card.className = 'employee-card';
+    const isInactive = emp.active === false;
+    card.className = 'employee-card' + (isInactive ? ' employee-card-inactive' : '');
+    if (isInactive) {
+      card.style.opacity = '0.75';
+      card.style.border = '1px dashed rgba(239, 68, 68, 0.4)';
+    }
 
-    const empIdx = orderedActive.findIndex(e => e.id === emp.id);
+    const empIdx = staffToDisplay.findIndex(e => e.id === emp.id);
     const isFirst = empIdx === 0;
-    const isLast = empIdx === orderedActive.length - 1;
+    const isLast = empIdx === staffToDisplay.length - 1;
 
     let availBubbles = '';
     const dayInitialList = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
     for (let i = 0; i < 7; i++) {
-      const hasAvail = emp.availability[i] != null;
+      const hasAvail = emp.availability && emp.availability[i] != null;
       availBubbles += `<div class="avail-day-bubble ${hasAvail ? 'active' : ''}">${dayInitialList[i]}</div>`;
     }
 
@@ -5278,13 +5411,17 @@ function renderEmployeesList() {
       </div>
     ` : '';
 
+    const statusBadge = isInactive 
+      ? '<span class="badge" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);">Inactive</span>'
+      : '<span class="badge badge-success">Active</span>';
+
     card.innerHTML = `
       <div class="employee-card-header">
         <div class="emp-details">
           <h4>${emp.name}</h4>
           <p>${emp.role}</p>
         </div>
-        <span class="badge badge-success">Active</span>
+        ${statusBadge}
       </div>
       <div class="employee-card-meta">
         <span>Email: <strong>${emp.email}</strong></span>
@@ -7169,6 +7306,9 @@ window.isShiftConflictingWithLeave = isShiftConflictingWithLeave;
 window.toggleTheme = toggleTheme;
 window.updateTerminalStatus = updateTerminalStatus;
 window.renderEmployeesList = renderEmployeesList;
+window.setEmployeePanelDeptFilter = setEmployeePanelDeptFilter;
+window.toggleStoreFromEmployeePanel = toggleStoreFromEmployeePanel;
+window.refreshEmployeePanelSync = refreshEmployeePanelSync;
 window.renderScheduler = renderScheduler;
 // Removed moved binding: triggerClearWeek
 // Removed moved binding: triggerAutoScheduler

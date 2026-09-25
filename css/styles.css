@@ -3510,3 +3510,46 @@ body.stamp-mode-active .calendar-grid-cell:hover {
   color: var(--text-muted);
 }
 
+/* Employee Panel Department Filter Pills & Store Context Banner */
+.employee-store-banner {
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-dept-filter-emp {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-dept-filter-emp:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-dept-filter-emp.active {
+  background: rgba(0, 229, 255, 0.15);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+[data-theme="budgewoi"] .btn-dept-filter-emp.active {
+  background: rgba(255, 107, 0, 0.15);
+  color: #ff6b00;
+  border-color: #ff6b00;
+  box-shadow: 0 0 10px rgba(255, 107, 0, 0.25);
+}
+
+.employee-card-inactive {
+  filter: grayscale(0.2);
+}
+

@@ -274,10 +274,16 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
           };
         });
 
+    const normalizedEmployees = safeEmployees.map((e: any) => ({
+      ...e,
+      pharmacy_id: targetPharmacy,
+      pharmacyId: targetPharmacy
+    }));
+
     return jsonRes(res, {
       success: true,
       pharmacyId: targetPharmacy,
-      employees: safeEmployees,
+      employees: normalizedEmployees,
       shifts: storeShifts,
       timecards: storeTimecards,
       leaveRequests: storeLeave,

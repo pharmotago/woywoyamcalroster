@@ -246,7 +246,8 @@ const BriskDB = (function() {
       certificates: Array.isArray(avail.certificates) ? avail.certificates : (Array.isArray(emp.certificates) ? emp.certificates : []),
       availability: avail,
       active: (emp.active !== undefined && emp.active !== null) ? !!emp.active : true,
-      pharmacyId: emp.pharmacy_id || avail.pharmacy_id || avail.pharmacyId || 'amcal_woywoy'
+      pharmacyId: emp.pharmacyId || emp.pharmacy_id || avail.pharmacy_id || avail.pharmacyId || 'amcal_woywoy',
+      pharmacy_id: emp.pharmacy_id || emp.pharmacyId || avail.pharmacy_id || avail.pharmacyId || 'amcal_woywoy'
     };
   }
 
