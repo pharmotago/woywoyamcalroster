@@ -720,15 +720,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const upsertPayload: Record<string, unknown> = {
         id: targetRowId,
         company_name: companyName,
-        trading_hours: mergedTh,
-        updated_at: new Date().toISOString()
+        trading_hours: mergedTh
       };
 
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('brisk_settings')
         .upsert([upsertPayload])
         .select()
         .maybeSingle();
+
+      if (error && error.message && error.message.includes('column')) {
+        const minimalPayload = {
+          id: targetRowId,
+          trading_hours: mergedTh
+        };
+        const retry = await supabaseAdmin.from('brisk_settings').upsert([minimalPayload]).select().maybeSingle();
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) throw error;
       return jsonRes(res, { success: true, settings: data }, 200);

@@ -152,6 +152,7 @@
     "release:loop-fix": "git add -A && git commit -m \"fix(pwa): v10.5.11 - resolve update reload loop, align APP_VERSION and install 5-layer anti-loop guard [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd .",
     "release:v10.5.12": "git add -A && git commit -m \"fix(georgi-trading-hours): v10.5.12 - authorize Georgi Peek Dispensary Manager, implement trading hours persistence, staff lunch breaks, schedule leave reason privacy & leave deletion [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "release:v10.5.13": "git add -A && git commit -m \"fix(settings-persistence): v10.5.13 - serverless settings mutation engine, anti-revert sync & complete woy woy staff roster integrity [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
+    "release:v10.5.14": "git add -A && git commit -m \"fix(settings): v10.5.14 - sanitize brisk_settings upsert columns & real-time cloud persistence [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main",
     "smoke:v10.5.12": "node scripts/smoke_v10512.js"
   },
