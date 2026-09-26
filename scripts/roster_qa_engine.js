@@ -1230,7 +1230,7 @@ assertTest(
   'getActiveTenant in js/database.js must check hostname before executive localStorage to ensure accurate store data sync.'
 );
 
-// 4. Compliance Modal Certificate Polymorphic Guard
+// 5. Compliance Modal Certificate Polymorphic Guard
 const complianceJsPath = path.join(__dirname, '../js/modules/compliance.js');
 let hasComplianceCertGuard = false;
 if (fs.existsSync(complianceJsPath)) {
@@ -1244,14 +1244,72 @@ assertTest(
   'renderModalCertificatesList in js/modules/compliance.js must safely support string and object certificates.'
 );
 
-// 5. Version Alignment v10.5.15 Guard
-const hasVersion10515Aligned = indexHtmlLatest.includes("APP_VERSION = '10.5.15';") &&
-                               indexHtmlLatest.includes("app.js?v=10.5.15") &&
-                               indexHtmlLatest.includes("styles.css?v=10.5.15");
+// ---------------------------------------------------------
+// Test Suite 28: Authentic Store Address & Deepwater Ban Guard (v10.5.16)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 28: Authentic Store Address & Deepwater Ban Guard]');
+
+// 1. Deepwater Plaza Zero-Tolerance Ban
+const addressAuditFiles = [
+  path.join(rootDir, 'index.html'),
+  path.join(rootDir, 'js/app.js'),
+  path.join(rootDir, 'js/modules/compliance.js'),
+  path.join(rootDir, 'js/modules/dispensary-handover.js'),
+  path.join(rootDir, 'js/modules/payroll-engine.js')
+];
+
+let deepwaterOccurrences = 0;
+addressAuditFiles.forEach(f => {
+  if (fs.existsSync(f)) {
+    const text = fs.readFileSync(f, 'utf8');
+    if (/deepwater/i.test(text)) {
+      deepwaterOccurrences++;
+    }
+  }
+});
+
 assertTest(
-  'Version Alignment v10.5.15 Guard',
-  hasVersion10515Aligned,
-  'index.html must be aligned to v10.5.15 across APP_VERSION, app.js, and styles.css.'
+  'Deepwater Plaza Zero-Tolerance Ban Guard',
+  deepwaterOccurrences === 0,
+  `Deepwater Plaza found in ${deepwaterOccurrences} source files. Amcal Pharmacy Woy Woy is at Peninsula Plaza, NOT Deepwater Plaza.`
+);
+
+// 2. Peninsula Plaza Authentic Address in TENANT_CONFIGS
+const freshAppJs = fs.readFileSync(path.join(rootDir, 'js/app.js'), 'utf8');
+const hasPeninsulaInConfigs = freshAppJs.includes("Peninsula Plaza") &&
+                              freshAppJs.includes("62 Blackwall Road") &&
+                              freshAppJs.includes("(02) 4342 2256");
+assertTest(
+  'Peninsula Plaza Authentic Address in TENANT_CONFIGS',
+  hasPeninsulaInConfigs,
+  'TENANT_CONFIGS in js/app.js must define authentic Peninsula Plaza address (62 Blackwall Road) and phone ((02) 4342 2256).'
+);
+
+// 3. Store Context Banner Peninsula Plaza Guard
+const hasPeninsulaInBanner = freshAppJs.includes("'Peninsula Plaza, Woy Woy NSW'");
+assertTest(
+  'Store Context Banner Peninsula Plaza Guard',
+  hasPeninsulaInBanner,
+  'app.js renderEmployeesList storeStatsEl must display Peninsula Plaza, Woy Woy NSW.'
+);
+
+// 4. Katherine Payroll Header Peninsula Plaza Guard
+const freshIndexHtml = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
+const hasPeninsulaInPayrollHeader = freshIndexHtml.includes("Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256 • Ph: (02) 4342 2256");
+assertTest(
+  'Katherine Payroll Header Peninsula Plaza Guard',
+  hasPeninsulaInPayrollHeader,
+  'index.html kat-print-header must display Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256 • Ph: (02) 4342 2256.'
+);
+
+// 5. Version Alignment v10.5.16 Guard
+const hasVersion10516Aligned = freshIndexHtml.includes("APP_VERSION = '10.5.16';") &&
+                               freshIndexHtml.includes("app.js?v=10.5.16") &&
+                               freshIndexHtml.includes("styles.css?v=10.5.16");
+assertTest(
+  'Version Alignment v10.5.16 Guard',
+  hasVersion10516Aligned,
+  'index.html must be aligned to v10.5.16 across APP_VERSION, app.js, and styles.css.'
 );
 
 // ---------------------------------------------------------

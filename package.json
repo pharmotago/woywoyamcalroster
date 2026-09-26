@@ -154,6 +154,7 @@
     "release:v10.5.13": "git add -A && git commit -m \"fix(settings-persistence): v10.5.13 - serverless settings mutation engine, anti-revert sync & complete woy woy staff roster integrity [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "release:v10.5.14": "git add -A && git commit -m \"fix(settings): v10.5.14 - sanitize brisk_settings upsert columns & real-time cloud persistence [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "release:v10.5.15": "git add -A && git commit -m \"fix(employee-directory): v10.5.15 - polymorphic certificate resilience & hostname-first store authority [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
+    "release:v10.5.16": "git add -A && git commit -m \"fix(address): v10.5.16 - authentic Peninsula Plaza address standardization & zero-tolerance Deepwater ban [auto]\" && git pull --rebase origin main && git push origin main && vercel --prod --yes --cwd . && npm run domain:alias",
     "commit:sync-type": "git add api/schedule/sync/index.ts package.json && git commit -m \"chore: explicit type annotation for mealMins in sync api [auto]\" && git push origin main",
     "smoke:v10.5.12": "node scripts/smoke_v10512.js"
   },

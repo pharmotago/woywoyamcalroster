@@ -32,6 +32,9 @@ export const TENANT_CONFIGS = {
     theme: 'amcal',
     title: 'Amcal Pharmacy Woy Woy Rosters — Staff Scheduler & Time Clock | PKRosters',
     subtitle: 'Woywoy Rosters',
+    address: 'Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256',
+    shortAddress: 'Peninsula Plaza, Woy Woy NSW',
+    phone: '(02) 4342 2256',
     logoSvg: `<svg width="150" height="35" viewBox="0 0 150 35" fill="none" xmlns="http://www.w3.org/2000/svg">
       <polygon points="5,4 12,4 5,30 -2,30" fill="#C95B60" />
       <polygon points="16,4 23,4 16,30 9,30" fill="#D5B147" />
@@ -52,6 +55,9 @@ export const TENANT_CONFIGS = {
     theme: 'budgewoi',
     title: 'Budgewoi Discount Drug Stores Rosters — Staff Scheduler & Time Clock | PKRosters',
     subtitle: 'Budgewoi DDS Rosters',
+    address: 'Shop 1, 67 Scenic Drive, Budgewoi NSW 2262',
+    shortAddress: 'Scenic Drive, Budgewoi NSW',
+    phone: '(02) 4390 9555',
     logoSvg: `<svg width="185" height="35" viewBox="0 0 185 35" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g transform="translate(2, 2)">
         <rect x="0" y="1" width="29" height="29" rx="8" fill="#7A2682" />
@@ -5356,7 +5362,7 @@ function renderEmployeesList() {
     storeIconBoxEl.style.color = isBudgewoi ? '#ff6b00' : 'var(--accent-cyan)';
   }
   if (storeStatsEl) {
-    storeStatsEl.innerHTML = `Showing <strong>${activeStaffCount} active staff</strong> (${totalRegistered} total on record${inactiveStaffCount > 0 ? `, ${inactiveStaffCount} inactive` : ''}) &bull; ${isBudgewoi ? 'Scenic Drive, Budgewoi NSW' : 'Deepwater Plaza, Woy Woy NSW'}`;
+    storeStatsEl.innerHTML = `Showing <strong>${activeStaffCount} active staff</strong> (${totalRegistered} total on record${inactiveStaffCount > 0 ? `, ${inactiveStaffCount} inactive` : ''}) &bull; ${isBudgewoi ? 'Scenic Drive, Budgewoi NSW' : 'Peninsula Plaza, Woy Woy NSW'}`;
   }
   if (storeSwitchLabelEl) {
     storeSwitchLabelEl.textContent = isBudgewoi ? 'Switch to Amcal Woy Woy (33 Staff)' : 'Switch to Budgewoi DDS (15 Staff)';

@@ -507,7 +507,7 @@ function getSlideData() {
             <i class="fa-solid fa-heart-pulse"></i> Our Team is Our Greatest Strength
           </h4>
           <p style="font-size: 0.92rem; line-height: 1.6; color: var(--text-secondary); margin: 0;">
-            Amcal Pharmacy Woy Woy is Deepwater Plaza’s premier community healthcare hub. We are launching this custom-engineered platform to give every team member complete schedule transparency, guaranteed Fair Work protections, predictable work-life balance, and frictionless mobile access.
+            Amcal Pharmacy Woy Woy is Peninsula Plaza’s premier community healthcare hub. We are launching this custom-engineered platform to give every team member complete schedule transparency, guaranteed Fair Work protections, predictable work-life balance, and frictionless mobile access.
           </p>
         </div>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; text-align: center;">
@@ -582,7 +582,7 @@ function getSlideData() {
               <strong style="font-size: 0.9rem; color: var(--text-primary);">1-Tap Clock-In</strong>
             </div>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
-              Arrive at Deepwater Plaza, open the app, and tap <strong>"Clock In"</strong>. Geofence confirms your attendance.
+              Arrive at Peninsula Plaza, open the app, and tap <strong>"Clock In"</strong>. Geofence confirms your attendance.
             </p>
           </div>
           <div class="glass-card" style="padding: 14px; border: 1px solid rgba(245, 158, 11, 0.2);">

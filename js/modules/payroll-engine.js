@@ -945,7 +945,7 @@ function getWeeklyPayrollSummaryForKatherine(weekStartDate = null, mode = 'actua
 
   const result = {
     storeName: 'Amcal Pharmacy Woy Woy',
-    storeAddress: 'Deepwater Plaza, Woy Woy NSW 2256',
+    storeAddress: 'Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256',
     monDate: monStr,
     sunDate: sunStr,
     monDateObj: mon,
@@ -1196,7 +1196,7 @@ async function copyKatPayrollSummaryToClipboard() {
   let text = `====================================================\n`;
   text += `AMCAL PHARMACY WOY WOY — WEEKLY PAYROLL SUMMARY\n`;
   text += `Period: Monday ${summary.monDate} to Sunday ${summary.sunDate}\n`;
-  text += `Store: Deepwater Plaza, Woy Woy NSW 2256\n`;
+  text += `Store: Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256\n`;
   text += `Prepared for: Katherine Nguyen (External Payroll Processing)\n`;
   text += `Mode: ${summary.mode === 'actual' ? 'Approved Timecards (Actual Punches)' : summary.mode === 'scheduled' ? 'Scheduled Roster Hours' : 'Reconciled'}\n`;
   text += `====================================================\n\n`;

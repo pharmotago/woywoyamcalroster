@@ -160,7 +160,8 @@ function exportRosterIcs(targetEmployeeId = null, isDaily = false) {
     icsLines.push(`DTEND:${dateFormatted}T${endTimeFormatted}`);
     icsLines.push(`SUMMARY:Shift: ${s.role || 'Staff'} (${empName})`);
     icsLines.push(`DESCRIPTION:Role: ${s.role}\\nEmployee: ${empName}\\nStore: Amcal Pharmacy Woy Woy\\nNotes: ${(s.notes || '').replace(/\n/g, ' ')}`);
-    icsLines.push('LOCATION:Amcal Pharmacy Woy Woy, Deepwater Plaza, NSW 2256');
+    const isBudgewoiShift = s.pharmacyId === 'budgewoi_dds' || (s.notes && s.notes.includes('budgewoi'));
+    icsLines.push(`LOCATION:${isBudgewoiShift ? 'Budgewoi Discount Drug Stores, 67 Scenic Drive, Budgewoi NSW 2262' : 'Amcal Pharmacy Woy Woy, Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256'}`);
     icsLines.push('STATUS:CONFIRMED');
     icsLines.push('END:VEVENT');
   });
