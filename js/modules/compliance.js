@@ -32,25 +32,26 @@ function renderModalCertificatesList() {
   const todayStr = formatDateISO(new Date());
 
   certs.forEach((cert, idx) => {
-    const isExpired = cert.expiryDate && cert.expiryDate < todayStr;
-    const daysLeft = cert.expiryDate ? Math.round((new Date(cert.expiryDate + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 3600 * 24)) : null;
+    const certExp = typeof cert === 'object' && cert ? cert.expiryDate : null;
+    const isExpired = certExp && certExp < todayStr;
+    const daysLeft = certExp ? Math.round((new Date(certExp + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 3600 * 24)) : null;
     const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
 
     let badgeClass = 'badge badge-success';
-    let badgeText = cert.expiryDate ? `Expires: ${cert.expiryDate}` : 'Active / Lifetime';
+    let badgeText = certExp ? `Expires: ${certExp}` : 'Active / Lifetime';
     if (isExpired) {
       badgeClass = 'badge badge-danger';
-      badgeText = `🔴 Expired (${cert.expiryDate})`;
+      badgeText = `🔴 Expired (${certExp})`;
     } else if (isExpiringSoon) {
       badgeClass = 'badge badge-warning';
-      badgeText = `⚠️ Expiring in ${daysLeft}d (${cert.expiryDate})`;
+      badgeText = `⚠️ Expiring in ${daysLeft}d (${certExp})`;
     }
 
     const card = document.createElement('div');
     card.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); border:1px solid var(--border-glass); border-radius:4px; padding:6px 10px; font-size:0.78rem;';
     card.innerHTML = `
       <div>
-        <strong style="color:var(--text-primary);">${cert.type}</strong>
+        <strong style="color:var(--text-primary);">${typeof cert === 'string' ? cert : (cert.type || cert.name || 'Certificate')}</strong>
         ${cert.certNumber ? `<span style="color:var(--accent-cyan); font-family:monospace; margin-left:6px;">#${cert.certNumber}</span>` : ''}
         ${cert.notes ? `<div style="color:var(--text-muted); font-size:0.72rem; margin-top:2px;">${cert.notes}</div>` : ''}
       </div>

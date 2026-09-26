@@ -97,8 +97,16 @@ export function detectAndApplyTenant() {
     tenantKey = 'budgewoi';
   } else if (isAmcalParam) {
     tenantKey = 'woywoy';
+  } else if (host.includes('budgewoi') || host.includes('dds')) {
+    // Specific domain hostname takes highest precedence
+    tenantKey = 'budgewoi';
+    try { localStorage.setItem('pkrosters_active_tenant', 'budgewoi_dds'); } catch (_) {}
+  } else if (host.includes('woywoy') || host.includes('amcal')) {
+    // Specific domain hostname takes highest precedence
+    tenantKey = 'woywoy';
+    try { localStorage.setItem('pkrosters_active_tenant', 'amcal_woywoy'); } catch (_) {}
   } else if (isExecutive) {
-    // Executive user: honor explicit store switcher choice in localStorage
+    // Executive user on neutral domain (e.g. localhost): honor explicit store switcher choice in localStorage
     try {
       const stored = (localStorage.getItem('pkrosters_active_tenant') || '').toLowerCase();
       if (stored.includes('budgewoi') || stored.includes('dds')) {
@@ -969,13 +977,16 @@ window.onEmployeeDobChange = onEmployeeDobChange;
 function renderModalCertificatesList() {
   const container = document.getElementById('emp-certificates-list');
   if (!container) return;
-  const certs = state.activeEmployeeModalCerts || [];
-  container.innerHTML = certs.map((c, i) => `
+  const certs = window.currentEditingCertificates || state.activeEmployeeModalCerts || [];
+  container.innerHTML = certs.map((c, i) => {
+    const certTitle = typeof c === 'string' ? c : (c?.type || c?.name || 'Certificate');
+    return `
     <span class="badge badge-cyan" style="display:inline-flex; align-items:center; gap:4px; margin:2px;">
-      ${c}
+      ${certTitle}
       <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="removeCertificateFromEmployeeModal(${i})"></i>
     </span>
-  `).join('') || '<span style="font-size:0.8rem; color:var(--text-muted);">No compliance certificates added</span>';
+  `;
+  }).join('') || '<span style="font-size:0.8rem; color:var(--text-muted);">No compliance certificates added</span>';
 }
 window.renderModalCertificatesList = renderModalCertificatesList;
 
@@ -4624,7 +4635,10 @@ async function handleShiftSubmit(event) {
       // Clinical Governance: AHPRA Registration & CPR Expiration Guard
       if (emp && emp.certificates && Array.isArray(emp.certificates)) {
         const todayStr = formatDateISO(new Date());
-        const expiredAhpra = emp.certificates.find(c => (c.type || '').includes('AHPRA') && c.expiryDate && c.expiryDate < todayStr);
+        const expiredAhpra = emp.certificates.find(c => {
+          const typeStr = (typeof c === 'string' ? c : (c?.type || '')).toString();
+          return typeStr.includes('AHPRA') && c?.expiryDate && c.expiryDate < todayStr;
+        });
         if (expiredAhpra && (role.toLowerCase().includes('pharmacist') || role.toLowerCase().includes('dispensary'))) {
           if (!confirm(`⚠️ Clinical Governance Warning: ${emp.name}'s AHPRA Registration expired on ${expiredAhpra.expiryDate}.\n\nAre you sure you want to schedule this employee for ${role}?`)) {
             return;
@@ -5479,27 +5493,32 @@ function renderEmployeesList() {
         if (emp.certificates && Array.isArray(emp.certificates) && emp.certificates.length > 0) {
           certBadges = '<div style="display:flex; flex-wrap:wrap; gap:4px; margin: 8px 0 4px 0;">';
           emp.certificates.forEach(c => {
-            const isExpired = c.expiryDate && c.expiryDate < todayStr;
-            const daysLeft = c.expiryDate ? Math.round((new Date(c.expiryDate + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 3600 * 24)) : null;
+            const certType = typeof c === 'string' ? c : (c?.type || c?.name || 'Certificate');
+            const certExp = typeof c === 'object' && c ? c.expiryDate : null;
+            const certNum = typeof c === 'object' && c ? c.certNumber : null;
+
+            const isExpired = certExp && certExp < todayStr;
+            const daysLeft = certExp ? Math.round((new Date(certExp + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 3600 * 24)) : null;
             const isExpiringSoon = daysLeft !== null && daysLeft >= 0 && daysLeft <= 30;
 
             let bg = 'rgba(16,185,129,0.12)';
             let color = '#10b981';
             let border = '1px solid rgba(16,185,129,0.3)';
-            let text = c.type.split(' ')[0] + (c.certNumber ? ` #${c.certNumber}` : '');
+            const displayTitle = certType.split(' ')[0] || certType;
+            let text = displayTitle + (certNum ? ` #${certNum}` : '');
 
             if (isExpired) {
               bg = 'rgba(239,68,68,0.15)';
               color = '#f87171';
               border = '1px solid rgba(239,68,68,0.4)';
-              text = `🔴 Expired: ${c.type}`;
+              text = `🔴 Expired: ${certType}`;
             } else if (isExpiringSoon) {
               bg = 'rgba(245,158,11,0.15)';
               color = '#fbbf24';
               border = '1px solid rgba(245,158,11,0.4)';
-              text = `⚠️ ${daysLeft}d left: ${c.type}`;
+              text = `⚠️ ${daysLeft}d left: ${certType}`;
             }
-            certBadges += `<span class="badge" style="background:${bg}; color:${color}; border:${border}; font-size:10px; padding:2px 6px;" title="${c.type} (${c.expiryDate ? 'Expires: ' + c.expiryDate : 'No Expiry'})">${text}</span>`;
+            certBadges += `<span class="badge" style="background:${bg}; color:${color}; border:${border}; font-size:10px; padding:2px 6px;" title="${certType} (${certExp ? 'Expires: ' + certExp : 'No Expiry'})">${text}</span>`;
           });
           certBadges += '</div>';
         }

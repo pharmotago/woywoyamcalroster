@@ -46,7 +46,14 @@ const BriskDB = (function() {
       } catch (_) {}
     }
 
-    // Executive Clearance Override (Peter Kim, Katherine Nguyen, Glen Kanawati)
+    // Strict Domain Hostname Binding (Highest Precedence on Specific Production URLs)
+    if (typeof window !== 'undefined' && window.location) {
+      const h = (window.location.hostname || '').toLowerCase();
+      if (h.includes('budgewoi') || h.includes('dds')) return 'budgewoi_dds';
+      if (h.includes('woywoy') || h.includes('amcal')) return 'amcal_woywoy';
+    }
+
+    // Executive Clearance Override (for neutral domains like localhost)
     try {
       const session = (typeof getSession === 'function') ? getSession() : null;
       const currentUser = (typeof window !== 'undefined' && window.state && window.state.currentUser) || session;
@@ -60,12 +67,6 @@ const BriskDB = (function() {
       }
     } catch (_) {}
 
-    // Strict Domain Hostname Binding for Non-Executive Staff
-    if (typeof window !== 'undefined' && window.location) {
-      const h = (window.location.hostname || '').toLowerCase();
-      if (h.includes('budgewoi') || h.includes('dds')) return 'budgewoi_dds';
-      if (h.includes('woywoy') || h.includes('amcal')) return 'amcal_woywoy';
-    }
     const fromStorage = (typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) || '';
     return normalizePharmacyId(fromStorage);
   }

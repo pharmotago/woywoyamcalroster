@@ -1198,6 +1198,63 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 27: Employee Directory Certificate Resilience & Hostname Authority Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 27: Employee Directory Certificate Resilience & Hostname Authority Guard]');
+
+// 1. Employee Directory Certificate Polymorphic Guard (app.js)
+const hasCertPolymorphicGuard = appJsContent.includes("typeof c === 'string' ? c : (c?.type || c?.name || 'Certificate')") &&
+                                appJsContent.includes("certType.split(' ')[0] || certType");
+assertTest(
+  'Employee Directory Certificate Polymorphic Guard',
+  hasCertPolymorphicGuard,
+  'renderEmployeesList in js/app.js must safely handle string and object certificates to prevent TypeError when rendering staff with Webster Care competencies.'
+);
+
+// 2. Hostname-First Store Authority Guard (app.js)
+const hasHostnameAuthorityInApp = appJsContent.includes("host.includes('budgewoi') || host.includes('dds')") &&
+                                  appJsContent.includes("host.includes('woywoy') || host.includes('amcal')");
+assertTest(
+  'Hostname-First Store Authority Guard (app.js)',
+  hasHostnameAuthorityInApp,
+  'detectAndApplyTenant in js/app.js must give production domain hostnames authority to prevent stale localStorage cross-domain locks.'
+);
+
+// 3. Hostname-First Store Authority Guard (database.js)
+const dbHostIdx = dbJsContent.indexOf('Strict Domain Hostname Binding');
+const dbExecIdx = dbJsContent.indexOf('Executive Clearance Override');
+const hasDbHostnamePrecedence = dbHostIdx !== -1 && dbExecIdx !== -1 && dbHostIdx < dbExecIdx;
+assertTest(
+  'Hostname-First Store Authority Guard (database.js)',
+  hasDbHostnamePrecedence,
+  'getActiveTenant in js/database.js must check hostname before executive localStorage to ensure accurate store data sync.'
+);
+
+// 4. Compliance Modal Certificate Polymorphic Guard
+const complianceJsPath = path.join(__dirname, '../js/modules/compliance.js');
+let hasComplianceCertGuard = false;
+if (fs.existsSync(complianceJsPath)) {
+  const complianceContent = fs.readFileSync(complianceJsPath, 'utf8');
+  hasComplianceCertGuard = complianceContent.includes("typeof cert === 'string' ? cert : (cert.type || cert.name || 'Certificate')") ||
+                           complianceContent.includes("typeof cert === 'string'");
+}
+assertTest(
+  'Compliance Modal Certificate Polymorphic Guard',
+  hasComplianceCertGuard,
+  'renderModalCertificatesList in js/modules/compliance.js must safely support string and object certificates.'
+);
+
+// 5. Version Alignment v10.5.15 Guard
+const hasVersion10515Aligned = indexHtmlLatest.includes("APP_VERSION = '10.5.15';") &&
+                               indexHtmlLatest.includes("app.js?v=10.5.15") &&
+                               indexHtmlLatest.includes("styles.css?v=10.5.15");
+assertTest(
+  'Version Alignment v10.5.15 Guard',
+  hasVersion10515Aligned,
+  'index.html must be aligned to v10.5.15 across APP_VERSION, app.js, and styles.css.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');
