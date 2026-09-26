@@ -2244,8 +2244,56 @@ const BriskDB = (function() {
 
     saveSettings: async function(settings) {
       _settings = { ..._settings, ...settings };
-      const { error } = await supabase.from('brisk_settings').upsert(mapSettingsToDb(_settings));
-      if (error) console.error('Failed to save settings to Supabase:', error);
+      const payload = mapSettingsToDb(_settings);
+
+      // 1. Primary Strategy: Unified Serverless Mutate API (Bypasses RLS with service role key)
+      try {
+        const token = await getMutateAuthToken();
+        const session = getSession() || {};
+        const currentTenant = (typeof getActiveTenant === 'function') ? getActiveTenant() : 'amcal_woywoy';
+        const res = await fetch('/api/schedule/mutate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token ? ('Bearer ' + token) : '',
+            'X-User-Email': session.email || '',
+            'x-pharmacy-id': currentTenant
+          },
+          body: JSON.stringify({
+            entity: 'settings',
+            action: 'upsert',
+            settings: payload,
+            pharmacyId: currentTenant,
+            callerEmail: session.email || ''
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'settings' } }));
+            }
+            return { success: true, settings: data.settings };
+          }
+          if (data && data.error) {
+            console.warn('[BriskDB] Mutate settings response error:', data.error);
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[BriskDB] Serverless saveSettings notice, falling back to direct Supabase SDK:', apiErr);
+      }
+
+      // 2. Direct Supabase Client fallback
+      const { data, error } = await supabase.from('brisk_settings').upsert(payload).select().maybeSingle();
+      if (error) {
+        console.error('Failed to save settings to Supabase:', error);
+        throw error;
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('brisk-db-updated', { detail: { type: 'settings' } }));
+      }
+      return { success: true, settings: data };
     },
 
     exportData: function() {

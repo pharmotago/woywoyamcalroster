@@ -2507,7 +2507,12 @@ function getOrderedActiveEmployees(includeOwners = false) {
     if (e.active === false) return false;
     if (!includeOwners) {
       const r = (e.role || '').toLowerCase().trim();
-      if (r === 'owner' || r === 'partner' || r === 'managing partner') return false;
+      const isOwnerRole = (r === 'owner' || r === 'partner' || r === 'managing partner');
+      if (isOwnerRole) {
+        const hasShifts = state.shifts && state.shifts.some(s => s.employeeId === e.id);
+        const isWorkingOwner = e.email && (e.email.includes('nguyek') || e.email.includes('pharmotago'));
+        if (!hasShifts && !isWorkingOwner) return false;
+      }
     }
     return true;
   }).sort((a, b) => {
@@ -5434,6 +5439,16 @@ function renderEmployeesList() {
       </div>
     ` : '';
 
+    const dept = typeof getEmployeeDepartment === 'function' ? getEmployeeDepartment(emp) : 'retail';
+    let deptBadge = '';
+    if (dept === 'dispensary') {
+      deptBadge = '<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); font-size:10px; margin-left:6px;"><i class="fa-solid fa-prescription"></i> Dispensary</span>';
+    } else if (dept === 'webster') {
+      deptBadge = '<span class="badge" style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); font-size:10px; margin-left:6px;"><i class="fa-solid fa-box-archive"></i> Webster Care</span>';
+    } else {
+      deptBadge = '<span class="badge" style="background:rgba(0,102,204,0.15); color:var(--accent-cyan); border:1px solid rgba(0,102,204,0.3); font-size:10px; margin-left:6px;"><i class="fa-solid fa-cash-register"></i> Retail & Tills</span>';
+    }
+
     const statusBadge = isInactive 
       ? '<span class="badge" style="background:rgba(239,68,68,0.15); color:#f87171; border:1px solid rgba(239,68,68,0.3);">Inactive</span>'
       : '<span class="badge badge-success">Active</span>';
@@ -5442,7 +5457,7 @@ function renderEmployeesList() {
       <div class="employee-card-header">
         <div class="emp-details">
           <h4>${emp.name}</h4>
-          <p>${emp.role}</p>
+          <p style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-top:2px;">${emp.role} ${deptBadge}</p>
         </div>
         ${statusBadge}
       </div>

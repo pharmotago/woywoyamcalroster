@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.5.12">
+  <link rel="stylesheet" href="css/styles.css?v=10.5.13">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -2801,18 +2801,35 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.12)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.13)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
 
-        <!-- v10.5.12 -->
+        <!-- v10.5.13 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.12 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.13 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Serverless Settings Mutation Engine, Anti-Revert Sync & Complete Woy Woy Staff Integrity</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">26 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Serverless Settings Mutation Engine:</strong> Added <code>entity === 'settings'</code> handler to <code>/api/schedule/mutate</code> running with administrative service role permissions, completely eliminating client-side Row-Level Security (RLS) write rejections when saving store trading hours and organization settings.</li>
+            <li><strong>Sync API Trading Hours Override Prevention:</strong> Fixed server synchronization in <code>/api/schedule/sync</code> to ensure custom saved trading hours (days 0–6) in the database take precedence over default hours, permanently stopping trading hour modifications from reverting back.</li>
+            <li><strong>Complete Woy Woy Employee Integrity:</strong> Verified all 33 staff members (28 active staff) in the Amcal Pharmacy Woy Woy roster. Updated the scheduler grid so working owners (Katherine Nguyen, Peter Kim) and rostered staff are never inadvertently hidden from schedule rows.</li>
+            <li><strong>Enhanced Employee Directory Badging:</strong> Added clear visual department badges (<code>💊 Dispensary</code>, <code>🛒 Retail &amp; Tills</code>, <code>📦 Webster Care</code>) on all employee cards in the management directory for instant multi-department clarity.</li>
+          </ul>
+        </div>
+
+        <!-- v10.5.12 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:700;">v10.5.12</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Dispensary Leadership Authorization, Trading Hours Persistence & Leave Privacy Guard</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">26 Sep 2026</span>
@@ -3194,11 +3211,11 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.5.12"></script>
+  <script type="module" src="js/app.js?v=10.5.13"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.5.12';
+    const APP_VERSION = '10.5.13';
     window.APP_VERSION = APP_VERSION;
 
     // Global helper to force-purge all caches and reload the latest version with strict loop protection

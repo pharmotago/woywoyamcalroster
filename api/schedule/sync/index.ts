@@ -242,11 +242,12 @@ function normalizePharmacyId(raw: unknown): 'amcal_woywoy' | 'budgewoi_dds' {
     const storeSettings = {
       ...matchingRow,
       id: isBudgewoi ? 'settings_budgewoi_dds' : 'global_settings',
-      company_name: isBudgewoi 
+      company_name: matchingRow.company_name || (isBudgewoi 
         ? 'Budgewoi Discount Drug Stores Rosters' 
-        : 'Amcal Pharmacy Woy Woy Rosters',
+        : 'Amcal Pharmacy Woy Woy Rosters'),
       trading_hours: {
         ...baseTradingHours,
+        ...rawTh,
         ...(rawTh._employee_order ? { _employee_order: rawTh._employee_order } : {}),
         ...(rawTh._sales_targets ? { _sales_targets: rawTh._sales_targets } : {}),
         ...(rawTh._actual_pos_sales ? { _actual_pos_sales: rawTh._actual_pos_sales } : {})

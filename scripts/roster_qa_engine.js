@@ -1143,6 +1143,61 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 26: Settings Persistence Engine & Amcal Woy Woy Employee Integrity
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 26: Settings Persistence Engine & Amcal Woy Woy Employee Integrity]');
+
+// 1. Serverless Mutate API Settings Handler Guard
+const hasMutateSettingsHandler = suite25_mutateContent.includes("if (entity === 'settings')") &&
+                                 suite25_mutateContent.includes("!isManagerOrOwner") &&
+                                 suite25_mutateContent.includes(".from('brisk_settings')") &&
+                                 suite25_mutateContent.includes(".upsert([upsertPayload])");
+assertTest(
+  'Serverless Mutate API Settings Handler Guard',
+  hasMutateSettingsHandler,
+  'Mutate API (api/schedule/mutate/index.ts) must support entity: "settings" with manager authorization and brisk_settings upsert.'
+);
+
+// 2. Sync API Trading Hours Override Prevention Guard
+const hasSyncTradingHoursPreserved = suite25_syncContent.replace(/\r\n/g, '\n').includes('...baseTradingHours,\n        ...rawTh,');
+assertTest(
+  'Sync API Trading Hours Override Prevention Guard',
+  hasSyncTradingHoursPreserved,
+  'Sync API (api/schedule/sync/index.ts) must spread rawTh after baseTradingHours to preserve custom saved daily trading hours.'
+);
+
+// 3. Database SaveSettings Serverless Mutate Strategy Guard
+const hasDbSaveSettingsMutate = dbJsContent.includes("entity: 'settings'") &&
+                                dbJsContent.includes("action: 'upsert'") &&
+                                dbJsContent.includes("fetch('/api/schedule/mutate'");
+assertTest(
+  'Database SaveSettings Serverless Mutate Strategy Guard',
+  hasDbSaveSettingsMutate,
+  'BriskDB.saveSettings in js/database.js must dispatch to /api/schedule/mutate with entity: "settings" to bypass RLS lockouts.'
+);
+
+// 4. Scheduler Working Owners Visibility Guard
+const hasWorkingOwnerVisibility = appJsContent.includes('isWorkingOwner') &&
+                                  appJsContent.includes('hasShifts') &&
+                                  appJsContent.includes('nguyek') &&
+                                  appJsContent.includes('pharmotago');
+assertTest(
+  'Scheduler Working Owners Visibility Guard',
+  hasWorkingOwnerVisibility,
+  'getOrderedActiveEmployees in js/app.js must include working owners (Katherine Nguyen, Peter Kim) and any owner with scheduled shifts.'
+);
+
+// 5. Employee Directory Department Badging Guard
+const hasEmpDeptBadges = appJsContent.includes("Dispensary</span>") &&
+                         appJsContent.includes("Webster Care</span>") &&
+                         appJsContent.includes("Retail & Tills</span>");
+assertTest(
+  'Employee Directory Department Badging Guard',
+  hasEmpDeptBadges,
+  'renderEmployeesList in js/app.js must render department badges (Dispensary, Webster Care, Retail & Tills) on employee cards.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

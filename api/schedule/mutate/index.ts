@@ -135,11 +135,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!isMultiStoreExecutive && callerEmail) {
       const { data: callerEmp } = await supabaseAdmin
         .from('brisk_employees')
-        .select('id, availability')
+        .select('id, pharmacy_id, availability')
         .eq('email', callerEmail)
         .maybeSingle();
       if (callerEmp) {
         const callerStore = normalizePharmacyId(
+          callerEmp.pharmacy_id ||
           callerEmp.availability?.pharmacy_id || 
           callerEmp.availability?.pharmacyId
         );
@@ -682,6 +683,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (error) throw error;
         return jsonRes(res, { success: true, timecard: data }, 200);
       }
+    }
+
+    // =========================================================================
+    // 6. ENTITY: SETTINGS (Manager / Owner Only)
+    // =========================================================================
+    if (entity === 'settings') {
+      if (!isManagerOrOwner) {
+        return jsonRes(res, { error: 'Forbidden: Only managers and owners can update organization settings.' }, 403);
+      }
+
+      const isBudgewoi = targetPharmacy === 'budgewoi_dds';
+      const targetRowId = isBudgewoi ? 'settings_budgewoi_dds' : 'global_settings';
+      const settingsData = body.settings || body.data || body;
+      const newTradingHours = settingsData.trading_hours || settingsData.tradingHours || {};
+      const defaultCompanyName = isBudgewoi ? 'Budgewoi Discount Drug Stores Rosters' : 'Amcal Pharmacy Woy Woy Rosters';
+      const companyName = settingsData.company_name || settingsData.companyName || defaultCompanyName;
+
+      // Fetch existing settings row to ensure preservation of unmentioned fields
+      const { data: existingRow } = await supabaseAdmin
+        .from('brisk_settings')
+        .select('*')
+        .eq('id', targetRowId)
+        .maybeSingle();
+
+      const existingTh = (existingRow && existingRow.trading_hours && typeof existingRow.trading_hours === 'object') ? existingRow.trading_hours : {};
+      const mergedTh: Record<string, unknown> = {
+        ...existingTh,
+        ...newTradingHours
+      };
+
+      if (settingsData.salesTargets) mergedTh._sales_targets = settingsData.salesTargets;
+      if (settingsData.actualPosSales) mergedTh._actual_pos_sales = settingsData.actualPosSales;
+      if (Array.isArray(settingsData.employeeOrder)) mergedTh._employee_order = settingsData.employeeOrder;
+
+      const upsertPayload: Record<string, unknown> = {
+        id: targetRowId,
+        company_name: companyName,
+        trading_hours: mergedTh,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabaseAdmin
+        .from('brisk_settings')
+        .upsert([upsertPayload])
+        .select()
+        .maybeSingle();
+
+      if (error) throw error;
+      return jsonRes(res, { success: true, settings: data }, 200);
     }
 
     return jsonRes(res, { error: 'Unsupported entity or action.' }, 400);
