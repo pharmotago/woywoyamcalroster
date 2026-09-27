@@ -1302,14 +1302,52 @@ assertTest(
   'index.html kat-print-header must display Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256 • Ph: (02) 4342 2256.'
 );
 
-// 5. Version Alignment v10.5.16 Guard
-const hasVersion10516Aligned = freshIndexHtml.includes("APP_VERSION = '10.5.16';") &&
-                               freshIndexHtml.includes("app.js?v=10.5.16") &&
-                               freshIndexHtml.includes("styles.css?v=10.5.16");
+// 5. Version Alignment v10.5.16 / v10.5.17 Guard
+const hasVersion10516Aligned = (freshIndexHtml.includes("APP_VERSION = '10.5.17';") || freshIndexHtml.includes("APP_VERSION = '10.5.16';")) &&
+                               (freshIndexHtml.includes("app.js?v=10.5.17") || freshIndexHtml.includes("app.js?v=10.5.16")) &&
+                               (freshIndexHtml.includes("styles.css?v=10.5.17") || freshIndexHtml.includes("styles.css?v=10.5.16"));
 assertTest(
-  'Version Alignment v10.5.16 Guard',
+  'Version Alignment Guard (v10.5.16+)',
   hasVersion10516Aligned,
-  'index.html must be aligned to v10.5.16 across APP_VERSION, app.js, and styles.css.'
+  'index.html must be aligned across APP_VERSION, app.js, and styles.css.'
+);
+
+// ---------------------------------------------------------
+// Test Suite 29: Store Separation & Dedicated Standalone Architecture (v10.5.17)
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 29: Store Separation & Dedicated Standalone Architecture]');
+
+// 1. Dedicated Budgewoi Portal Redirection Guard in app.js
+const hasBudgewoiPortalRedirect = freshAppJs.includes("window.location.href = 'https://budgewoiddsroster.vercel.app'") ||
+                                  freshAppJs.includes('budgewoiddsroster.vercel.app');
+assertTest(
+  'Dedicated Budgewoi Portal Redirection Guard',
+  hasBudgewoiPortalRedirect,
+  'app.js switchStoreTenant must redirect to https://budgewoiddsroster.vercel.app when Budgewoi DDS is selected.'
+);
+
+// 2. Employee Directory Dedicated Portal Action Guard
+const hasEmployeePortalAction = freshAppJs.includes("'Open Budgewoi DDS Portal (15 Staff) →'") ||
+                                freshAppJs.includes('Open Budgewoi DDS Portal');
+assertTest(
+  'Employee Directory Dedicated Portal Action Guard',
+  hasEmployeePortalAction,
+  'app.js renderEmployeesList must direct leadership to the dedicated Budgewoi portal.'
+);
+
+// 3. Version Alignment v10.5.17 Across All Release Artifacts
+const swJsContent = fs.readFileSync(path.join(rootDir, 'sw.js'), 'utf8');
+const versionJsonContent = JSON.parse(fs.readFileSync(path.join(rootDir, 'version.json'), 'utf8'));
+const pkgJsonContent = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
+
+const hasVersion10517SW = swJsContent.includes("CACHE_NAME = 'amcal-rosters-v10.5.17'");
+const hasVersion10517Meta = versionJsonContent.version === '10.5.17';
+const hasRelease10517Script = typeof pkgJsonContent.scripts['release:v10.5.17'] === 'string';
+
+assertTest(
+  'Version Alignment v10.5.17 Release Artifacts Guard',
+  hasVersion10517SW && hasVersion10517Meta && hasRelease10517Script,
+  'sw.js (CACHE_NAME), version.json (version), and package.json (release:v10.5.17) must be aligned to v10.5.17.'
 );
 
 // ---------------------------------------------------------

@@ -208,16 +208,26 @@ export async function switchStoreTenant(targetStoreId) {
   if (menu) menu.style.display = 'none';
 
   const isBudgewoi = targetStoreId.includes('budgewoi') || targetStoreId.includes('dds');
-  const targetId = isBudgewoi ? 'budgewoi_dds' : 'amcal_woywoy';
+  if (isBudgewoi) {
+    if (typeof showToast === 'function') {
+      showToast('Opening dedicated Budgewoi Discount Drug Stores Roster Portal...', 'info');
+    }
+    setTimeout(() => {
+      window.location.href = 'https://budgewoiddsroster.vercel.app';
+    }, 400);
+    return;
+  }
+
+  const targetId = 'amcal_woywoy';
   localStorage.setItem('pkrosters_active_tenant', targetId);
   detectAndApplyTenant();
   updateMultiStoreSwitcherVisibility();
 
   if (typeof showToast === 'function') {
-    showToast(`Switched active roster to ${isBudgewoi ? 'Budgewoi Discount Drug Stores' : 'Amcal Pharmacy Woy Woy'}`, 'info');
+    showToast('Active roster: Amcal Pharmacy Woy Woy', 'info');
   }
 
-  // Trigger re-sync from server for the selected store
+  // Trigger re-sync from server for Amcal Woy Woy
   if (window.BriskDB && typeof window.BriskDB.syncFromServer === 'function') {
     try {
       const user = (window.state && window.state.currentUser) || window.BriskDB.getSession();
@@ -5286,11 +5296,7 @@ function setEmployeePanelDeptFilter(dept) {
 window.setEmployeePanelDeptFilter = setEmployeePanelDeptFilter;
 
 async function toggleStoreFromEmployeePanel() {
-  const activeTenantId = (window.currentTenant && window.currentTenant.id) || 
-    ((typeof localStorage !== 'undefined' && localStorage.getItem('pkrosters_active_tenant')) ? localStorage.getItem('pkrosters_active_tenant') : 'amcal_woywoy');
-  const isBudgewoi = activeTenantId.includes('budgewoi') || activeTenantId.includes('dds');
-  const targetStore = isBudgewoi ? 'amcal_woywoy' : 'budgewoi_dds';
-  await switchStoreTenant(targetStore);
+  await switchStoreTenant('budgewoi_dds');
 }
 window.toggleStoreFromEmployeePanel = toggleStoreFromEmployeePanel;
 
@@ -5365,7 +5371,7 @@ function renderEmployeesList() {
     storeStatsEl.innerHTML = `Showing <strong>${activeStaffCount} active staff</strong> (${totalRegistered} total on record${inactiveStaffCount > 0 ? `, ${inactiveStaffCount} inactive` : ''}) &bull; ${isBudgewoi ? 'Scenic Drive, Budgewoi NSW' : 'Peninsula Plaza, Woy Woy NSW'}`;
   }
   if (storeSwitchLabelEl) {
-    storeSwitchLabelEl.textContent = isBudgewoi ? 'Switch to Amcal Woy Woy (33 Staff)' : 'Switch to Budgewoi DDS (15 Staff)';
+    storeSwitchLabelEl.textContent = isBudgewoi ? 'Open Amcal Woy Woy Portal →' : 'Open Budgewoi DDS Portal (15 Staff) →';
   }
 
   // Update Department Counts on Filter Pills

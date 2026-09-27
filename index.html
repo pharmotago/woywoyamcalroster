@@ -12,7 +12,7 @@
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css?v=10.5.16">
+  <link rel="stylesheet" href="css/styles.css?v=10.5.17">
   
   <!-- Critical Mobile Layout Guard (Guarantees clean mobile view regardless of cache status) -->
   <style>
@@ -397,14 +397,14 @@
                 <span class="store-dot dot-amcal"></span>
                 <div class="store-text">
                   <strong>Amcal Pharmacy Woy Woy</strong>
-                  <small>Central Coast &bull; Royal Blue</small>
+                  <small>Peninsula Plaza &bull; Active Database</small>
                 </div>
               </div>
               <div class="store-menu-item" data-store-id="budgewoi_dds">
                 <span class="store-dot dot-budgewoi"></span>
                 <div class="store-text">
                   <strong>Budgewoi Discount Drug Stores</strong>
-                  <small>Budgewoi &bull; Royal Purple &amp; Orange</small>
+                  <small>Dedicated Portal &bull; budgewoiddsroster.vercel.app</small>
                 </div>
               </div>
             </div>
@@ -424,7 +424,7 @@
             <i class="fa-solid fa-person-chalkboard text-indigo"></i> <span>All-Hands Deck</span>
           </button>
           <button id="btn-changelog-modal" class="btn btn-outline" onclick="openChangelogModal()" style="height: 36px; padding: 0 10px; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border-color: var(--border-glass);" title="System Updates & Changelog">
-            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.11)</span>
+            <i class="fa-solid fa-list-check text-cyan"></i> <span>Updates (v10.5.17)</span>
           </button>
           <button id="btn-global-refresh" class="btn btn-icon" onclick="triggerGlobalRefresh()" aria-label="Refresh Data" title="Refresh Data">
             <i class="fa-solid fa-arrows-rotate"></i>
@@ -916,8 +916,8 @@
             </div>
           </div>
           <div id="emp-store-actions" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-outline" id="btn-emp-store-switch" onclick="toggleStoreFromEmployeePanel()" style="font-size: 0.85rem; padding: 6px 14px; border-color: rgba(255, 255, 255, 0.2);">
-              <i class="fa-solid fa-repeat text-cyan"></i> <span id="emp-store-switch-label">Switch to Budgewoi DDS (15 Staff)</span>
+            <button class="btn btn-outline" id="btn-emp-store-switch" onclick="toggleStoreFromEmployeePanel()" style="font-size: 0.85rem; padding: 6px 14px; border-color: rgba(255, 255, 255, 0.2);" title="Open dedicated standalone Budgewoi DDS Roster Portal">
+              <i class="fa-solid fa-arrow-up-right-from-square text-cyan"></i> <span id="emp-store-switch-label">Open Budgewoi DDS Portal (15 Staff) &rarr;</span>
             </button>
             <button class="btn btn-outline" id="btn-emp-refresh-sync" onclick="refreshEmployeePanelSync()" title="Re-sync employee data from Supabase cloud" style="font-size: 0.85rem; padding: 6px 10px;">
               <i class="fa-solid fa-arrows-rotate text-emerald"></i>
@@ -2801,18 +2801,34 @@
           </div>
           <div>
             <h3 style="margin:0; font-size:1.05rem;">System Updates & Changelog</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy & Budgewoi DDS Roster Platform (Current: v10.5.16)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Amcal Pharmacy Woy Woy Roster Platform (Current: v10.5.17)</span>
           </div>
         </div>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeChangelogModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding-right: 4px;">
 
-        <!-- v10.5.16 -->
+        <!-- v10.5.17 -->
         <div style="margin-bottom: 16px; padding: 14px; background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-md);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.16 (Latest)</span>
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:800;">v10.5.17 (Latest)</span>
+              <strong style="color:var(--text-primary); font-size:0.9rem;">Store & Database Separation: Dedicated Standalone Architecture</strong>
+            </div>
+            <span style="font-size:0.75rem; color:var(--text-muted);">27 Sep 2026</span>
+          </div>
+          <ul style="margin:0; padding-left:18px; font-size:0.82rem; color:var(--text-secondary); line-height:1.5;">
+            <li><strong>Complete Database Separation:</strong> Budgewoi Discount Drug Stores has been completely migrated to its own dedicated Supabase database project with 15 employees, 96 shifts, and store settings, and deployed to its own independent production URL (<code>budgewoiddsroster.vercel.app</code>).</li>
+            <li><strong>Dedicated Amcal Woy Woy System:</strong> Woy Woy Amcal Pharmacy now runs exclusively on its dedicated database with 34 staff and 545 shifts, completely eliminating multi-tenant overhead and accidental cross-store data leakage.</li>
+            <li><strong>Seamless Cross-Store Portal Navigation:</strong> Store switcher links directly to the dedicated Budgewoi portal for authorized leadership.</li>
+          </ul>
+        </div>
+
+        <!-- v10.5.16 -->
+        <div style="margin-bottom: 16px; padding: 14px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge badge-cyan" style="font-size:0.8rem; font-weight:700;">v10.5.16</span>
               <strong style="color:var(--text-primary); font-size:0.9rem;">Authentic Store Location Standardization (Peninsula Plaza) & Shopping Complex Alignment</strong>
             </div>
             <span style="font-size:0.75rem; color:var(--text-muted);">26 Sep 2026</span>
@@ -3256,11 +3272,11 @@
 
   <!-- Javascript Core -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script type="module" src="js/app.js?v=10.5.16"></script>
+  <script type="module" src="js/app.js?v=10.5.17"></script>
 
   <!-- PWA Service Worker Registration & Multi-Device Auto-Update Engine -->
   <script>
-    const APP_VERSION = '10.5.16';
+    const APP_VERSION = '10.5.17';
     window.APP_VERSION = APP_VERSION;
 
     // Global helper to force-purge all caches and reload the latest version with strict loop protection
