@@ -2068,14 +2068,18 @@
   <div id="modal-email-roster" class="modal">
     <div class="modal-content glass-card" role="dialog" aria-modal="true" style="max-width: 620px;">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-paper-plane text-neon"></i> Email Roster to Staff</h3>
+        <h3><i class="fa-solid fa-paper-plane text-neon"></i> Email Amcal Woy Woy Roster to Staff</h3>
         <button class="btn btn-icon modal-close" aria-label="Close Modal" onclick="closeEmailRosterModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <div class="modal-body">
+        <div style="background: rgba(2, 132, 199, 0.1); border: 1px solid rgba(2, 132, 199, 0.3); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 12px; font-size: 0.82rem; color: #e0f2fe;">
+          <i class="fa-solid fa-store" style="color: #38bdf8; margin-right: 6px;"></i>
+          <strong>Amcal Woy Woy Portal:</strong> All roster emails are sent <em>separately</em> to each individual Woy Woy staff member. Budgewoi DDS staff are strictly excluded.
+        </div>
         <div class="form-group" style="margin-bottom: 14px;">
           <label for="email-roster-recipient-select" style="font-weight: 600; font-size: 0.88rem;">Select Recipient(s):</label>
           <select id="email-roster-recipient-select" class="form-control" onchange="onEmailRecipientChange(this.value)" style="margin-top: 4px;">
-            <option value="all">📢 All Active Staff (Team Broadcast)</option>
+            <option value="all">📢 All Active Amcal Staff (Separate Individual Briefings)</option>
           </select>
         </div>
         <p id="email-roster-target-info" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">

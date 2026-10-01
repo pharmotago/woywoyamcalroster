@@ -91,7 +91,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return jsonRes(res, { error: 'Access denied. Managers or owners only.' }, 403);
     }
 
-    const { employeeId, weekStart, rosterText, broadcast, customMessage } = req.body || {};
+    const { employeeId, weekStart, rosterText, broadcast, customMessage, pharmacyId } = req.body || {};
+    const reqPharmacyId = (pharmacyId || (req.headers['x-pharmacy-id'] as string) || 'amcal_woywoy').toLowerCase().trim();
+
+    // Strict Store Boundary Guard: Ensure Budgewoi DDS requests cannot cross-trigger Amcal emails
+    if (reqPharmacyId === 'budgewoi_dds' || reqPharmacyId === 'budgewoi') {
+      return jsonRes(res, {
+        error: 'Store boundary mismatch. This endpoint is strictly dedicated to Amcal Pharmacy Woy Woy. Budgewoi Discount Drug Stores roster emails must be sent from https://budgewoiddsroster.vercel.app.'
+      }, 400);
+    }
 
     if (!weekStart) {
       return jsonRes(res, { error: 'weekStart is required.' }, 400);
@@ -113,34 +121,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const APP_URL = 'https://woywoyamcalroster.vercel.app';
 
-    // 1. BROADCAST TO ALL EMPLOYEES
+    // 1. BROADCAST TO AMCAL EMPLOYEES (Sent separately, 1 individual email per staff member)
     if (broadcast === true || employeeId === 'all') {
-      const { data: employees, error: empErr } = await supabaseAdmin
+      const { data: rawEmployees, error: empErr } = await supabaseAdmin
         .from('brisk_employees')
         .select('*')
         .eq('active', true);
 
-      if (empErr || !employees || employees.length === 0) {
-        return jsonRes(res, { error: 'No active employees found.' }, 404);
+      if (empErr || !rawEmployees || rawEmployees.length === 0) {
+        return jsonRes(res, { error: 'No active Amcal Pharmacy Woy Woy employees found.' }, 404);
       }
 
-      // Fetch all shifts for this week
+      // Strictly isolate to Amcal Woy Woy staff — exclude any Budgewoi DDS records
+      const employees = rawEmployees.filter(e => {
+        const p = (e.pharmacy_id || e.pharmacyId || '').toLowerCase().trim();
+        return p !== 'budgewoi_dds' && p !== 'budgewoi';
+      });
+
+      // Fetch all shifts for this week (strictly isolated to Amcal Pharmacy Woy Woy)
       const weekStartDate = new Date(weekStart);
       const weekEndDate = new Date(weekStartDate);
       weekEndDate.setDate(weekEndDate.getDate() + 6);
       const startStr = weekStartDate.toISOString().split('T')[0];
       const endStr = weekEndDate.toISOString().split('T')[0];
 
-      const { data: shifts } = await supabaseAdmin
+      const { data: rawShifts } = await supabaseAdmin
         .from('brisk_shifts')
         .select('*')
         .gte('date', startStr)
         .lte('date', endStr);
 
+      const shifts = (rawShifts || []).filter(s => {
+        const p = (s.pharmacy_id || s.pharmacyId || '').toLowerCase().trim();
+        return p !== 'budgewoi_dds' && p !== 'budgewoi';
+      });
+
       const validRecipients = employees.filter(e => e.email && e.email.includes('@'));
       let sentCount = 0;
       const errors: string[] = [];
 
+      // Send separate individual emails to each staff member
       for (const emp of validRecipients) {
         try {
           const empShifts = (shifts || [])
@@ -156,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 <tr style="border-bottom: 1px solid #e2e8f0;">
                   <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">${dayName}</td>
                   <td style="padding: 10px 14px; color: #0284c7; font-weight: 700;">${(s.start_time || '').substring(0, 5)} – ${(s.end_time || '').substring(0, 5)}</td>
-                  <td style="padding: 10px 14px; color: #475569;"><span style="background: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-size: 12px;">${s.role || 'Staff'}</span></td>
+                  <td style="padding: 10px 14px; color: #475569;"><span style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0284c7; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">${s.role || 'Staff'}</span></td>
                 </tr>
               `;
             }).join('');
@@ -165,9 +185,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
 
           const mailOptions = {
-            from: `"Amcal Pharmacy Woy Woy" <${process.env.SMTP_USER || 'amcalwoywoy@gmail.com'}>`,
+            from: `"Amcal Pharmacy Woy Woy" <${process.env.SMTP_USER || 'pharmotago@gmail.com'}>`,
             to: emp.email,
-            subject: `📅 Staff Roster Schedule — Week of ${weekStart}`,
+            subject: `📅 Amcal Woy Woy Staff Roster Schedule — Week of ${weekStart}`,
             html: `
               <!DOCTYPE html>
               <html>
@@ -210,7 +230,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             <!-- Action Button -->
                             <div style="text-align: center; margin: 30px 0 10px 0;">
                               <a href="${APP_URL}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 14px; display: inline-block; box-shadow: 0 2px 8px rgba(2,132,199,0.3);">
-                                Open Roster & Time Clock App →
+                                Open Woy Woy Roster App →
                               </a>
                             </div>
                             
@@ -222,8 +242,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         <!-- Footer -->
                         <tr>
                           <td style="background-color: #f8fafc; padding: 16px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
-                            <p style="font-size: 11px; color: #94a3b8; margin: 0;">
-                              © 2026 Amcal Pharmacy Woy Woy • Confidential Staff Communication
+                            <p style="font-size: 11px; color: #94a3b8; margin: 0; line-height: 1.5;">
+                              © 2026 Amcal Pharmacy Woy Woy • Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256 • Ph: (02) 4342 2256<br>
+                              Confidential Staff Communication
                             </p>
                           </td>
                         </tr>
@@ -268,26 +289,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return jsonRes(res, { error: 'Employee not found.' }, 404);
     }
 
+    const empStore = (employee.pharmacy_id || employee.pharmacyId || '').toLowerCase().trim();
+    if (empStore === 'budgewoi_dds' || empStore === 'budgewoi') {
+      return jsonRes(res, {
+        error: `Employee ${employee.name} belongs to Budgewoi Discount Drug Stores. Please use the Budgewoi portal (https://budgewoiddsroster.vercel.app) to email Budgewoi staff.`
+      }, 400);
+    }
+
     if (!employee.email) {
       return jsonRes(res, { error: 'Employee profile has no email address.' }, 400);
     }
 
     const singleMailOptions = {
-      from: `"Amcal Pharmacy Woy Woy" <${process.env.SMTP_USER || 'amcalwoywoy@gmail.com'}>`,
+      from: `"Amcal Pharmacy Woy Woy" <${process.env.SMTP_USER || 'pharmotago@gmail.com'}>`,
       to: employee.email,
-      subject: `📅 Your Work Schedule Briefing — Week of ${weekStart}`,
+      subject: `📅 Your Amcal Woy Woy Work Schedule Briefing — Week of ${weekStart}`,
       text: rosterText,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-          <h2 style="color: #0284c7; margin-top: 0;">Hello, ${employee.name}!</h2>
-          <p>Your work schedule for the week of <strong>${weekStart}</strong> is ready:</p>
-          <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #0284c7;">
-            <pre style="font-family: monospace; font-size: 14px; margin: 0; white-space: pre-wrap;">${rosterText}</pre>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1e293b; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <div style="border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 16px;">
+            <h2 style="color: #0284c7; margin: 0 0 4px 0; font-size: 18px;">Amcal Pharmacy Woy Woy</h2>
+            <p style="margin: 0; color: #64748b; font-size: 13px;">Staff Roster Briefing — Week of ${weekStart}</p>
           </div>
-          <div style="text-align: center; margin: 25px 0;">
-            <a href="${APP_URL}" style="background-color: #0284c7; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Open Roster Portal</a>
+          <p style="font-size: 15px; margin: 0 0 12px 0;">Hello <strong>${employee.name}</strong>,</p>
+          <p style="color: #475569; font-size: 14px; margin: 0 0 16px 0;">Your work schedule for the week of <strong>${weekStart}</strong> is confirmed below:</p>
+          <div style="background-color: #f0f9ff; padding: 16px; border-radius: 8px; margin: 16px 0; border-left: 4px solid #0284c7;">
+            <pre style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 13px; color: #1e293b; margin: 0; white-space: pre-wrap;">${rosterText}</pre>
           </div>
-          <p style="color: #888; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 10px;">Amcal Pharmacy Woy Woy Staff Portal</p>
+          <div style="text-align: center; margin: 24px 0 16px 0;">
+            <a href="${APP_URL}" style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">Open Woy Woy Roster Portal →</a>
+          </div>
+          <p style="color: #94a3b8; font-size: 11px; margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 12px; text-align: center; line-height: 1.4;">
+            Amcal Pharmacy Woy Woy • Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256 • Ph: (02) 4342 2256
+          </p>
         </div>
       `
     };

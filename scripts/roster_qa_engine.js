@@ -1351,6 +1351,66 @@ assertTest(
 );
 
 // ---------------------------------------------------------
+// Test Suite 30: Amcal Woy Woy Staff Email & Separate Delivery Guard
+// ---------------------------------------------------------
+console.log('\n🔍 [Suite 30: Amcal Woy Woy Staff Email & Separate Delivery Guard]');
+
+const emailApiTsPath = path.join(rootDir, 'api/schedule/email/index.ts');
+let hasEmailApiFile = fs.existsSync(emailApiTsPath);
+let emailApiCode = hasEmailApiFile ? fs.readFileSync(emailApiTsPath, 'utf8') : '';
+
+// 1. Email API Supabase Endpoint & Budgewoi Rejection Guard
+const hasEmailApiWoyWoyBinding = hasEmailApiFile &&
+  emailApiCode.includes('https://gcslfkujlfnznedatrsn.supabase.co') &&
+  emailApiCode.includes("reqPharmacyId === 'budgewoi_dds'");
+assertTest(
+  'Email API Supabase Endpoint & Budgewoi Rejection Guard',
+  hasEmailApiWoyWoyBinding,
+  'api/schedule/email/index.ts must target Woy Woy database and reject budgewoi_dds with HTTP 400.'
+);
+
+// 2. Strict Store Boundary & Budgewoi Exclusion Guard
+const hasStoreBoundaryFilter = emailApiCode.includes("p !== 'budgewoi_dds' && p !== 'budgewoi'");
+assertTest(
+  'Email API Store Boundary & Budgewoi Exclusion Guard',
+  hasStoreBoundaryFilter,
+  'api/schedule/email/index.ts must filter out any budgewoi_dds records from employee and shift queries.'
+);
+
+// 3. Discrete Separate Delivery Loop Guard
+const hasSeparateDeliveryLoop = emailApiCode.includes('for (const emp of validRecipients)') &&
+                                emailApiCode.includes('to: emp.email') &&
+                                emailApiCode.includes('const empShifts = (shifts || [])');
+assertTest(
+  'Discrete Separate Delivery Loop Guard',
+  hasSeparateDeliveryLoop,
+  'api/schedule/email/index.ts must send 1 separate individual email per staff member with only their individual shifts.'
+);
+
+// 4. Authentic Amcal Woy Woy Email Branding Guard
+const hasWoyWoyEmailBranding = emailApiCode.includes('Amcal Pharmacy Woy Woy') &&
+                              emailApiCode.includes('#0284c7') &&
+                              emailApiCode.includes('Shop 4, Peninsula Plaza, 62 Blackwall Road, Woy Woy NSW 2256') &&
+                              emailApiCode.includes('(02) 4342 2256') &&
+                              emailApiCode.includes("const APP_URL = 'https://woywoyamcalroster.vercel.app'");
+assertTest(
+  'Email API Authentic Amcal Woy Woy Branding Guard',
+  hasWoyWoyEmailBranding,
+  'api/schedule/email/index.ts must use authentic Amcal Pharmacy Woy Woy branding, blue #0284c7, Peninsula Plaza address and phone.'
+);
+
+// 5. Client Email Modal Briefing Template & Isolation Guard
+const hasClientEmailModalGuard = freshIndexHtml.includes('modal-email-roster') &&
+                                 freshIndexHtml.includes('Amcal') &&
+                                 freshIndexHtml.includes('Separate Individual Briefings') &&
+                                 freshAppJs.includes("pharmacyId: 'amcal_woywoy'");
+assertTest(
+  'Client Email Modal Briefing Template & Isolation Guard',
+  hasClientEmailModalGuard,
+  'index.html and js/app.js must tag email requests with pharmacyId: amcal_woywoy and specify separate delivery.'
+);
+
+// ---------------------------------------------------------
 // Final Summary & Verdict
 // ---------------------------------------------------------
 console.log('\n------------------------------------------------------');

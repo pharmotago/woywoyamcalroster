@@ -7015,11 +7015,11 @@ function openEmailRosterModal(employeeId) {
 
   const select = document.getElementById('email-roster-recipient-select');
   if (select) {
-    select.innerHTML = '<option value="all">📢 All Active Staff (Team Broadcast)</option>';
+    select.innerHTML = '<option value="all">📢 All Active Amcal Staff (Separate Individual Briefings)</option>';
     
-    // Sort employees by name
+    // Sort employees by name, strictly isolating to Amcal Woy Woy
     const sortedEmployees = [...state.employees]
-      .filter(e => e.active !== false)
+      .filter(e => e.active !== false && (e.pharmacyId === 'amcal_woywoy' || !e.pharmacyId || e.pharmacy_id === 'amcal_woywoy'))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     sortedEmployees.forEach(e => {
@@ -7047,9 +7047,9 @@ function onEmailRecipientChange(targetId) {
   const targetInfo = document.getElementById('email-roster-target-info');
 
   if (targetId === 'all') {
-    const validCount = state.employees.filter(e => e.active !== false && e.email && e.email.includes('@')).length;
+    const validCount = state.employees.filter(e => e.active !== false && e.email && e.email.includes('@') && e.pharmacyId !== 'budgewoi_dds').length;
     if (targetInfo) {
-      targetInfo.innerHTML = `Sending individual schedule briefings to <strong>${validCount} active staff members</strong> with emails on record for <strong style="color:var(--accent-cyan);">${weekLabel}</strong>.`;
+      targetInfo.innerHTML = `Sending <strong>separate individual schedule briefings</strong> to <strong>${validCount} active Amcal Woy Woy staff members</strong> with emails on record for <strong style="color:var(--accent-cyan);">${weekLabel}</strong>.<br><span style="font-size:0.8em; color:var(--text-muted);"><i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> External store & Budgewoi staff are strictly excluded.</span>`;
     }
     if (textarea) {
       textarea.value = `Hi Team,\n\nThe official roster for the week starting ${weekLabel} has been published.\nPlease check your shift times, break allocations, and trading hours in the schedule below.\n\nWarm regards,\nManagement Team\nAmcal Pharmacy Woy Woy`;
@@ -7103,15 +7103,17 @@ async function sendRosterEmail() {
   btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Emails...';
 
   try {
-    let payload = {};
+    let payload = { pharmacyId: 'amcal_woywoy' };
     if (target === 'all') {
       payload = {
+        ...payload,
         broadcast: true,
         weekStart,
         customMessage: customText
       };
     } else {
       payload = {
+        ...payload,
         employeeId: target,
         weekStart,
         rosterText: customText
