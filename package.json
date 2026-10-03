@@ -23,6 +23,7 @@
     "scan:korean": "node scripts/scan_korean.js",
     "roster:audit": "npm run roster:check",
     "test:email-separation": "node scripts/test_store_email_separation.js",
+    "test:email-amcal": "node scripts/test_live_amcal_email.js",
     "setup:guide-api": "node scripts/create_guide_api.js",
     "build:guide": "node scripts/generate_pdf_guide.js",
     "build:timeline-pdf": "node scripts/generate_timeline_pdf.js",
